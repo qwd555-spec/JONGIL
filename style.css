@@ -432,3 +432,28 @@ body.modal-open { overflow: hidden; }
 @media (min-width: 520px) {
   .app { padding-top: 28px; }
 }
+
+/* ---------- 몸무게 / 맨몸 운동 ---------- */
+.bw-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--layer); border-radius: var(--r-lg);
+  padding: 10px 10px 10px 12px; margin-bottom: 12px;
+  box-shadow: var(--shadow-layer); cursor: text;
+}
+.bw-icon { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; background: var(--raised); box-shadow: var(--shadow-raised); }
+.bw-text { flex: 1; display: flex; flex-direction: column; gap: 1px; font-size: 15px; }
+.bw-text small { font-size: 12px; }
+.bw-field { display: flex; align-items: center; gap: 4px; background: var(--raised); border-radius: 14px; padding: 0 12px 0 4px; height: 44px; box-shadow: var(--shadow-raised); }
+.bw-field input { width: 64px; border: none; background: none; outline: none; text-align: right; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.bw-field input::-webkit-outer-spin-button, .bw-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.bw-field input::placeholder { color: #c0c0c8; }
+.bw-field em { font-style: normal; color: var(--muted); font-size: 13px; font-weight: 600; }
+.bw-field:focus-within { box-shadow: 0 0 0 1.5px var(--ink); }
+
+.bw-chip {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  border: 1px dashed #c4c4cc; color: var(--muted); background: transparent;
+}
+.bw-chip.on { border: none; background: var(--ink); color: #fff; }
+.bw-chip:disabled { cursor: default; transform: none; }
+.bw-chip[hidden] { display: none; }

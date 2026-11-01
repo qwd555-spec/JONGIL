@@ -15,6 +15,10 @@ const STORAGE_KEY = 'gymlog.v1';
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
 let db = load();
+const BW_KEY = 'gymlog.bodyweight';
+let bwMap = (() => {           // 날짜 → 몸무게(kg)
+  try { return JSON.parse(localStorage.getItem(BW_KEY)) || {}; } catch { return {}; }
+})();
 const state = {
   day: todayStr(),
   weekAnchor: todayStr(),
@@ -31,6 +35,18 @@ function load() {
 }
 function saveLocal() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch { /* 저장소 없음 */ }
+}
+function saveBw() {
+  try { localStorage.setItem(BW_KEY, JSON.stringify(bwMap)); } catch { /* 저장소 없음 */ }
+  cloud.markDirty();
+}
+/** 해당 날짜에 적용할 몸무게: 그날 또는 그 이전 가장 최근 기록, 없으면 가장 오래된 기록 */
+function bodyweightOn(date) {
+  const keys = Object.keys(bwMap).filter((k) => num(bwMap[k]) > 0).sort();
+  if (!keys.length) return 0;
+  let pick = keys[0];
+  for (const k of keys) { if (k <= date) pick = k; else break; }
+  return num(bwMap[pick]);
 }
 function save() {
   // 빈 날짜는 정리
@@ -97,9 +113,10 @@ const cloud = (() => {
         if (!d.exists) continue;
         const body = d.data();
         if (DATE_RE.test(d.id) && Array.isArray(body.list)) remote[d.id] = JSON.parse(JSON.stringify(body.list));
-        if (d.id === 'settings' && body.restSeconds) {
-          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds });
-          setRestSeconds(body.restSeconds, false);
+        if (d.id === 'settings') {
+          if (body.restSeconds) setRestSeconds(body.restSeconds, false);
+          if (body.bodyweight && typeof body.bodyweight === 'object') bwMap = { ...bwMap, ...body.bodyweight };
+          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {} });
         }
       }
       for (const [k, v] of Object.entries(remote)) synced[k] = JSON.stringify(v);
@@ -107,6 +124,7 @@ const cloud = (() => {
       Object.assign(db, remote);
       col = c;
       saveLocal();
+      try { localStorage.setItem(BW_KEY, JSON.stringify(bwMap)); } catch { /* 없음 */ }
       render();
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
       markDirty();
@@ -134,7 +152,7 @@ const cloud = (() => {
         if (cur === null) { await col.doc(k).delete(); delete synced[k]; }
         else { await col.doc(k).set({ list: JSON.parse(cur), updatedAt: Date.now() }); synced[k] = cur; }
       }
-      const st = JSON.stringify({ restSeconds: restSeconds() });
+      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap });
       if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
     } catch (e) {
@@ -193,9 +211,21 @@ function fmtDate(s) {
 
 /* ---------- 볼륨 계산 ---------- */
 const num = (v) => (Number.isFinite(+v) ? +v : 0);
-function setVolume(set) { return num(set.w) * num(set.r); }
-function exerciseVolume(ex) { return ex.sets.reduce((a, s) => a + setVolume(s), 0); }
-function dayVolume(date) { return (db[date] || []).reduce((a, ex) => a + exerciseVolume(ex), 0); }
+/** 맨몸 운동 종류: 'bw'(몸무게+추가중량), 'assist'(몸무게−보조중량), null(일반) */
+function bwType(ex) {
+  if (ex && ex.bw !== undefined) return ex.bw;
+  return (typeof BODYWEIGHT_TYPE !== 'undefined' && BODYWEIGHT_TYPE[ex?.name]) || null;
+}
+function setVolume(set, ex, date) {
+  const w = num(set.w), r = num(set.r);
+  const type = bwType(ex);
+  if (!type) return w * r;
+  const bw = bodyweightOn(date);
+  if (type === 'assist') return Math.max(0, bw - w) * r;
+  return (bw + w) * r;
+}
+function exerciseVolume(ex, date) { return ex.sets.reduce((a, s) => a + setVolume(s, ex, date), 0); }
+function dayVolume(date) { return (db[date] || []).reduce((a, ex) => a + exerciseVolume(ex, date), 0); }
 function rangeVolume(dates) { return dates.reduce((a, d) => a + dayVolume(d), 0); }
 
 function rangeStats(dates) {
@@ -207,7 +237,7 @@ function rangeStats(dates) {
     for (const ex of list) {
       const e = (byEx[ex.name] ||= { volume: 0, sets: 0, reps: 0 });
       for (const s of ex.sets) {
-        e.volume += setVolume(s);
+        e.volume += setVolume(s, ex, d);
         e.sets++;
         e.reps += num(s.r);
         sets++;
@@ -445,10 +475,30 @@ function renderDay() {
     node.querySelector('.exercise-name').textContent = ex.name;
     node.querySelector('.part-badge').textContent = partOf(ex.name);
     const volEl = node.querySelector('.exercise-volume');
+    const type = bwType(ex);
+    const isCatalog = EXERCISES.some((e) => e.name === ex.name);
+    const chip = node.querySelector('.bw-chip');
+    if (type || !isCatalog) {
+      chip.hidden = false;
+      const bw = bodyweightOn(state.day);
+      chip.classList.toggle('on', !!type);
+      chip.textContent = !type ? '맨몸 운동?' : bw ? `맨몸 +${bw}kg` : '맨몸 · 몸무게 미입력';
+      chip.title = isCatalog ? '' : '눌러서 맨몸 운동으로 설정/해제';
+      if (!isCatalog) {
+        chip.addEventListener('click', () => {
+          ex.bw = type ? null : 'bw';
+          save();
+          renderDay();
+        });
+      } else {
+        chip.disabled = true;
+      }
+    }
+    if (type) node.querySelector('thead th:nth-child(2)').textContent = type === 'assist' ? '보조kg' : '+kg';
     const tbody = node.querySelector('tbody');
 
     const refreshTotals = () => {
-      volEl.textContent = fmtKg(exerciseVolume(ex));
+      volEl.textContent = fmtKg(exerciseVolume(ex, state.day));
       updateDaySummary();
     };
 
@@ -458,13 +508,13 @@ function renderDay() {
         <td><span class="set-no">${i + 1}</span></td>
         <td><input type="number" inputmode="decimal" min="0" step="0.5" value="${set.w}" data-k="w" /></td>
         <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.r}" data-k="r" /></td>
-        <td class="vol">${fmtShort(setVolume(set)) || '-'}</td>
+        <td class="vol">${fmtShort(setVolume(set, ex, state.day)) || '-'}</td>
         <td><button class="del-set" title="세트 삭제" aria-label="세트 삭제"><svg class="i"><use href="#i-x"/></svg></button></td>`;
       const volTd = tr.querySelector('.vol');
       tr.querySelectorAll('input').forEach((inp) =>
         inp.addEventListener('input', () => {
           set[inp.dataset.k] = inp.value === '' ? '' : +inp.value;
-          volTd.textContent = fmtShort(setVolume(set)) || '-';
+          volTd.textContent = fmtShort(setVolume(set, ex, state.day)) || '-';
           save();
           refreshTotals();
         })
@@ -512,7 +562,24 @@ function renderDay() {
   updateDaySummary();
 }
 
+const bwInput = $('#bw-input');
+bwInput.addEventListener('change', () => {
+  const v = parseFloat(bwInput.value);
+  if (Number.isFinite(v) && v > 0) bwMap[state.day] = Math.round(v * 10) / 10;
+  else delete bwMap[state.day];
+  saveBw();
+  renderDay();
+  toast(bwMap[state.day] ? `몸무게 ${bwMap[state.day]}kg 저장됨` : '이 날짜 몸무게를 지웠어요');
+});
+function updateBwRow() {
+  const own = bwMap[state.day];
+  const eff = bodyweightOn(state.day);
+  if (document.activeElement !== bwInput) bwInput.value = own ?? '';
+  bwInput.placeholder = eff ? String(eff) : '00.0';
+  $('#bw-note').textContent = own ? '이 날짜 몸무게' : eff ? '최근 기록 적용 중' : '맨몸 운동 볼륨에 포함';
+}
 function updateDaySummary() {
+  updateBwRow();
   const list = db[state.day] || [];
   const total = dayVolume(state.day);
   $('#day-total').textContent = fmtKg(total);
@@ -698,14 +765,14 @@ async function download(filename, content, type) {
 }
 
 $('#export-btn').addEventListener('click', () => {
-  download(`gymlog-${todayStr()}.json`, JSON.stringify(db, null, 2), 'application/json');
+  download(`gymlog-${todayStr()}.json`, JSON.stringify({ ...db, _bodyweight: bwMap }, null, 2), 'application/json');
 });
 
 $('#export-csv-btn').addEventListener('click', () => {
   const rows = [['날짜', '운동', '세트', '무게(kg)', '횟수', '볼륨']];
   for (const d of Object.keys(db).sort()) {
     for (const ex of db[d]) {
-      ex.sets.forEach((s, i) => rows.push([d, ex.name, i + 1, num(s.w), num(s.r), setVolume(s)]));
+      ex.sets.forEach((s, i) => rows.push([d, ex.name, i + 1, num(s.w), num(s.r), setVolume(s, ex, d)]));
     }
   }
   const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -718,11 +785,14 @@ $('#import-file').addEventListener('change', async (e) => {
   try {
     const data = JSON.parse(await file.text());
     if (typeof data !== 'object' || Array.isArray(data)) throw new Error('형식 오류');
+    const importedBw = data._bodyweight && typeof data._bodyweight === 'object' ? data._bodyweight : null;
+    delete data._bodyweight;
     for (const [k, v] of Object.entries(data)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Array.isArray(v)) throw new Error('형식 오류');
     }
     if (!(await askConfirm('가져온 데이터로 기존 기록을 덮어쓸까요?', { okText: '덮어쓰기', danger: true }))) return;
     db = data;
+    if (importedBw) { bwMap = importedBw; saveBw(); }
     save();
     toast('가져오기 완료!');
     render();
@@ -736,6 +806,8 @@ $('#import-file').addEventListener('change', async (e) => {
 $('#reset-btn').addEventListener('click', async () => {
   if (!(await askConfirm('정말 모든 기록을 삭제할까요?\n되돌릴 수 없어요.', { okText: '전부 삭제', danger: true }))) return;
   db = {};
+  bwMap = {};
+  saveBw();
   save();
   render();
 });

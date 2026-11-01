@@ -36,6 +36,7 @@
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></symbol>
       <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/></symbol>
       <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15L6 16.5ZM10 20.5h4"/></symbol>
+      <symbol id="i-body" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><path d="M5 9.5h14M12 9.5V15m0 0-3.5 6M12 15l3.5 6"/></symbol>
       <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></symbol>
     </defs>
   </svg>
@@ -70,6 +71,12 @@
           <div class="summary-value" id="day-total">0 kg</div>
           <div class="summary-sub" id="day-sub"></div>
         </div>
+
+        <label class="bw-row">
+          <span class="bw-icon"><svg class="i"><use href="#i-body"/></svg></span>
+          <span class="bw-text"><strong>몸무게</strong><small id="bw-note">맨몸 운동 볼륨에 포함</small></span>
+          <span class="bw-field"><input type="number" id="bw-input" inputmode="decimal" min="0" step="0.1" placeholder="00.0" /><em>kg</em></span>
+        </label>
 
         <div class="panel picker">
           <form id="add-exercise-form" class="search-form" autocomplete="off">
@@ -193,7 +200,7 @@
 
         <div class="panel">
           <div class="panel-head"><span>볼륨 계산</span><svg class="i"><use href="#i-info"/></svg></div>
-          <p class="hint">볼륨 = 무게(kg) × 횟수, 모든 세트 합산<br />맨몸 운동은 무게 0 → 횟수만 기록돼요</p>
+          <p class="hint">볼륨 = 무게(kg) × 횟수, 모든 세트 합산<br />맨몸 운동(푸시업·풀업·딥스 등) = (몸무게 + 추가 중량) × 횟수<br />어시스트 머신 = (몸무게 − 보조 중량) × 횟수<br />몸무게는 일간 화면에서 입력하고, 입력한 날 이후로 계속 적용돼요</p>
         </div>
 
         <button id="reset-btn" class="danger-btn"><svg class="i"><use href="#i-trash"/></svg>모든 기록 삭제</button>
@@ -253,7 +260,7 @@
       <div class="exercise-head">
         <div class="exercise-title">
           <h4 class="exercise-name"></h4>
-          <div class="exercise-meta"><span class="part-badge"></span><span class="exercise-volume"></span></div>
+          <div class="exercise-meta"><span class="part-badge"></span><button type="button" class="bw-chip" hidden></button><span class="exercise-volume"></span></div>
         </div>
         <button class="icon-btn delete-exercise" title="운동 삭제" aria-label="운동 삭제"><svg class="i"><use href="#i-trash"/></svg></button>
       </div>
