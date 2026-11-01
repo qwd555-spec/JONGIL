@@ -71,7 +71,7 @@
 
         <div class="summary-card">
           <div class="summary-top">
-            <span class="summary-label">오늘 근력 볼륨</span>
+            <span class="summary-label">오늘 총 볼륨</span>
             <svg class="i"><use href="#i-layers"/></svg>
           </div>
           <div class="summary-value" id="day-total">0 kg</div>
@@ -141,7 +141,7 @@
 
         <div class="summary-card">
           <div class="summary-top">
-            <span class="summary-label">주간 근력 볼륨</span>
+            <span class="summary-label">주간 총 볼륨</span>
             <svg class="i"><use href="#i-layers"/></svg>
           </div>
           <div class="summary-value" id="week-total">0 kg</div>
@@ -175,7 +175,7 @@
 
         <div class="summary-card">
           <div class="summary-top">
-            <span class="summary-label">월간 근력 볼륨</span>
+            <span class="summary-label">월간 총 볼륨</span>
             <svg class="i"><use href="#i-layers"/></svg>
           </div>
           <div class="summary-value" id="month-total">0 kg</div>
@@ -244,8 +244,9 @@
 
           <div class="panel">
             <div class="part-chips metric-chips" id="rank-metric">
-              <button class="chip active" data-metric="volume">근력 볼륨</button>
-              <button class="chip" data-metric="cardio">유산소 볼륨</button>
+              <button class="chip active" data-metric="total">총 볼륨</button>
+              <button class="chip" data-metric="volume">근력</button>
+              <button class="chip" data-metric="cardio">유산소</button>
               <button class="chip" data-metric="days">운동일수</button>
               <button class="chip" data-metric="best">최고 중량</button>
             </div>
@@ -292,7 +293,7 @@
             <div><b>🙂 가볍게</b><span>목표 40% 이상</span></div>
             <div><b>🌱 몸풀기</b><span>40% 미만</span></div>
           </div>
-          <p class="hint"><b>오늘 운동 부위를 고르면</b> 목표 = 고른 부위 목표의 합<br />부위별 목표 = 몸무게 × 하체 110 · 등 75 · 가슴 60 · 전신 75 · 어깨 40 · 복근 30 · 삼두 22 · 이두 18 · 전완 8<br />(90kg: 하체 9,900 · 등 6,800 · 가슴 5,400 · 어깨 3,600 · 삼두 2,000 · 이두 1,700)<br /><br />부위를 안 고르면 30대 남성 기준 자동 목표 = <b>몸무게 × 110kg</b> (500kg 단위 올림)<br />60kg → 7,000 · 70kg → 8,000 · 80kg → 9,000 · <b>90kg → 10,000</b> · 100kg → 11,000 (미입력 시 8,500kg).<br /><br />주 3~5회 운동하는 중급자가 한 번에 본세트 15~25세트 하는 양이에요. 하체 날(스쿼트·레그프레스)은 볼륨이 크게, 상체·팔 날은 작게 나오니 일주일 평균으로 보세요. 근력 볼륨만 계산해요.</p>
+          <p class="hint"><b>오늘 운동 부위를 고르면</b> 목표 = 고른 부위 목표의 합<br />부위별 목표 = 몸무게 × 하체 110 · 등 75 · 가슴 60 · 유산소 60 · 전신 75 · 어깨 40 · 복근 30 · 삼두 22 · 이두 18 · 전완 8<br />(90kg: 하체 9,900 · 등 6,800 · 가슴 5,400 · 어깨 3,600 · 삼두 2,000 · 이두 1,700)<br /><br />부위를 안 고르면 30대 남성 기준 자동 목표 = <b>몸무게 × 110kg</b> (500kg 단위 올림)<br />60kg → 7,000 · 70kg → 8,000 · 80kg → 9,000 · <b>90kg → 10,000</b> · 100kg → 11,000 (미입력 시 8,500kg).<br /><br />주 3~5회 운동하는 중급자가 한 번에 본세트 15~25세트 하는 양이에요. 하체 날(스쿼트·레그프레스)은 볼륨이 크게, 상체·팔 날은 작게 나오니 일주일 평균으로 보세요. 근력 볼륨만 계산해요.</p>
         </div>
 
         <div class="panel">
@@ -320,7 +321,7 @@
 
         <div class="panel">
           <div class="panel-head"><span>볼륨 계산</span><svg class="i"><use href="#i-info"/></svg></div>
-          <p class="hint">볼륨 = 무게(kg) × 횟수, 모든 세트 합산<br />맨몸 운동(푸시업·풀업·딥스 등) = (몸무게 + 추가 중량) × 횟수<br />⚠️ 덤벨은 자동으로 ×2 되지 않아요 — 양손이면 두 개 합친 무게로 입력<br /><b>기준은 근력 볼륨</b> — 총볼륨·순위는 근력 운동만 합산<br />유산소·스포츠는 "유산소 볼륨"으로 따로 집계 = 소모 칼로리 × 25 (근력운동 1시간 ≈ 1만kg ≈ 350kcal 기준)<br />· 러닝·걷기·자전거 등은 거리 입력 시 몸무게 × km 로 계산<br />· 풋살·축구 등은 시간 × 운동 강도(MET)로 계산<br />· ⌚ 애플워치 등 칼로리를 적으면 그 값을 우선 사용<br />· 그룹 보정: 러닝류 70%, 풋살 50%<br />어시스트 머신 = (몸무게 − 보조 중량) × 횟수<br />몸무게는 일간 화면에서 입력하고, 입력한 날 이후로 계속 적용돼요</p>
+          <p class="hint">볼륨 = 무게(kg) × 횟수, 모든 세트 합산<br />맨몸 운동(푸시업·풀업·딥스 등) = (몸무게 + 추가 중량) × 횟수<br />⚠️ 덤벨은 자동으로 ×2 되지 않아요 — 양손이면 두 개 합친 무게로 입력<br /><b>기준은 총 볼륨 = 근력 + 유산소</b> (옆에 작게 근력·유산소 구분 표시)<br />유산소·스포츠 볼륨 = 소모 칼로리 × 25 (근력운동 1시간 ≈ 1만kg ≈ 350kcal 기준)<br />· 러닝·걷기·자전거 등은 거리 입력 시 몸무게 × km 로 계산<br />· 풋살·축구 등은 시간 × 운동 강도(MET)로 계산<br />· ⌚ 애플워치 등 칼로리를 적으면 그 값을 우선 사용<br />· 그룹 보정: 러닝류 70%, 풋살 50%<br />어시스트 머신 = (몸무게 − 보조 중량) × 횟수<br />몸무게는 일간 화면에서 입력하고, 입력한 날 이후로 계속 적용돼요</p>
         </div>
 
         <button id="reset-btn" class="danger-btn"><svg class="i"><use href="#i-trash"/></svg>모든 기록 삭제</button>
