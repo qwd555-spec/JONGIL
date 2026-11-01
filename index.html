@@ -253,8 +253,14 @@
           </div>
 
           <div class="panel awards">
-            <div class="panel-head"><span><b id="awards-month"></b> 이달의 왕 <small>부문별 1위 · 매달 1일 초기화</small></span><svg class="i"><use href="#i-trophy"/></svg></div>
+            <div class="panel-head"><span><b id="awards-title">이번 주의 왕</b> <small id="awards-hint"></small></span><svg class="i"><use href="#i-trophy"/></svg></div>
+            <div class="segmented aw-seg" id="aw-period">
+              <button data-p="week" class="active">주간 왕</button>
+              <button data-p="month">월간 왕</button>
+            </div>
             <div class="aw-list" id="awards-list"></div>
+            <div class="sub-head aw-sub">✦ 이색 왕</div>
+            <div class="aw-list" id="fun-awards"></div>
           </div>
 
           <div class="panel">

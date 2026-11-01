@@ -755,10 +755,10 @@ body.modal-open { overflow: hidden; }
 /* 이달의 왕 */
 .aw-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .aw-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; padding: 12px 12px 11px; border-radius: 18px; background: var(--raised); box-shadow: var(--shadow-raised); position: relative; min-width: 0; }
-.aw-row:first-child { grid-column: 1 / -1; background: var(--ink); color: #fff; flex-direction: row; align-items: center; gap: 12px; padding: 14px 16px; }
-.aw-row:first-child .aw-main small { color: rgba(255,255,255,.6); }
-.aw-row:first-child .aw-val { margin-left: auto; color: #fff; font-size: 17px; text-align: right; }
-.aw-row:first-child .aw-icon { font-size: 26px; }
+.aw-row.hero { grid-column: 1 / -1; background: var(--ink); color: #fff; flex-direction: row; align-items: center; gap: 12px; padding: 14px 16px; }
+.aw-row.hero .aw-main small { color: rgba(255,255,255,.6); }
+.aw-row.hero .aw-val { margin-left: auto; color: #fff; font-size: 17px; text-align: right; }
+.aw-row.hero .aw-icon { font-size: 26px; }
 .aw-row:active { transform: scale(.97); }
 .aw-row.empty { opacity: .55; }
 .aw-icon { font-size: 20px; line-height: 1; }
@@ -767,5 +767,7 @@ body.modal-open { overflow: hidden; }
 .aw-main b { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .aw-val { font-size: 13px; font-weight: 700; color: #4b4b53; display: flex; flex-direction: column; gap: 2px; }
 .aw-me { font-size: 10.5px; font-weight: 700; color: #9b3d97; }
-.aw-row:first-child .aw-me { color: var(--pink); }
+.aw-row.hero .aw-me { color: var(--pink); }
 .aw-main b { white-space: normal; word-break: keep-all; }
+.aw-seg { margin: 0 0 12px; }
+.aw-sub { margin: 16px 4px 10px; }

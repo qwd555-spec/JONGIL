@@ -1588,32 +1588,44 @@ const social = (() => {
         }
       }
     }
-    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), mon: monthSummary() };
+    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), dsum: daySums(40) };
   }
-  /* ---- 이달의 부위별 볼륨 · 러닝 거리 · 골 ---- */
+  /* ---- 하루 요약 (왕 계산용, 최근 40일) ---- */
   const RUN_NAMES = ['러닝', '트레드밀', '인터벌 러닝'];
-  function monthSummary() {
-    const ym = todayStr().slice(0, 7);
-    const p = {};
-    let km = 0, goals = 0, days = 0;
-    for (const d of Object.keys(db)) {
-      if (d.slice(0, 7) !== ym) continue;
-      let any = false;
-      for (const ex of db[d]) {
-        const v = exerciseVolume(ex, d);
-        if (v > 0) any = true;
-        const info = cardioInfo(ex);
-        let part = info ? '유산소' : partOf(ex.name);
-        if (part === '이두' || part === '삼두' || part === '전완') part = '팔';
-        if (v > 0) p[part] = Math.round((p[part] || 0) + v);
-        if (info) for (const st of ex.sets) {
-          if (RUN_NAMES.includes(ex.name)) km += num(st.km);
-          goals += num(st.goals);
+  const armPart = (p) => (p === '이두' || p === '삼두' || p === '전완' ? '팔' : p);
+  const idHour = (id) => { const t = parseInt(String(id || '').slice(0, -5), 36); return t > 1.5e12 && t < 4e12 ? t : 0; };
+  function daySum(d) {
+    const out = { v: 0, p: {}, km: 0, rmin: 0, goals: 0, sets: 0, reps: 0, maxW: 0, top: 0, n: [] };
+    let h0 = 99, h1 = -1;
+    for (const ex of db[d] || []) {
+      const v = exerciseVolume(ex, d);
+      if (!(v > 0)) continue;
+      const info = cardioInfo(ex);
+      const part = info ? '유산소' : armPart(partOf(ex.name));
+      out.v += v; out.p[part] = Math.round((out.p[part] || 0) + v);
+      out.top = Math.max(out.top, Math.round(v));
+      if (!out.n.includes(ex.name)) out.n.push(ex.name);
+      const t = idHour(ex.id);
+      if (t && toStr(new Date(t)) === d) { const h = new Date(t).getHours(); h0 = Math.min(h0, h); h1 = Math.max(h1, h); }
+      for (const st of ex.sets) {
+        if (info) {
+          if (RUN_NAMES.includes(ex.name) && num(st.km) > 0) { out.km += num(st.km); out.rmin += num(st.min); }
+          out.goals += num(st.goals);
+        } else if (num(st.r) > 0) {
+          out.sets++; out.reps += num(st.r);
+          if (!bwType(ex)) out.maxW = Math.max(out.maxW, num(st.w));
         }
       }
-      if (any) days++;
     }
-    return { ym, p, km: +km.toFixed(1), goals, days };
+    if (!(out.v > 0)) return null;
+    out.v = Math.round(out.v); out.km = +out.km.toFixed(2);
+    if (h1 >= 0) { out.h0 = h0; out.h1 = h1; }
+    return out;
+  }
+  function daySums(back) {
+    const from = addDays(todayStr(), -(back - 1)), out = {};
+    for (const d of Object.keys(db)) if (d >= from) { const x = daySum(d); if (x) out[d] = x; }
+    return out;
   }
 
   /* ---- 운동 내용 공유 (최근 30일) ---- */
@@ -1659,10 +1671,10 @@ const social = (() => {
     if (!store || !myId) return;
     const nick = nickOverride || myNick();
     if (!nick) return;                       // 참가 전에는 올리지 않음
-    const { days, best, cdays, log, custom, mon } = mySummary();
-    const key = JSON.stringify({ nick, days, best, cdays, log, custom, mon });
+    const { days, best, cdays, log, custom, dsum } = mySummary();
+    const key = JSON.stringify({ nick, days, best, cdays, log, custom, dsum });
     if (key === lastPublished) return;
-    await store.doc('board/' + myId).set({ nick, days, best, cdays, log, custom, mon, updatedAt: Date.now() });
+    await store.doc('board/' + myId).set({ nick, days, best, cdays, log, custom, dsum, updatedAt: Date.now() });
     lastPublished = key;
   }
 
@@ -1716,88 +1728,125 @@ const social = (() => {
   }
 
   /* ---- 화면 ---- */
-  /* ---- 이달의 왕 (월간 부문별 1위) ---- */
+  /* ---- 주간 · 월간 왕 ---- */
+  let awPeriod = 'week';
+  // 친구의 하루 요약: 새 버전이면 dsum, 아니면 공유된 기록으로 추정
+  function friendDay(m, d) {
+    const ds = (m.dsum || {})[d];
+    if (ds) return ds;
+    const v = num((m.days || {})[d]) + num((m.cdays || {})[d]);
+    if (!(v > 0)) return null;
+    const items = (m.log || {})[d];
+    const out = { v, p: {}, km: 0, rmin: 0, goals: 0, sets: 0, reps: 0, maxW: 0, top: 0, n: [] };
+    if (Array.isArray(items)) for (const x of items) {
+      const part = x.c ? '유산소' : armPart(partOf(x.n));
+      out.p[part] = (out.p[part] || 0) + num(x.v);
+      out.top = Math.max(out.top, num(x.v));
+      if (x.n && !out.n.includes(x.n)) out.n.push(x.n);
+    }
+    return out;
+  }
+  const dayTotal = (id, d) => id === myId ? dayVolume(d) : num((members[id].days || {})[d]) + num((members[id].cdays || {})[d]);
+  function awardRange() {
+    const t = todayStr();
+    const dates = (awPeriod === 'week' ? weekDates(t) : monthDays(t)).filter((d) => d <= t);
+    const len = awPeriod === 'week' ? 7 : dates.length;
+    const prev = awPeriod === 'week' ? dates.map((d) => addDays(d, -7)) : Array.from({ length: len }, (_, i) => addDays(monthDays(addDays(dates[0], -1))[0], i));
+    return { dates, past: dates.filter((d) => d < t), prev };
+  }
+  function statsFor(id, range, cmts) {
+    const S = { total: 0, p: {}, km: 0, rmin: 0, goals: 0, reps: 0, maxW: 0, top: 0, names: new Set(), dayMax: 0, dates: new Set(), weekend: 0, late: 0, early: 0, cmt: 0, streak: 0, growth: 0 };
+    let run = 0;
+    for (const d of range.dates) {
+      const x = id === myId ? daySum(d) : friendDay(members[id], d);
+      if (!x) { if (d < todayStr()) run = 0; continue; }
+      S.dates.add(d); run++; S.streak = Math.max(S.streak, run);
+      S.total += num(x.v); S.dayMax = Math.max(S.dayMax, num(x.v));
+      for (const [k, v] of Object.entries(x.p || {})) S.p[k] = (S.p[k] || 0) + num(v);
+      S.km += num(x.km); S.rmin += num(x.rmin); S.goals += num(x.goals); S.reps += num(x.reps);
+      S.maxW = Math.max(S.maxW, num(x.maxW)); S.top = Math.max(S.top, num(x.top));
+      (x.n || []).forEach((n) => S.names.add(n));
+      const dow = parse(d).getDay();
+      if (dow === 0 || dow === 6) S.weekend += num(x.v);
+      if (x.h1 !== undefined && x.h1 >= 22) S.late++;
+      if (x.h0 !== undefined && x.h0 < 8) S.early++;
+    }
+    S.cmt = cmts.filter((c) => c.from === id).length;
+    const before = range.prev.reduce((a, d) => a + dayTotal(id, d), 0);
+    S.growth = before > 0 && S.total > before ? Math.round(((S.total - before) / before) * 100) : 0;
+    S.pace = S.km >= 3 && S.rmin > 0 ? S.rmin / S.km : 0;
+    S.rest = range.past.filter((d) => !S.dates.has(d)).length;
+    S.perfect = S.dates.size > 0 && range.past.every((d) => S.dates.has(d));
+    S.legSkip = S.dates.size >= 3 && !(S.p['하체'] > 0);
+    return S;
+  }
+  const pace = (v) => `${Math.floor(v)}'${String(Math.round((v % 1) * 60)).padStart(2, '0')}"/km`;
   const AWARDS = [
-    { k: 'total', icon: '👑', name: '월간 총 볼륨', get: (mo) => Object.values(mo.p || {}).reduce((a, v) => a + num(v), 0), fmt: fmtKg },
-    { k: '가슴', icon: '🛡️', name: '가슴 볼륨', get: (mo) => num((mo.p || {})['가슴']), fmt: fmtKg },
-    { k: '등', icon: '🦅', name: '등 볼륨', get: (mo) => num((mo.p || {})['등']), fmt: fmtKg },
-    { k: '하체', icon: '🦵', name: '하체 볼륨', get: (mo) => num((mo.p || {})['하체']), fmt: fmtKg },
-    { k: '어깨', icon: '🎯', name: '어깨 볼륨', get: (mo) => num((mo.p || {})['어깨']), fmt: fmtKg },
-    { k: '팔', icon: '💪', name: '팔 볼륨', get: (mo) => num((mo.p || {})['팔']), fmt: fmtKg },
-    { k: 'km', icon: '🏃', name: '이달의 마라토너', get: (mo) => num(mo.km), fmt: (v) => `${+v.toFixed(1)}km` },
-    { k: 'goals', icon: '⚽', name: '득점왕', get: (mo) => num(mo.goals), fmt: (v) => `${v}골` },
-    { k: 'days', icon: '📅', name: '개근왕', get: (mo) => num(mo.days), fmt: (v) => `${v}일` },
+    { icon: '👑', name: '총 볼륨', get: (S) => S.total, fmt: fmtKg, hero: true },
+    { icon: '🛡️', name: '가슴 볼륨', get: (S) => num(S.p['가슴']), fmt: fmtKg },
+    { icon: '🦅', name: '등 볼륨', get: (S) => num(S.p['등']), fmt: fmtKg },
+    { icon: '🦵', name: '하체 볼륨', get: (S) => num(S.p['하체']), fmt: fmtKg },
+    { icon: '🎯', name: '어깨 볼륨', get: (S) => num(S.p['어깨']), fmt: fmtKg },
+    { icon: '💪', name: '팔 볼륨', get: (S) => num(S.p['팔']), fmt: fmtKg },
+    { icon: '🏃', name: '마라토너', get: (S) => S.km, fmt: (v) => `${+v.toFixed(1)}km` },
+    { icon: '⚽', name: '득점왕', get: (S) => S.goals, fmt: (v) => `${v}골` },
+    { icon: '📅', name: '개근왕', get: (S) => S.dates.size, fmt: (v) => `${v}일 운동` },
+    { icon: '🏅', name: '개근상', all: (S) => S.perfect, val: (w) => `${Math.max(...w.map((x) => x.S.dates.size))}일째 개근`, none: '하루도 안 빠지면 받아요', meWin: '나도 받음 🎉' },
+    { icon: '🛋️', name: '휴식왕', get: (S) => S.rest, fmt: (v) => `${v}일 쉼`, ties: true, meWin: '나… 😅' },
   ];
-  // 아직 새 버전으로 기록을 안 올린 친구: 공유된 30일 기록으로 추정
-  function monFromLog(m, ym) {
-    const p = {};
-    let days = 0;
-    for (const [d, items] of Object.entries(m.log || {})) {
-      if (d.slice(0, 7) !== ym || !Array.isArray(items)) continue;
-      days++;
-      for (const x of items) {
-        let part = x.c ? '유산소' : partOf(x.n);
-        if (part === '이두' || part === '삼두' || part === '전완') part = '팔';
-        p[part] = (p[part] || 0) + num(x.v);
+  const FUN_AWARDS = [
+    { icon: '🐘', name: '코끼리왕', desc: '가장 무거운 한 세트', get: (S) => S.maxW, fmt: (v) => `${+v.toFixed(1)}kg` },
+    { icon: '🔁', name: '반복 장인', desc: '총 반복 횟수', get: (S) => S.reps, fmt: (v) => `${v.toLocaleString()}회` },
+    { icon: '💥', name: '원데이 폭발', desc: '하루 최고 볼륨', get: (S) => S.dayMax, fmt: fmtKg },
+    { icon: '🎯', name: '한우물 장인', desc: '한 종목 최고 볼륨', get: (S) => S.top, fmt: fmtKg },
+    { icon: '🍱', name: '잡식왕', desc: '해본 종목 수', get: (S) => S.names.size, fmt: (v) => `${v}종목` },
+    { icon: '🔥', name: '연속 출석왕', desc: '최장 연속 운동', get: (S) => S.streak, fmt: (v) => `${v}일 연속` },
+    { icon: '📈', name: '성장왕', desc: '지난 기간보다 볼륨 증가', get: (S) => S.growth, fmt: (v) => `+${v}%` },
+    { icon: '🏖️', name: '주말 전사', desc: '주말 볼륨', get: (S) => S.weekend, fmt: fmtKg },
+    { icon: '⚡', name: '페이스왕', desc: '러닝 평균 페이스 (3km 이상)', get: (S) => S.pace, fmt: pace, low: true },
+    { icon: '🦉', name: '올빼미', desc: '밤 10시 넘어 운동한 날', get: (S) => S.late, fmt: (v) => `${v}번` },
+    { icon: '🌅', name: '아침형 인간', desc: '오전 8시 전에 운동한 날', get: (S) => S.early, fmt: (v) => `${v}번` },
+    { icon: '📣', name: '응원단장', desc: '댓글·응원 많이 단 사람', get: (S) => S.cmt, fmt: (v) => `${v}개` },
+    { icon: '🐔', name: '하체 도망자', desc: '3일 이상 운동했는데 하체 0', all: (S) => S.legSkip, val: () => '하체 0kg', none: '모두 하체 했어요 👏', meWin: '나… 🐔' },
+  ];
+  function awardCard(a, people) {
+    let win = [], val = '-', meTxt = '';
+    if (a.all) {
+      win = people.filter((x) => a.all(x.S));
+      if (win.length) val = a.val(win);
+      if (win.some((x) => x.id === myId)) meTxt = `<span class="aw-me win">${a.meWin}</span>`;
+    } else {
+      const rows = people.map((x) => ({ ...x, v: a.get(x.S) })).filter((x) => x.v > 0).sort((p, q) => (a.low ? p.v - q.v : q.v - p.v));
+      if (rows.length) {
+        win = a.ties ? rows.filter((x) => x.v === rows[0].v) : [rows[0]];
+        val = a.fmt(rows[0].v);
+        const myIdx = rows.findIndex((x) => x.id === myId);
+        if (win.some((x) => x.id === myId)) meTxt = `<span class="aw-me win">${a.meWin || '나 🔥'}</span>`;
+        else if (myIdx > 0) meTxt = `<span class="aw-me">나 ${myIdx + 1}위</span>`;
       }
     }
-    for (const d of new Set([...Object.keys(m.days || {}), ...Object.keys(m.cdays || {})])) {
-      if (d.slice(0, 7) === ym && !(m.log || {})[d]) { days++; p['기타'] = (p['기타'] || 0) + num((m.days || {})[d]) + num((m.cdays || {})[d]); }
-    }
-    return { ym, p, km: 0, goals: 0, days };
+    const names = win.length ? win.map((x) => escapeHtml(x.nick)).join('·') : (a.none || '아직 없음');
+    if (!win.length && a.none) val = '';
+    return `<button type="button" class="aw-row ${a.hero ? 'hero' : ''} ${win.length ? '' : 'empty'}" ${win.length ? `data-id="${escapeHtml(win[0].id)}"` : ''}>
+      <span class="aw-icon">${a.icon}</span>
+      <span class="aw-main"><small>${a.name}${a.desc ? ` · ${a.desc}` : a.all || a.ties ? '' : ' 1위'}</small><b>${names}</b></span>
+      <span class="aw-val">${val}${meTxt}</span>
+    </button>`;
   }
   function renderAwards() {
-    const ym = todayStr().slice(0, 7);
-    $('#awards-month').textContent = `${+ym.slice(5)}월`;
-    const people = Object.entries(members).map(([id, m]) => ({ id, nick: m.nick, mo: id === myId ? monthSummary() : (m.mon && m.mon.ym === ym ? m.mon : monFromLog(m, ym)) }))
-      .filter((x) => x.mo && x.mo.ym === ym);
-    // 운동한 날짜 (이번 달) — 출석 기반 상은 날짜로 계산
-    const today = todayStr(), dayNo = +today.slice(8);
-    const worked = (id) => {
-      const set = new Set();
-      if (id === myId) { for (const d of Object.keys(db)) if (d.slice(0, 7) === ym && dayVolume(d) > 0) set.add(d); }
-      else { const m = members[id]; for (const src of [m.days, m.cdays]) for (const [d, v] of Object.entries(src || {})) if (d.slice(0, 7) === ym && num(v) > 0) set.add(d); }
-      return set;
-    };
-    for (const x of people) { x.dates = worked(x.id); x.mo = { ...x.mo, days: Math.max(num(x.mo.days), x.dates.size) }; }
-    const card = (icon, title, top, nameHtml, val, meTxt) => `<button type="button" class="aw-row ${top ? '' : 'empty'}" ${top ? `data-id="${escapeHtml(top.id)}"` : ''}>
-        <span class="aw-icon">${icon}</span>
-        <span class="aw-main"><small>${title}</small><b>${nameHtml}</b></span>
-        <span class="aw-val">${val}${meTxt || ''}</span>
-      </button>`;
-    let html = AWARDS.map((a) => {
-      const rows = people.map((x) => ({ ...x, v: a.get(x.mo) })).filter((x) => x.v > 0).sort((p, q) => q.v - p.v);
-      const top = rows[0];
-      const myIdx = rows.findIndex((x) => x.id === myId);
-      const meTxt = top && top.id === myId ? '<span class="aw-me win">나 🔥</span>' : myIdx > 0 ? `<span class="aw-me">나 ${myIdx + 1}위</span>` : '';
-      return card(a.icon, `${a.name} 1위`, top, top ? escapeHtml(top.nick) : '아직 없음', top ? a.fmt(top.v) : '-', meTxt);
-    }).join('');
-    // 🏅 개근상: 1일부터 어제까지 하루도 안 빠진 사람 전원 (오늘은 아직 안 해도 OK)
-    const perfect = people.filter((x) => {
-      if (!x.dates.size) return false;
-      for (let i = 1; i < dayNo; i++) if (!x.dates.has(`${ym}-${String(i).padStart(2, '0')}`)) return false;
-      return true;
-    });
-    const meP = perfect.some((x) => x.id === myId);
-    html += card('🏅', '개근상 · 하루도 안 빠짐', perfect[0],
-      perfect.length ? perfect.map((x) => escapeHtml(x.nick)).join('·') : '아직 없음',
-      perfect.length ? `${Math.max(...perfect.map((x) => x.dates.size))}일째 개근` : '하루도 안 빠지면 받아요',
-      meP ? '<span class="aw-me win">나도 받음 🎉</span>' : '');
-    // 🛋️ 휴식왕: 어제까지 쉰 날이 가장 많은 사람
-    const rests = people.map((x) => {
-      let r = 0;
-      for (let i = 1; i < dayNo; i++) if (!x.dates.has(`${ym}-${String(i).padStart(2, '0')}`)) r++;
-      return { ...x, v: r };
-    }).filter((x) => x.v > 0).sort((p, q) => q.v - p.v);
-    const rTop = rests[0], rMy = rests.findIndex((x) => x.id === myId);
-    const rTies = rTop ? rests.filter((x) => x.v === rTop.v) : [];
-    html += card('🛋️', '이달의 휴식왕', rTop,
-      rTop ? rTies.map((x) => escapeHtml(x.nick)).join('·') : '아직 없음',
-      rTop ? `${rTop.v}일 쉼` : '-',
-      rTop && rTies.some((x) => x.id === myId) ? '<span class="aw-me">나… 😅</span>' : rMy > 0 ? `<span class="aw-me">나 ${rMy + 1}위</span>` : '');
-    $('#awards-list').innerHTML = html;
-    $('#awards-list').querySelectorAll('.aw-row[data-id]').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
+    const t = todayStr();
+    $('#awards-title').textContent = awPeriod === 'week' ? '이번 주의 왕' : `${+t.slice(5, 7)}월의 왕`;
+    $('#awards-hint').textContent = awPeriod === 'week' ? '매주 월요일 초기화' : '매달 1일 초기화';
+    document.querySelectorAll('#aw-period button').forEach((b) => b.classList.toggle('active', b.dataset.p === awPeriod));
+    const range = awardRange();
+    const start = parse(range.dates[0]).getTime();
+    const cmts = allComments().filter((c) => c.kind !== 'share' && c.at >= start);
+    const people = Object.entries(members).map(([id, m]) => ({ id, nick: m.nick, S: statsFor(id, range, cmts) }));
+    $('#awards-list').innerHTML = AWARDS.map((a) => awardCard(a, people)).join('');
+    $('#fun-awards').innerHTML = FUN_AWARDS.map((a) => awardCard(a, people)).join('');
+    document.querySelectorAll('.awards .aw-row[data-id]').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
   }
+  document.querySelectorAll('#aw-period button').forEach((b) => b.addEventListener('click', () => { awPeriod = b.dataset.p; renderAwards(); }));
   function render() {
     const unavailable = !store;
     $('#rank-unavailable').hidden = !(unavailable || failed);
