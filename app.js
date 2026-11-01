@@ -128,7 +128,15 @@ document.querySelectorAll('.tab').forEach((btn) =>
 function showView(view) {
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
+  $('#page-title').textContent = PAGE_TITLES[view];
+  window.scrollTo({ top: 0 });
   render();
+}
+const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', settings: 'Settings' };
+function updateHeader() {
+  const d = new Date();
+  $('#header-sub').textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`;
+  $('#day-dot').classList.toggle('on', dayVolume(todayStr()) > 0 || (db[todayStr()] || []).length > 0);
 }
 function currentView() {
   return document.querySelector('.tab.active').dataset.view;
@@ -232,12 +240,12 @@ function renderResults() {
     const u = usage[e.name];
     return `
       <button type="button" class="result-item" data-name="${escapeHtml(e.name)}">
+        <span class="result-icon"><svg class="i"><use href="#i-folder"/></svg></span>
         <span class="result-main">
           <span class="result-name">${highlight(e.name, q)}</span>
-          <span class="result-sub">${escapeHtml(e.en || '직접 추가한 운동')}${u ? ` · ${u.count}회 기록` : ''}</span>
+          <span class="result-sub">${e.part} · ${escapeHtml(e.en || '직접 추가한 운동')}${u ? ` · ${u.count}회` : ''}</span>
         </span>
-        <span class="part-badge">${e.part}</span>
-        ${today.has(e.name) ? '<span class="done-mark">✓</span>' : '<span class="add-mark">＋</span>'}
+        ${today.has(e.name) ? '<span class="done-mark"><svg class="i"><use href="#i-check"/></svg></span>' : '<span class="add-mark"><svg class="i"><use href="#i-plus"/></svg></span>'}
       </button>`;
   }).join('');
 
@@ -245,8 +253,9 @@ function renderResults() {
   if (!items.length && picker.part !== '전체' && !q) html += '<p class="hint center">아직 없어요.</p>';
   if (q && !items.some((x) => x.score >= 90)) {
     html += `<button type="button" class="result-item custom-add" data-name="${escapeHtml(q)}">
+      <span class="result-icon"><svg class="i"><use href="#i-plus"/></svg></span>
       <span class="result-main"><span class="result-name">"${escapeHtml(q)}" 직접 추가</span>
-      <span class="result-sub">목록에 없는 운동을 새로 기록해요</span></span><span class="add-mark">＋</span></button>`;
+      <span class="result-sub">목록에 없는 운동을 새로 기록해요</span></span></button>`;
   }
 
   resultsEl.innerHTML = html;
@@ -280,7 +289,9 @@ function pickExercise(name) {
 }
 
 function updateToggle() {
-  $('#picker-toggle').textContent = picker.open ? '닫기 ▴' : '목록 ▾';
+  const t = $('#picker-toggle');
+  t.textContent = picker.open ? '닫기' : '목록';
+  t.classList.toggle('open', picker.open);
 }
 
 searchInput.addEventListener('input', renderResults);
@@ -329,11 +340,11 @@ function renderDay() {
     ex.sets.forEach((set, i) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${i + 1}</td>
+        <td><span class="set-no">${i + 1}</span></td>
         <td><input type="number" inputmode="decimal" min="0" step="0.5" value="${set.w}" data-k="w" /></td>
         <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.r}" data-k="r" /></td>
         <td class="vol">${fmtShort(setVolume(set)) || '-'}</td>
-        <td><button class="del-set" title="세트 삭제">✕</button></td>`;
+        <td><button class="del-set" title="세트 삭제" aria-label="세트 삭제"><svg class="i"><use href="#i-x"/></svg></button></td>`;
       const volTd = tr.querySelector('.vol');
       tr.querySelectorAll('input').forEach((inp) =>
         inp.addEventListener('input', () => {
@@ -394,6 +405,10 @@ function updateDaySummary() {
   const label = state.day === todayStr() ? '오늘' : fmtDate(state.day);
   document.querySelector('#view-day .summary-label').textContent = `${label} 총 볼륨`;
   $('#day-sub').textContent = list.length ? `운동 ${list.length}개 · ${sets}세트` : '';
+  $('#day-label').textContent = `${parse(state.day).getMonth() + 1}월 ${parse(state.day).getDate()}일 (${'일월화수목금토'[parse(state.day).getDay()]})`;
+  $('#day-count').textContent = list.length ? list.length : '';
+  document.querySelector('#view-day .section-head span').firstChild.textContent = state.day === todayStr() ? '오늘의 운동 ' : '이날의 운동 ';
+  updateHeader();
 }
 
 /* ---------- 주간 ---------- */
@@ -467,11 +482,11 @@ function renderMonth() {
   html += '<div class="cal-cell blank"></div>'.repeat(lead);
   dates.forEach((d, i) => {
     const v = vols[i];
-    const alpha = v ? 0.25 + 0.75 * (v / max) : 0;
-    const bg = v ? `background: rgba(34,197,94,${alpha.toFixed(2)});` : '';
+    const alpha = v ? 0.35 + 0.65 * (v / max) : 0;
+    const bg = v ? `background: rgba(17,17,19,${alpha.toFixed(2)});` : '';
     const col = (lead + i) % 7;
     html += `
-      <div class="cal-cell ${d === today ? 'today' : ''}" data-date="${d}" style="${bg}">
+      <div class="cal-cell ${d === today ? 'today' : ''} ${v ? 'has' : ''}" data-date="${d}" style="${bg}">
         <span class="cal-day ${col === 5 ? 'sat' : col === 6 ? 'sun' : ''}">${i + 1}</span>
         <span class="cal-vol">${fmtShort(v)}</span>
       </div>`;
@@ -492,7 +507,7 @@ function renderMonth() {
   }
   $('#month-weeks').innerHTML = weeks.map((w, i) => `
     <div class="week-row">
-      <span>${i + 1}주차 <small class="hint">${fmtDate(w.dates[0])} ~ ${fmtDate(w.dates[w.dates.length - 1])}</small></span>
+      <span>${i + 1}주차 <small>${fmtDate(w.dates[0])} ~ ${fmtDate(w.dates[w.dates.length - 1])}</small></span>
       <span>${fmtKg(rangeVolume(w.dates))}</span>
     </div>`).join('');
 
@@ -503,7 +518,7 @@ function renderMonth() {
 /* ---------- 공통 ---------- */
 function breakdownHtml(stats) {
   const entries = Object.entries(stats.byEx).sort((a, b) => b[1].volume - a[1].volume);
-  if (!entries.length) return '<p class="empty">기록이 없어요.</p>';
+  if (!entries.length) return '<p class="empty-text">기록이 없어요</p>';
   const max = Math.max(...entries.map(([, e]) => e.volume), 1);
   return entries.map(([name, e]) => `
     <div class="breakdown-row">
@@ -614,6 +629,7 @@ const restTimer = (() => {
   const timeEl = $('#rest-time');
   const titleEl = $('#rest-title');
   const barEl = $('#rest-progress-bar');
+  const ringEl = $('#rest-ring');
   let endAt = 0, total = 0, tickId = null, finished = false, audioCtx = null, wakeLock = null;
 
   function unlockAudio() {
@@ -656,7 +672,9 @@ const restTimer = (() => {
   function tick() {
     const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
     timeEl.textContent = fmt(left);
-    barEl.style.width = `${total ? (left / total) * 100 : 0}%`;
+    const ratio = total ? Math.min(1, (endAt - Date.now()) / (total * 1000)) : 0;
+    barEl.style.width = `${Math.max(0, ratio) * 100}%`;
+    ringEl.style.strokeDashoffset = String(125.66 * (1 - Math.max(0, ratio)));
     if (left === 0 && !finished) finish();
   }
   function finish() {
