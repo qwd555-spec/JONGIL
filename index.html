@@ -68,7 +68,7 @@
 
         <div class="summary-card">
           <div class="summary-top">
-            <span class="summary-label">오늘 총 볼륨</span>
+            <span class="summary-label">오늘 근력 볼륨</span>
             <svg class="i"><use href="#i-layers"/></svg>
           </div>
           <div class="summary-value" id="day-total">0 kg</div>
@@ -113,7 +113,7 @@
 
         <div class="summary-card">
           <div class="summary-top">
-            <span class="summary-label">주간 총 볼륨</span>
+            <span class="summary-label">주간 근력 볼륨</span>
             <svg class="i"><use href="#i-layers"/></svg>
           </div>
           <div class="summary-value" id="week-total">0 kg</div>
@@ -147,7 +147,7 @@
 
         <div class="summary-card">
           <div class="summary-top">
-            <span class="summary-label">월간 총 볼륨</span>
+            <span class="summary-label">월간 근력 볼륨</span>
             <svg class="i"><use href="#i-layers"/></svg>
           </div>
           <div class="summary-value" id="month-total">0 kg</div>
@@ -210,7 +210,8 @@
 
           <div class="panel">
             <div class="part-chips metric-chips" id="rank-metric">
-              <button class="chip active" data-metric="volume">총볼륨</button>
+              <button class="chip active" data-metric="volume">근력 볼륨</button>
+              <button class="chip" data-metric="cardio">유산소 볼륨</button>
               <button class="chip" data-metric="days">운동일수</button>
               <button class="chip" data-metric="best">최고 중량</button>
             </div>
@@ -255,7 +256,7 @@
 
         <div class="panel">
           <div class="panel-head"><span>볼륨 계산</span><svg class="i"><use href="#i-info"/></svg></div>
-          <p class="hint">볼륨 = 무게(kg) × 횟수, 모든 세트 합산<br />맨몸 운동(푸시업·풀업·딥스 등) = (몸무게 + 추가 중량) × 횟수<br />유산소·스포츠 = 소모 칼로리 × 25 (근력운동 1시간 ≈ 1만kg ≈ 350kcal 기준)<br />· 러닝·걷기·자전거 등은 거리 입력 시 몸무게 × km 로 계산<br />· 풋살·축구 등은 시간 × 운동 강도(MET)로 계산<br />어시스트 머신 = (몸무게 − 보조 중량) × 횟수<br />몸무게는 일간 화면에서 입력하고, 입력한 날 이후로 계속 적용돼요</p>
+          <p class="hint">볼륨 = 무게(kg) × 횟수, 모든 세트 합산<br />맨몸 운동(푸시업·풀업·딥스 등) = (몸무게 + 추가 중량) × 횟수<br /><b>기준은 근력 볼륨</b> — 총볼륨·순위는 근력 운동만 합산<br />유산소·스포츠는 "유산소 볼륨"으로 따로 집계 = 소모 칼로리 × 25 (근력운동 1시간 ≈ 1만kg ≈ 350kcal 기준)<br />· 러닝·걷기·자전거 등은 거리 입력 시 몸무게 × km 로 계산<br />· 풋살·축구 등은 시간 × 운동 강도(MET)로 계산<br />어시스트 머신 = (몸무게 − 보조 중량) × 횟수<br />몸무게는 일간 화면에서 입력하고, 입력한 날 이후로 계속 적용돼요</p>
         </div>
 
         <button id="reset-btn" class="danger-btn"><svg class="i"><use href="#i-trash"/></svg>모든 기록 삭제</button>

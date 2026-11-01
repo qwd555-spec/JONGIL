@@ -514,3 +514,5 @@ body.modal-open { overflow: hidden; }
 .cardio-meta { margin: -2px 2px 8px; font-size: 13px; font-weight: 600; color: #4b4b53; background: var(--layer); padding: 9px 12px; border-radius: 12px; }
 .exercise-card.cardio .add-set { flex: 1; }
 .rest-btn[hidden] { display: none; }
+.cardio-line { color: rgba(255,255,255,.75); }
+.sub-head { font-size: 13px; font-weight: 700; color: #5d5d66; margin: 14px 4px 2px; padding-top: 12px; border-top: 1px solid var(--line); }
