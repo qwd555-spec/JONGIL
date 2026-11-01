@@ -516,3 +516,8 @@ body.modal-open { overflow: hidden; }
 .rest-btn[hidden] { display: none; }
 .cardio-line { color: rgba(255,255,255,.75); }
 .sub-head { font-size: 13px; font-weight: 700; color: #5d5d66; margin: 14px 4px 2px; padding-top: 12px; border-top: 1px solid var(--line); }
+.cardio-meta .conv { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.conv-pill { background: var(--raised); border-radius: 999px; padding: 5px 11px; font-weight: 700; font-size: 13px; box-shadow: 0 1px 2px rgba(20,20,30,.06); }
+.conv-pill.dark { background: var(--ink); color: #fff; }
+.conv-op { color: var(--muted); font-weight: 700; font-size: 12.5px; }
+.conv-arrow { color: var(--muted); }
