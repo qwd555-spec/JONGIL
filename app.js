@@ -678,7 +678,7 @@ const photos = (() => {
   $('#photo-viewer-close').addEventListener('click', closeViewer);
   $('#photo-viewer').addEventListener('click', (e) => { if (e.target.id === 'photo-viewer') closeViewer(); });
 
-  return { attach, mergeDates, dates, render };
+  return { attach, mergeDates, dates, render, get, has: (d) => dateSet.has(d) };
 })();
 
 function renderDay() {
@@ -847,6 +847,10 @@ function renderDay() {
   if (closed) {
     const t = new Date(closedMap[state.day]);
     $('#closed-time').textContent = ` ${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    let shared = false;
+    try { shared = social.wasShared(state.day); } catch { /* 초기화 전 */ }
+    $('#shared-note').textContent = shared ? ' · 공유함' : '';
+    $('#share-btn').textContent = shared ? '다시 공유' : '친구에게 공유';
     container.querySelectorAll('input, button').forEach((el) => { el.disabled = true; });
   }
   bwInput.disabled = closed;
@@ -868,12 +872,13 @@ $('#finish-btn').addEventListener('click', async () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   toast(g ? `${g.label} · ${fmtKg(vol)} 마감` : '운동을 마감했어요');
 });
-$('#reopen-btn').addEventListener('click', async () => {
-  if (!(await askConfirm('마감을 풀고 다시 수정할까요?', { okText: '다시 열기' }))) return;
+$('#reopen-btn').addEventListener('click', () => {
   delete closedMap[state.day];
   savePlanClosed();
   renderDay();
+  toast('수정할 수 있어요. 다 고치면 다시 마감하세요');
 });
+$('#share-btn').addEventListener('click', () => social.openShare(state.day));
 
 const bwInput = $('#bw-input');
 bwInput.addEventListener('change', () => {
@@ -1554,7 +1559,7 @@ const social = (() => {
   }
   function updateDot() {
     let seen = 0; try { seen = +localStorage.getItem(SEEN_KEY) || 0; } catch {}
-    const latest = allComments().find((c) => c.to === myId && c.from !== myId);
+    const latest = allComments().find((c) => c.to === myId && c.from !== myId && c.kind !== 'share');
     $('#rank-dot').classList.toggle('on', !!latest && latest.at > seen);
   }
 
@@ -1587,7 +1592,7 @@ const social = (() => {
     $('#rank-my-sub').textContent = me ? `내 기록 ${fmtMetric(me.value)}${myIdx > 0 ? ` · ${myIdx}위까지 ${fmtMetric(gap)}` : myIdx === 0 && rows.length > 1 ? ' · 1등이에요! 🔥' : ''}` : '';
 
     const cmtCount = {};
-    allComments().forEach((c) => { cmtCount[c.to] = (cmtCount[c.to] || 0) + 1; });
+    allComments().forEach((c) => { if (c.kind !== 'share') cmtCount[c.to] = (cmtCount[c.to] || 0) + 1; });
     $('#rank-list').innerHTML = rows.map((r, i) => `
       <button class="rank-row ${r.id === myId ? 'me' : ''}" data-id="${escapeHtml(r.id)}">
         <span class="rank-no">${i + 1}</span>
@@ -1601,11 +1606,24 @@ const social = (() => {
     $('#rank-list').querySelectorAll('.rank-row').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
 
     const feed = allComments().slice(0, 30);
-    $('#feed-list').innerHTML = feed.length ? feed.map((c) => `
+    $('#feed-list').innerHTML = feed.length ? feed.map((c) => c.kind === 'share' ? `
+      <div class="feed-item share-post" data-from="${escapeHtml(c.from)}">
+        <div class="feed-meta"><b>${escapeHtml(nickOf(c.from))}</b> 님이 운동을 공유했어요 · ${relTime(c.at)}
+          ${c.from === myId ? `<button class="comment-del" data-del="${escapeHtml(c.id)}">삭제</button>` : ''}</div>
+        <div class="share-sum">${escapeHtml(String(c.summary || ''))}</div>
+        ${c.text ? `<div class="feed-text">${escapeHtml(c.text)}</div>` : ''}
+        ${Array.isArray(c.items) && c.items.length ? `<div class="share-items">${c.items.slice(0, 15).map((x) => `<div><b>${escapeHtml(String(x.n || ''))}</b> <span>${escapeHtml(String(x.d || ''))}</span></div>`).join('')}</div>` : ''}
+        ${typeof c.img === 'string' && c.img.startsWith('data:image/') ? `<img class="share-img" src="${c.img}" alt="" />` : ''}
+      </div>` : `
       <div class="feed-item">
         <div class="feed-meta"><b>${escapeHtml(nickOf(c.from))}</b> → <b>${escapeHtml(nickOf(c.to))}</b> · ${relTime(c.at)}</div>
         <div class="feed-text">${escapeHtml(c.text)}</div>
       </div>`).join('') : '<p class="empty-text">아직 댓글이 없어요. 친구를 눌러 첫 응원을 남겨보세요!</p>';
+    $('#feed-list').querySelectorAll('.share-img').forEach((el) => el.addEventListener('click', () => { $('#photo-viewer-img').src = el.src; $('#photo-viewer').hidden = false; }));
+    $('#feed-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+      if (!(await askConfirm('공유한 글을 삭제할까요?', { okText: '삭제', danger: true }))) return;
+      try { await store.doc(`comments/${myId}/items/${b.dataset.del}`).delete(); } catch { toast('삭제하지 못했어요'); }
+    }));
     $('#my-nick').textContent = myNick();
   }
 
@@ -1641,7 +1659,7 @@ const social = (() => {
     $('#person-week').innerHTML = wk.map((d, i) => `<div class="pw"><i class="${vals[i] ? '' : 'zero'}" style="height:${Math.max(6, (vals[i] / max) * 100)}%"></i>${WEEKDAYS[i]}</div>`).join('');
     renderPersonLog(m);
 
-    const list = allComments().filter((c) => c.to === openPerson).reverse();
+    const list = allComments().filter((c) => c.to === openPerson && c.kind !== 'share').reverse();
     const box = $('#person-comments');
     box.innerHTML = list.length ? list.map((c) => `
       <div class="comment-item">
@@ -1730,7 +1748,56 @@ const social = (() => {
   });
   setInterval(() => { if (currentView() === 'rank') render(); }, 60000);
 
-  return { init, publish, render };
+  /* ---- 운동 공유 ---- */
+  let shareDate = null;
+  function shareSummary(date) {
+    const vol = dayVolume(date), goal = dailyGoal(date), g = gradeOf(vol, goal);
+    const plan = planMap[date] || [];
+    const cardio = dayCardioVolume(date);
+    return [fmtDate(date), plan.length ? plan.join('·') : '', fmtKg(vol), g ? g.label : '', cardio ? `+유산소 ${fmtKg(cardio)}` : ''].filter(Boolean).join(' · ');
+  }
+  async function openShare(date) {
+    if (!store) { toast('공유는 공유 링크(claude.ai)에서 열었을 때 돼요'); return; }
+    if (!myNick()) { toast('먼저 순위 탭에서 닉네임으로 참가해 주세요'); showView('rank'); return; }
+    shareDate = date;
+    $('#share-preview').textContent = shareSummary(date);
+    $('#share-opt-log').checked = true;
+    const hasPhoto = photos.has(date);
+    $('#share-opt-photo-row').hidden = !hasPhoto;
+    $('#share-opt-photo').checked = false;
+    $('#share-text').value = '';
+    $('#share-modal').hidden = false;
+    document.body.classList.add('modal-open');
+  }
+  function closeShare() { $('#share-modal').hidden = true; document.body.classList.remove('modal-open'); }
+  $('#share-close').addEventListener('click', closeShare);
+  $('#share-modal .rest-backdrop').addEventListener('click', closeShare);
+  $('#share-send').addEventListener('click', async () => {
+    const date = shareDate;
+    const btn = $('#share-send');
+    btn.disabled = true;
+    try {
+      const post = { to: '__feed', kind: 'share', date, summary: shareSummary(date), text: $('#share-text').value.trim().slice(0, 100), at: Date.now() };
+      if ($('#share-opt-log').checked) {
+        post.items = (db[date] || []).map((ex) => ({ n: ex.name, d: describeSets(ex) })).filter((x) => x.d).slice(0, 15);
+      }
+      if ($('#share-opt-photo').checked) {
+        const img = await photos.get(date);
+        if (img) post.img = img;
+      }
+      await store.collection(`comments/${myId}/items`).add(post);
+      closeShare();
+      toast('친구들에게 공유했어요 🎉');
+      sharedMap[date] = true;
+      renderDay();
+    } catch (e) {
+      toast(e && e.code === 'invalid_argument' ? '공유할 권한이 없거나 사진이 너무 커요' : '공유하지 못했어요');
+    } finally { btn.disabled = false; }
+  });
+  const sharedMap = {};
+  const wasShared = (date) => !!sharedMap[date] || (comments[myId] || []).some((c) => c.kind === 'share' && c.date === date);
+
+  return { init, publish, render, openShare, wasShared };
 })();
 
 cloud.init();

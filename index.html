@@ -100,8 +100,11 @@
         </div>
 
         <div class="closed-banner" id="closed-banner" hidden>
-          <div><b>✓ 운동 마감</b><small id="closed-time"></small></div>
-          <button id="reopen-btn" type="button">다시 열기</button>
+          <div class="closed-info"><b>✓ 운동 마감</b><small id="closed-time"></small><small id="shared-note"></small></div>
+          <div class="closed-actions">
+            <button id="reopen-btn" type="button" class="ghost">수정</button>
+            <button id="share-btn" type="button">친구에게 공유</button>
+          </div>
         </div>
 
         <div class="panel picker">
@@ -245,7 +248,7 @@
           </div>
 
           <div class="panel">
-            <div class="panel-head"><span>응원 댓글</span><svg class="i"><use href="#i-chat"/></svg></div>
+            <div class="panel-head"><span>친구 소식 <small>운동 공유 · 응원 댓글</small></span><svg class="i"><use href="#i-chat"/></svg></div>
             <div id="feed-list" class="feed-list"></div>
           </div>
 
@@ -346,6 +349,22 @@
   </div>
 
   <div id="toast" class="toast" hidden></div>
+
+  <!-- 친구에게 공유 -->
+  <div id="share-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="share-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet share-sheet">
+      <div class="rest-head">
+        <span class="rest-chip" id="share-title"><svg class="i"><use href="#i-send"/></svg>친구에게 공유</span>
+        <button id="share-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="share-preview" id="share-preview"></div>
+      <label class="list-btn share-opt"><span>운동 기록 <small>운동별 세트·볼륨</small></span><input type="checkbox" id="share-opt-log" class="switch" checked /></label>
+      <label class="list-btn share-opt" id="share-opt-photo-row"><span>눈바디 사진 <small>이 사진만 친구에게 보여요</small></span><input type="checkbox" id="share-opt-photo" class="switch" /></label>
+      <input type="text" id="share-text" class="share-text" maxlength="100" placeholder="한마디 (선택) · 오늘 하체 지옥이었다" />
+      <button id="share-send" class="rest-main">공유하기</button>
+    </div>
+  </div>
 
   <!-- 사진 크게 보기 -->
   <div id="photo-viewer" class="photo-viewer" hidden>
