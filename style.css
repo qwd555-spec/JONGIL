@@ -715,3 +715,4 @@ body.modal-open { overflow: hidden; }
 .nl-close { height: 54px; padding: 0 22px; border-radius: 999px; font-size: 15px; font-weight: 600; color: #5d5d66; }
 #nightly-time { width: 110px; height: 40px; border: none; border-radius: 12px; background: var(--layer); font-weight: 700; font-size: 15px; text-align: center; color: var(--ink); }
 .sets input.detail-note { text-align: left; }
+.plan-chips .chip.auto.active::after { content: '자동'; margin-left: 4px; font-size: 10px; opacity: .65; font-weight: 500; }

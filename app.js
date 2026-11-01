@@ -961,7 +961,7 @@ let customGoal = (() => { try { return num(localStorage.getItem(GOAL_KEY)); } ca
 /** 목표: 직접 설정 > 몸무게 × 110 (500kg 단위 올림) — 90kg → 10,000kg */
 function dailyGoal(date) {
   if (customGoal > 0) return customGoal;
-  const plan = planMap[date] || [];
+  const plan = planOf(date);
   if (plan.length) return plan.reduce((a, p) => a + partTarget(p, date), 0);
   return Math.ceil(((bodyweightOn(date) || 75) * 110) / 500) * 500;
 }
@@ -970,6 +970,20 @@ const PART_FACTOR = { '유산소': 60, '하체': 110, '등': 75, '가슴': 60, '
 const PLAN_PARTS = ['가슴', '등', '어깨', '하체', '이두', '삼두', '전완', '복근', '전신', '유산소'];
 function partTarget(part, date) {
   return Math.ceil(((bodyweightOn(date) || 75) * (PART_FACTOR[part] || 30)) / 100) * 100;
+}
+/** 기록한 운동에서 자동으로 잡히는 부위 (운동 종목 → 부위 자동 매칭) */
+function autoParts(date) {
+  const set = new Set();
+  for (const ex of db[date] || []) {
+    const p = cardioInfo(ex) ? '유산소' : partOf(ex.name);
+    if (PLAN_PARTS.includes(p)) set.add(p);
+  }
+  return set;
+}
+/** 오늘 부위 = 직접 고른 부위 + 기록한 운동의 부위 */
+function planOf(date) {
+  const set = new Set([...(planMap[date] || []), ...autoParts(date)]);
+  return PLAN_PARTS.filter((p) => set.has(p));
 }
 function partVolumes(date) {
   const out = {};
@@ -981,10 +995,11 @@ function partVolumes(date) {
 }
 function renderPlan() {
   const date = state.day, closed = isClosed(date);
-  const plan = planMap[date] || [];
+  const plan = planOf(date), auto = autoParts(date);
   const vols = partVolumes(date);
-  $('#plan-chips').innerHTML = PLAN_PARTS.map((p) => `<button type="button" class="chip ${plan.includes(p) ? 'active' : ''}" data-p="${p}" ${closed ? 'disabled' : ''}>${p}</button>`).join('');
+  $('#plan-chips').innerHTML = PLAN_PARTS.map((p) => `<button type="button" class="chip ${plan.includes(p) ? 'active' : ''} ${auto.has(p) ? 'auto' : ''}" data-p="${p}" ${closed ? 'disabled' : ''}>${p}</button>`).join('');
   $('#plan-chips').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
+    if (auto.has(b.dataset.p)) { toast(`${b.dataset.p} 운동을 기록해서 자동으로 체크됐어요`); return; }
     const cur = new Set(planMap[date] || []);
     cur.has(b.dataset.p) ? cur.delete(b.dataset.p) : cur.add(b.dataset.p);
     if (cur.size) planMap[date] = PLAN_PARTS.filter((p) => cur.has(p)); else delete planMap[date];
@@ -992,7 +1007,7 @@ function renderPlan() {
     renderPlan();
     updateDaySummary();
   }));
-  $('#plan-hint').textContent = plan.length ? `목표 합계 ${fmtKg(plan.reduce((a, p) => a + partTarget(p, date), 0))}` : '고르면 부위별 목표가 나와요';
+  $('#plan-hint').textContent = plan.length ? `목표 합계 ${fmtKg(plan.reduce((a, p) => a + partTarget(p, date), 0))}` : '운동을 기록하면 자동으로 체크돼요';
   const extra = Object.keys(vols).filter((p) => !plan.includes(p) && vols[p] > 0);
   $('#plan-rows').innerHTML = plan.map((p) => {
     const v = vols[p] || 0, t = partTarget(p, date), g = gradeOf(v, t);
@@ -1882,7 +1897,7 @@ const social = (() => {
   let shareDate = null;
   function shareSummary(date) {
     const vol = dayVolume(date), goal = dailyGoal(date), g = gradeOf(vol, goal);
-    const plan = planMap[date] || [];
+    const plan = planOf(date);
     const cardio = dayCardioVolume(date);
     return [fmtDate(date), plan.length ? plan.join('·') : '', fmtKg(vol), g ? g.label : '', cardio ? `(근력 ${fmtShort(vol - cardio) || 0} · 유산소 ${fmtShort(cardio)})` : ''].filter(Boolean).join(' · ');
   }
