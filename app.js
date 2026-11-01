@@ -574,6 +574,13 @@ function renderDay() {
       }
     }
     if (type) node.querySelector('thead th:nth-child(2)').textContent = type === 'assist' ? '보조kg' : '+kg';
+    if (!cinfo && isDumbbellExercise(ex.name)) {
+      const note = document.createElement('div');
+      note.className = 'db-note';
+      note.innerHTML = '<b>⚠️ 덤벨 주의</b> 무게는 자동으로 ×2 되지 않아요. 양손에 하나씩 들면 <b>두 개 합친 무게</b>를 입력하세요. <span>예: 20kg 2개 → 40</span>';
+      node.querySelector('.exercise-head').after(note);
+      node.querySelectorAll('thead th')[1].textContent = '합계kg';
+    }
     const tbody = node.querySelector('tbody');
 
     let cardioMeta = null;
