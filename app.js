@@ -350,24 +350,39 @@ document.addEventListener('focusout', (e) => { if (e.target instanceof HTMLInput
 /* ---------- 탭 ---------- */
 const $ = (sel) => document.querySelector(sel);
 
+const PERIODS = ['day', 'week', 'month'];
+let curView = 'day', lastPeriod = 'day';
 document.querySelectorAll('.tab').forEach((btn) =>
-  btn.addEventListener('click', () => showView(btn.dataset.view))
+  btn.addEventListener('click', () => showView(btn.dataset.view === 'workout' ? lastPeriod : btn.dataset.view))
 );
+// Today ‹ › Weekly ‹ › Monthly 순환
+function shiftPeriod(step) {
+  const i = PERIODS.indexOf(curView);
+  showView(PERIODS[(i + step + PERIODS.length) % PERIODS.length]);
+}
+$('#period-prev').addEventListener('click', () => shiftPeriod(-1));
+$('#period-next').addEventListener('click', () => shiftPeriod(1));
+$('#settings-btn').addEventListener('click', () => showView(curView === 'settings' ? lastPeriod : 'settings'));
 function showView(view) {
-  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  curView = view;
+  const periodic = PERIODS.includes(view);
+  if (periodic) lastPeriod = view;
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.view === (periodic ? 'workout' : view)));
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
   $('#page-title').textContent = PAGE_TITLES[view];
+  document.querySelector('.app-header').classList.toggle('periodic', periodic);
+  $('#settings-btn').classList.toggle('active', view === 'settings');
   window.scrollTo({ top: 0 });
   render();
 }
 const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', rank: 'Ranking', settings: 'Settings' };
 function updateHeader() {
   const d = new Date();
-  $('#header-sub').textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`;
+  $('#header-sub').textContent = `${d.getMonth() + 1}.${d.getDate()} ${'일월화수목금토'[d.getDay()]}`;
   $('#day-dot').classList.toggle('on', dayVolume(todayStr()) > 0 || (db[todayStr()] || []).length > 0);
 }
 function currentView() {
-  return document.querySelector('.tab.active').dataset.view;
+  return curView;
 }
 
 /* ---------- 일간 ---------- */
@@ -1948,7 +1963,7 @@ const social = (() => {
   }
   async function openShare(date) {
     if (!store) { toast('공유는 공유 링크(claude.ai)에서 열었을 때 돼요'); return; }
-    if (!myNick()) { toast('먼저 순위 탭에서 닉네임으로 참가해 주세요'); showView('rank'); return; }
+    if (!myNick()) { toast('먼저 랭킹 탭에서 닉네임으로 참가해 주세요'); showView('rank'); return; }
     shareDate = date;
     $('#share-preview').textContent = shareSummary(date);
     $('#share-opt-log').checked = true;

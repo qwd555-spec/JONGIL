@@ -48,12 +48,21 @@
   </svg>
 
   <div class="app">
-    <header class="app-header">
+    <header class="app-header periodic">
       <div class="brand">
         <svg class="i brand-mark"><use href="#i-spark"/></svg>
-        <span class="brand-text"><small class="app-name">볼류머</small><span id="page-title">Today</span></span>
+        <span class="brand-text"><small class="app-name">볼류머</small>
+          <span class="title-row">
+            <button type="button" class="title-arrow" id="period-prev" aria-label="이전 보기"><svg class="i"><use href="#i-left"/></svg></button>
+            <span id="page-title">Today</span>
+            <button type="button" class="title-arrow" id="period-next" aria-label="다음 보기"><svg class="i"><use href="#i-right"/></svg></button>
+          </span>
+        </span>
       </div>
-      <span class="header-sub" id="header-sub"></span>
+      <div class="header-right">
+        <span class="header-sub" id="header-sub"></span>
+        <button type="button" class="settings-btn" id="settings-btn" aria-label="설정"><svg class="i"><use href="#i-settings"/></svg></button>
+      </div>
     </header>
 
     <main>
@@ -485,11 +494,8 @@
 
   <!-- 하단 탭 -->
   <nav class="tabbar" role="tablist">
-    <button class="tab active" data-view="day" aria-label="일간"><span class="tab-icon"><svg class="i"><use href="#i-day"/></svg><i class="dot" id="day-dot"></i></span><span class="tab-text">일간</span></button>
-    <button class="tab" data-view="week" aria-label="주간"><span class="tab-icon"><svg class="i"><use href="#i-week"/></svg></span><span class="tab-text">주간</span></button>
-    <button class="tab" data-view="month" aria-label="월간"><span class="tab-icon"><svg class="i"><use href="#i-month"/></svg></span><span class="tab-text">월간</span></button>
-    <button class="tab" data-view="rank" aria-label="순위"><span class="tab-icon"><svg class="i"><use href="#i-trophy"/></svg><i class="dot" id="rank-dot"></i></span><span class="tab-text">순위</span></button>
-    <button class="tab" data-view="settings" aria-label="설정"><span class="tab-icon"><svg class="i"><use href="#i-settings"/></svg></span><span class="tab-text">설정</span></button>
+    <button class="tab active" data-view="workout" aria-label="운동"><span class="tab-icon"><svg class="i"><use href="#i-day"/></svg><i class="dot" id="day-dot"></i></span><span class="tab-text">운동</span></button>
+    <button class="tab" data-view="rank" aria-label="랭킹"><span class="tab-icon"><svg class="i"><use href="#i-trophy"/></svg><i class="dot" id="rank-dot"></i></span><span class="tab-text">랭킹</span></button>
   </nav>
 
   <template id="exercise-template">

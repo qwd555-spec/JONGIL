@@ -731,3 +731,24 @@ body.modal-open { overflow: hidden; }
 .day-title b { color: #fff; font-weight: 700; }
 .title-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--layer); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; background: rgba(233,140,230,.16); color: #9b3d97; }
 .person-title { display: block; margin-top: 6px; font-size: 14px; font-weight: 700; color: var(--pink); letter-spacing: -0.01em; }
+/* 헤더: Today ‹ › 이동 + 설정 아이콘 */
+.brand-text { display: flex; flex-direction: column; }
+.title-row { display: inline-flex; align-items: center; gap: 2px; }
+.title-arrow { display: none; width: 28px; height: 28px; border-radius: 50%; place-items: center; color: var(--ink); background: var(--layer); box-shadow: 0 1px 2px rgba(20,20,30,.06); }
+.title-arrow .i { width: 16px; height: 16px; }
+.title-arrow:active { transform: scale(.9); }
+.app-header.periodic .title-arrow { display: grid; }
+.app-header.periodic #page-title { min-width: 104px; text-align: center; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+.settings-btn { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+.settings-btn .i { width: 18px; height: 18px; }
+.settings-btn.active { background: var(--ink); color: #fff; }
+/* 하단 탭: 운동 · 랭킹 두 개 */
+.tabbar { justify-content: stretch; gap: 6px; }
+.tabbar .tab { flex: 1; justify-content: center; }
+.tab .tab-text { display: inline; }
+.day-title[hidden] { display: none; }
+.app-header { padding-left: 18px; padding-right: 14px; }
+.brand { gap: 8px; }
+.title-arrow { width: 26px; height: 26px; }
+.app-header.periodic #page-title { min-width: 96px; }
