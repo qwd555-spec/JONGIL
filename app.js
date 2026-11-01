@@ -1952,11 +1952,13 @@ const nightly = (() => {
   const seenToday = () => { try { return localStorage.getItem(SEEN) === todayStr(); } catch { return false; } };
   const markSeen = () => { try { localStorage.setItem(SEEN, todayStr()); } catch {} };
 
+  /** 앱이 열려 있는 상태에서 알림 시각(~5분 이내)일 때만 */
   function due() {
-    if (!cfg.on || seenToday()) return false;
+    if (!cfg.on || seenToday() || document.hidden) return false;
     const [h, m] = cfg.time.split(':').map(Number);
     const now = new Date();
-    return now.getHours() * 60 + now.getMinutes() >= h * 60 + m;
+    const diff = now.getHours() * 60 + now.getMinutes() - (h * 60 + m);
+    return diff >= 0 && diff < 5;
   }
   function chime() {
     try {
@@ -1974,17 +1976,22 @@ const nightly = (() => {
 
   function show(preview = false) {
     const t = todayStr();
-    const done = dayVolume(t) > 0;
+    const vol = dayVolume(t), done = vol > 0;
     let friends = [];
     try { friends = social.activeToday(); } catch {}
-    $('#nightly-emoji').textContent = done ? '💪' : '😴';
-    $('#nightly-title').textContent = done ? `오늘 ${fmtKg(dayVolume(t))} 했어요!` : '오늘 아직 운동 안 했어요';
-    $('#nightly-sub').textContent = done ? '잘했어요. 내일도 화이팅!' : friends.length ? '친구들은 벌써 했어요 👀' : '하루 마무리 전에 가볍게라도 해볼까요?';
-    const names = friends.slice(0, 5).map((f) => `<span class="nf-chip">${escapeHtml(f.nick)} <small>${fmtShort(f.v)}</small></span>`).join('');
-    $('#nightly-friends').innerHTML = friends.length
-      ? `<div class="nf-label">오늘 운동한 친구 ${friends.length}명</div><div class="nf-list">${names}${friends.length > 5 ? `<span class="nf-more">외 ${friends.length - 5}인</span>` : ''}</div>`
-      : '';
-    $('#nightly-go').textContent = done ? '기록 보기' : '지금 기록하기';
+    $('#nightly-clock').textContent = cfg.time;
+    $('#nightly-title').textContent = done ? `오늘 ${fmtKg(vol)} 완료` : '오늘 아직 운동 안 했어요';
+    $('#nightly-status').classList.toggle('done', done);
+    $('#nightly-sub').textContent = done ? '잘했어요. 내일도 이어가요.' : friends.length ? '친구들은 벌써 끝냈어요.' : '자기 전에 가볍게라도 기록해 볼까요?';
+    $('#nightly-section').hidden = !friends.length;
+    $('#nightly-count').textContent = `오늘 운동한 친구 (${friends.length})`;
+    $('#nightly-friends').innerHTML = friends.slice(0, 5).map((f, i) => `
+      <div class="nl-row ${i === 0 ? 'top' : ''}">
+        <svg class="i"><use href="#i-body"/></svg>
+        <span class="nl-name">${escapeHtml(f.nick)}</span>
+        <span class="nl-val">${fmtKg(f.v)}</span>
+      </div>`).join('') + (friends.length > 5 ? `<div class="nl-row more"><svg class="i"><use href="#i-list"/></svg><span class="nl-name">외 ${friends.length - 5}인</span></div>` : '');
+    $('#nightly-go').querySelector('span').textContent = done ? '기록 보기' : '지금 기록하기';
     $('#nightly-modal').hidden = false;
     document.body.classList.add('modal-open');
     if (!preview) { markSeen(); chime(); }
@@ -2008,10 +2015,8 @@ const nightly = (() => {
   $('#nightly-modal .rest-backdrop').addEventListener('click', close);
   $('#nightly-go').addEventListener('click', () => { close(); state.day = todayStr(); showView('day'); });
 
-  // 앱을 열 때, 다시 볼 때, 열려 있는 동안 1분마다 확인 (친구 데이터가 올 시간을 조금 줌)
-  setTimeout(check, 4000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(check, 2500); });
-  setInterval(check, 60000);
+  // 앱이 열려 있는 동안 20초마다 확인
+  setInterval(check, 20000);
   return { show, check };
 })();
 

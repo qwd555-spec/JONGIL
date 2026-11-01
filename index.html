@@ -299,7 +299,7 @@
         <div class="panel">
           <div class="panel-head"><span>운동 체크 알림</span><svg class="i"><use href="#i-bell"/></svg></div>
           <label class="list-btn share-opt">
-            <span>매일 밤 알림 <small>그날 운동 안 했으면 팝업</small></span>
+            <span>매일 밤 알림 <small>앱이 열려 있을 때만</small></span>
             <input type="checkbox" id="nightly-on" class="switch" />
           </label>
           <label class="setting-row" style="margin-top:8px">
@@ -307,10 +307,7 @@
             <input type="time" id="nightly-time" value="23:00" />
           </label>
           <button id="nightly-test" class="list-btn"><svg class="i"><use href="#i-bell"/></svg><span>팝업 미리보기</span></button>
-          <p class="hint">앱이 열려 있으면 그 시간에 팝업과 소리로 알려줘요. 앱이 닫혀 있었다면 그 시간 이후 처음 열 때 팝업이 떠요.<br />
-          <b>휴대폰 알림으로 받으려면</b> (웹 링크라 휴대폰 알림을 직접 보낼 수 없어요)<br />
-          · 아이폰: 단축어 앱 → 자동화 → 시간(오후 11:00, 매일) → "URL 열기"에 볼류머 링크 → 즉시 실행<br />
-          · 갤럭시: 시계 앱 알람 23:00 + 이름 "볼류머 운동 체크", 또는 Bixby 루틴으로 링크 열기</p>
+          <p class="hint">앱이 열려 있을 때 정한 시간이 되면, 그날 운동을 안 했으면 알림음과 함께 팝업이 떠요. 하루 한 번만 떠요.</p>
         </div>
 
         <div class="panel">
@@ -425,17 +422,30 @@
     </div>
   </div>
 
-  <!-- 밤 알림 팝업 -->
-  <div id="nightly-modal" class="rest-modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="nightly-title">
+  <!-- 밤 알림 팝업 (레이어드 리스트 스타일) -->
+  <div id="nightly-modal" class="rest-modal nightly" hidden role="alertdialog" aria-modal="true" aria-labelledby="nightly-title">
     <div class="rest-backdrop"></div>
-    <div class="rest-sheet nightly-sheet">
-      <div class="nightly-emoji" id="nightly-emoji">😴</div>
-      <h3 class="nightly-title" id="nightly-title">오늘 아직 운동 안 했어요</h3>
-      <p class="nightly-sub" id="nightly-sub"></p>
-      <div class="nightly-friends" id="nightly-friends"></div>
-      <div class="confirm-actions">
-        <button id="nightly-close" class="rest-adj">닫기</button>
-        <button id="nightly-go" class="rest-main">지금 기록하기</button>
+    <div class="nl-sheet">
+      <div class="nl-head">
+        <svg class="i nl-mark"><use href="#i-spark"/></svg>
+        <span class="nl-title">운동 체크</span>
+        <span class="nl-time" id="nightly-clock">23:00</span>
+      </div>
+      <div class="nl-body">
+        <div class="nl-pill" id="nightly-status">
+          <svg class="i"><use href="#i-timer"/></svg>
+          <span id="nightly-title">오늘 아직 운동 안 했어요</span>
+          <svg class="i nl-pill-end"><use href="#i-minus"/></svg>
+        </div>
+        <p class="nl-sub" id="nightly-sub"></p>
+        <div class="nl-section" id="nightly-section">
+          <div class="nl-sec-head"><span id="nightly-count">오늘 운동한 친구</span><svg class="i"><use href="#i-trophy"/></svg></div>
+          <div class="nl-list" id="nightly-friends"></div>
+        </div>
+      </div>
+      <div class="nl-actions">
+        <button id="nightly-go" class="nl-go"><svg class="i"><use href="#i-plus"/></svg><span>지금 기록하기</span></button>
+        <button id="nightly-close" class="nl-close">닫기</button>
       </div>
     </div>
   </div>
