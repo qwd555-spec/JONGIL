@@ -645,6 +645,7 @@ const photos = (() => {
     });
   }
 
+  let photoOpen = false; // 평소엔 접어두기
   async function render(force) {
     const date = state.day;
     const key = date + '|' + dateSet.has(date) + '|' + (cache[date] ? 1 : 0);
@@ -665,6 +666,7 @@ const photos = (() => {
       dateSet.delete(date); saveDates(); shown = null; render(); return;
     }
     body.innerHTML = `
+      <details class="share-fold photo-fold" ${photoOpen ? 'open' : ''}><summary><span>사진 보기${prev ? ' · 지난 사진과 비교' : ''}</span><svg class="i"><use href="#i-right"/></svg></summary>
       <div class="photo-grid ${prev ? 'two' : ''}">
         ${prev ? `<figure><img src="${prev}" alt="" data-full="1" /><figcaption>${escapeHtml(fmtDate(prevDate))}</figcaption></figure>` : ''}
         <figure><img src="${img}" alt="" data-full="1" /><figcaption>${escapeHtml(fmtDate(date))}${prev ? ' · 오늘' : ''}</figcaption></figure>
@@ -672,7 +674,8 @@ const photos = (() => {
       <div class="photo-actions">
         <button type="button" id="photo-change">사진 바꾸기</button>
         <button type="button" id="photo-del" class="danger-text">삭제</button>
-      </div>`;
+      </div></details>`;
+    body.querySelector('.photo-fold').addEventListener('toggle', (e) => { photoOpen = e.target.open; });
     body.querySelectorAll('img[data-full]').forEach((el) => el.addEventListener('click', () => {
       $('#photo-viewer-img').src = el.src; $('#photo-viewer').hidden = false;
     }));
