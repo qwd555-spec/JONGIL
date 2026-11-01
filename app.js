@@ -356,7 +356,14 @@ document.querySelectorAll('.tab').forEach((btn) =>
   btn.addEventListener('click', () => showView(btn.dataset.view === 'workout' ? lastPeriod : btn.dataset.view))
 );
 // Today ‹ › Weekly ‹ › Monthly 순환
+const RANK_PAGES = ['board', 'kings', 'photos'];
+const RANK_TITLES = { board: 'Ranking', kings: 'Kings', photos: 'Body Feed' };
 function shiftPeriod(step) {
+  if (curView === 'rank') {
+    const j = RANK_PAGES.indexOf(social.mode());
+    social.setMode(RANK_PAGES[(j + step + RANK_PAGES.length) % RANK_PAGES.length]);
+    return;
+  }
   const i = PERIODS.indexOf(curView);
   showView(PERIODS[(i + step + PERIODS.length) % PERIODS.length]);
 }
@@ -369,8 +376,8 @@ function showView(view) {
   if (periodic) lastPeriod = view;
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.view === (periodic ? 'workout' : view)));
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
-  $('#page-title').textContent = PAGE_TITLES[view];
-  document.querySelector('.app-header').classList.toggle('periodic', periodic);
+  $('#page-title').textContent = view === 'rank' ? RANK_TITLES[social.mode()] : PAGE_TITLES[view];
+  document.querySelector('.app-header').classList.toggle('periodic', periodic || view === 'rank');
   $('#settings-btn').classList.toggle('active', view === 'settings');
   window.scrollTo({ top: 0 });
   render();
@@ -1883,12 +1890,14 @@ const social = (() => {
     $('#rank-join').hidden = unavailable || failed || !ready || !!myNick();
     $('#rank-main').hidden = unavailable || failed || !ready || !myNick();
     if ($('#rank-main').hidden) return;
-    renderAwards();
     try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch {}
     updateDot();
     $('#rank-board').hidden = mode !== 'board';
     $('#photo-feed').hidden = mode !== 'photos';
+    $('#rank-kings').hidden = mode !== 'kings';
+    $('#rank-mode').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.mode === mode));
     if (mode === 'photos') { renderPhotoFeed(); return; }
+    if (mode === 'kings') { renderAwards(); return; }
 
     // 운동 선택 (최고 중량)
     const exNames = [...new Set(Object.values(members).flatMap((m) => Object.keys(m.best || {})))].sort((a, b) => a.localeCompare(b, 'ko'));
@@ -2070,11 +2079,13 @@ const social = (() => {
 
   /* ---- 눈바디 피드 (셋로그처럼 사진만 모아보기) ---- */
   let mode = 'board', feedSrc = 'friends', feedList = [], feedIdx = 0;
-  $('#rank-mode').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    mode = b.dataset.mode;
-    $('#rank-mode').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+  $('#rank-mode').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  function setMode(m) {
+    mode = m;
+    $('#page-title').textContent = RANK_TITLES[m];
+    window.scrollTo({ top: 0 });
     render();
-  }));
+  }
   $('#feed-chips').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
     feedSrc = b.dataset.src;
     $('#feed-chips').querySelectorAll('.chip').forEach((x) => x.classList.toggle('active', x === b));
@@ -2208,7 +2219,7 @@ const social = (() => {
       .sort((a, b) => b.v - a.v);
   }
 
-  return { init, publish, render, openShare, wasShared, activeToday, titleOf, id: () => myId, ready: () => ready };
+  return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready };
 })();
 
 /* =========================================================

@@ -231,9 +231,10 @@
         </div>
 
         <div id="rank-main" hidden>
-          <div class="mode-tabs" id="rank-mode">
-            <button data-mode="board" class="active"><svg class="i"><use href="#i-trophy"/></svg>순위 · 소식</button>
-            <button data-mode="photos"><svg class="i"><use href="#i-grid"/></svg>눈바디 피드</button>
+          <div class="page-dots" id="rank-mode">
+            <button data-mode="board" class="active">순위</button>
+            <button data-mode="kings">왕</button>
+            <button data-mode="photos">눈바디</button>
           </div>
 
           <div id="rank-board">
@@ -250,17 +251,6 @@
             </div>
             <div class="summary-value" id="rank-my-rank">-</div>
             <div class="summary-sub" id="rank-my-sub"></div>
-          </div>
-
-          <div class="panel awards">
-            <div class="panel-head"><span><b id="awards-title">이주의 왕</b> <small id="awards-hint"></small></span><svg class="i"><use href="#i-trophy"/></svg></div>
-            <div class="segmented aw-seg" id="aw-period">
-              <button data-p="week" class="active">주간 왕</button>
-              <button data-p="month">월간 왕</button>
-            </div>
-            <div class="aw-list" id="awards-list"></div>
-            <div class="sub-head aw-sub">✦ 이색 왕</div>
-            <div class="aw-list" id="fun-awards"></div>
           </div>
 
           <div class="panel">
@@ -280,6 +270,20 @@
             <div class="panel-head"><span>친구 소식 <small>운동 공유 · 응원 댓글</small></span><svg class="i"><use href="#i-chat"/></svg></div>
             <div id="feed-list" class="feed-list"></div>
           </div>
+          </div>
+
+          <div id="rank-kings" hidden>
+          <div class="panel awards">
+            <div class="panel-head"><span><b id="awards-title">이주의 왕</b> <small id="awards-hint"></small></span><svg class="i"><use href="#i-trophy"/></svg></div>
+            <div class="segmented aw-seg" id="aw-period">
+              <button data-p="week" class="active">주간 왕</button>
+              <button data-p="month">월간 왕</button>
+            </div>
+            <div class="aw-list" id="awards-list"></div>
+            <div class="sub-head aw-sub">✦ 이색 왕</div>
+            <div class="aw-list" id="fun-awards"></div>
+          </div>
+
           </div>
 
           <div id="photo-feed" hidden>

@@ -792,3 +792,7 @@ body.modal-open { overflow: hidden; }
 .aw-who { flex: 1; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
 .aw-who .me-tag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--pink); color: #fff; }
 .aw-v { font-weight: 800; font-size: 14px; }
+/* 랭킹 페이지 점 표시 (헤더 화살표로 넘김) */
+.page-dots { display: flex; justify-content: center; gap: 6px; margin: -4px 0 14px; }
+.page-dots button { font-size: 12px; font-weight: 600; color: var(--muted); padding: 5px 12px; border-radius: 999px; background: transparent; }
+.page-dots button.active { background: var(--ink); color: #fff; }
