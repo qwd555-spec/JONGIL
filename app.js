@@ -1922,7 +1922,92 @@ const social = (() => {
   const sharedMap = {};
   const wasShared = (date) => !!sharedMap[date] || (comments[myId] || []).some((c) => c.kind === 'share' && c.date === date);
 
-  return { init, publish, render, openShare, wasShared };
+  /** 오늘 운동한 친구 (나 제외), 볼륨 큰 순 */
+  function activeToday() {
+    const t = todayStr();
+    return Object.entries(members)
+      .filter(([id]) => id !== myId)
+      .map(([id, m]) => ({ nick: m.nick, v: num((m.days || {})[t]) + num((m.cdays || {})[t]) }))
+      .filter((x) => x.v > 0)
+      .sort((a, b) => b.v - a.v);
+  }
+
+  return { init, publish, render, openShare, wasShared, activeToday, ready: () => ready };
+})();
+
+/* =========================================================
+ * 밤 알림: 정한 시간(기본 23:00)에 오늘 운동 안 했으면 팝업
+ * 앱이 열려 있으면 그 시각에, 아니면 그 시각 이후 처음 열 때
+ * ========================================================= */
+const nightly = (() => {
+  const KEY = 'gymlog.nightly', SEEN = 'gymlog.nightlySeen';
+  let cfg = { on: true, time: '23:00' };
+  try { cfg = { ...cfg, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch {}
+  const saveCfg = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {} };
+  const seenToday = () => { try { return localStorage.getItem(SEEN) === todayStr(); } catch { return false; } };
+  const markSeen = () => { try { localStorage.setItem(SEEN, todayStr()); } catch {} };
+
+  function due() {
+    if (!cfg.on || seenToday()) return false;
+    const [h, m] = cfg.time.split(':').map(Number);
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes() >= h * 60 + m;
+  }
+  function chime() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.3].forEach((dt) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = 660; g.gain.setValueAtTime(0.0001, ctx.currentTime + dt);
+        g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + dt + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dt + 0.25);
+        o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + dt); o.stop(ctx.currentTime + dt + 0.3);
+      });
+    } catch { /* 소리 불가 */ }
+    try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch {}
+  }
+
+  function show(preview = false) {
+    const t = todayStr();
+    const done = dayVolume(t) > 0;
+    let friends = [];
+    try { friends = social.activeToday(); } catch {}
+    $('#nightly-emoji').textContent = done ? '💪' : '😴';
+    $('#nightly-title').textContent = done ? `오늘 ${fmtKg(dayVolume(t))} 했어요!` : '오늘 아직 운동 안 했어요';
+    $('#nightly-sub').textContent = done ? '잘했어요. 내일도 화이팅!' : friends.length ? '친구들은 벌써 했어요 👀' : '하루 마무리 전에 가볍게라도 해볼까요?';
+    const names = friends.slice(0, 5).map((f) => `<span class="nf-chip">${escapeHtml(f.nick)} <small>${fmtShort(f.v)}</small></span>`).join('');
+    $('#nightly-friends').innerHTML = friends.length
+      ? `<div class="nf-label">오늘 운동한 친구 ${friends.length}명</div><div class="nf-list">${names}${friends.length > 5 ? `<span class="nf-more">외 ${friends.length - 5}인</span>` : ''}</div>`
+      : '';
+    $('#nightly-go').textContent = done ? '기록 보기' : '지금 기록하기';
+    $('#nightly-modal').hidden = false;
+    document.body.classList.add('modal-open');
+    if (!preview) { markSeen(); chime(); }
+  }
+  function close() { $('#nightly-modal').hidden = true; document.body.classList.remove('modal-open'); }
+
+  function check() {
+    if (!due()) return;
+    if (dayVolume(todayStr()) > 0) { markSeen(); return; }   // 이미 운동함 → 알림 생략
+    if (!$('#nightly-modal').hidden || !$('#rest-timer').hidden) return;
+    show();
+  }
+
+  // 설정 UI
+  const onEl = $('#nightly-on'), timeEl = $('#nightly-time');
+  onEl.checked = cfg.on; timeEl.value = cfg.time;
+  onEl.addEventListener('change', () => { cfg.on = onEl.checked; saveCfg(); toast(cfg.on ? `매일 ${cfg.time}에 운동 체크할게요` : '밤 알림을 껐어요'); });
+  timeEl.addEventListener('change', () => { if (/^\d{2}:\d{2}$/.test(timeEl.value)) { cfg.time = timeEl.value; saveCfg(); try { localStorage.removeItem(SEEN); } catch {} toast(`알림 시간 ${cfg.time}`); } });
+  $('#nightly-test').addEventListener('click', () => show(true));
+  $('#nightly-close').addEventListener('click', close);
+  $('#nightly-modal .rest-backdrop').addEventListener('click', close);
+  $('#nightly-go').addEventListener('click', () => { close(); state.day = todayStr(); showView('day'); });
+
+  // 앱을 열 때, 다시 볼 때, 열려 있는 동안 1분마다 확인 (친구 데이터가 올 시간을 조금 줌)
+  setTimeout(check, 4000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(check, 2500); });
+  setInterval(check, 60000);
+  return { show, check };
 })();
 
 cloud.init();

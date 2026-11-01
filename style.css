@@ -674,3 +674,17 @@ body.modal-open { overflow: hidden; }
 .detail-btn.on { background: var(--ink); color: #fff; }
 .is-closed .detail-btn { display: none; }
 .detail-note { text-align: left; }
+
+/* 밤 알림 */
+.nightly-sheet { text-align: center; padding-top: 26px; }
+.nightly-emoji { font-size: 48px; line-height: 1; }
+.nightly-title { font-size: 21px; font-weight: 800; letter-spacing: -0.03em; margin: 12px 0 4px; }
+.nightly-sub { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.nightly-friends { margin-bottom: 18px; }
+.nightly-friends:empty { display: none; }
+.nf-label { font-size: 12px; font-weight: 700; color: #5d5d66; margin-bottom: 8px; }
+.nf-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.nf-chip { background: var(--raised); box-shadow: var(--shadow-raised); border-radius: 999px; padding: 6px 11px; font-size: 13px; font-weight: 700; }
+.nf-chip small { color: var(--muted); font-weight: 600; margin-left: 2px; }
+.nf-more { padding: 6px 11px; font-size: 13px; font-weight: 700; color: var(--muted); }
+#nightly-time { width: 110px; height: 40px; border: none; border-radius: 12px; background: var(--layer); font-weight: 700; font-size: 15px; text-align: center; color: var(--ink); }
