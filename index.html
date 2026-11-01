@@ -74,6 +74,10 @@
             <svg class="i"><use href="#i-layers"/></svg>
           </div>
           <div class="summary-value" id="day-total">0 kg</div>
+          <div class="goal" id="day-goal">
+            <div class="goal-top"><span class="goal-grade" id="goal-grade"></span><span class="goal-text" id="goal-text"></span></div>
+            <div class="goal-bar"><div id="goal-fill"></div><i class="goal-mark" style="left:71.4%"></i></div>
+          </div>
           <div class="summary-sub" id="day-sub"></div>
         </div>
 
@@ -237,6 +241,22 @@
 
       <!-- 설정 -->
       <section id="view-settings" class="view">
+        <div class="panel">
+          <div class="panel-head"><span>하루 목표 볼륨</span><svg class="i"><use href="#i-trophy"/></svg></div>
+          <label class="setting-row">
+            <span>목표 <small id="goal-auto-note">자동</small></span>
+            <input type="number" id="goal-input" min="0" step="500" inputmode="numeric" placeholder="자동" />
+          </label>
+          <div class="grade-table">
+            <div><b>🔥 불태움</b><span>목표 140% 이상</span></div>
+            <div><b>💪 잘했어요</b><span>목표 100% 이상</span></div>
+            <div><b>👍 보통</b><span>목표 70% 이상</span></div>
+            <div><b>🙂 가볍게</b><span>목표 40% 이상</span></div>
+            <div><b>🌱 몸풀기</b><span>40% 미만</span></div>
+          </div>
+          <p class="hint">30대 남성 기준 자동 목표 = <b>몸무게 × 100kg</b> (몸무게 미입력 시 75kg 기준 7,500kg).<br />주 3~5회 운동하는 중급자가 한 번에 본세트 15~25세트 하는 양이에요. 하체 날(스쿼트·레그프레스)은 볼륨이 크게, 상체·팔 날은 작게 나오니 일주일 평균으로 보세요. 근력 볼륨만 계산해요.</p>
+        </div>
+
         <div class="panel">
           <div class="panel-head"><span>휴식 타이머</span><svg class="i"><use href="#i-timer"/></svg></div>
           <label class="setting-row">

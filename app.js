@@ -116,8 +116,9 @@ const cloud = (() => {
         if (DATE_RE.test(d.id) && Array.isArray(body.list)) remote[d.id] = JSON.parse(JSON.stringify(body.list));
         if (d.id === 'settings') {
           if (body.restSeconds) setRestSeconds(body.restSeconds, false);
+          if (body.goal !== undefined) setCustomGoal(body.goal, false);
           if (body.bodyweight && typeof body.bodyweight === 'object') bwMap = { ...bwMap, ...body.bodyweight };
-          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {} });
+          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0 });
         }
       }
       for (const [k, v] of Object.entries(remote)) synced[k] = JSON.stringify(v);
@@ -154,7 +155,7 @@ const cloud = (() => {
         if (cur === null) { await col.doc(k).delete(); delete synced[k]; }
         else { await col.doc(k).set({ list: JSON.parse(cur), updatedAt: Date.now() }); synced[k] = cur; }
       }
-      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap });
+      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal });
       if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
       try { await social.publish(); } catch { /* 순위 참가 권한 없음 → 개인 기록만 저장 */ }
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
@@ -709,11 +710,49 @@ function cardioLine(stats) {
   const bits = [stats.km ? `${+stats.km.toFixed(1)}km` : '', stats.min ? fmtMin(stats.min) : ''].filter(Boolean).join(' · ');
   return `<span class="cardio-line">+ 유산소 볼륨 ${fmtKg(stats.cardio)}${bits ? ` (${bits})` : ''}</span>`;
 }
+/* ---------- 하루 목표 볼륨 (30대 남성 기준) ---------- */
+const GOAL_KEY = 'gymlog.dailyGoal';
+let customGoal = (() => { try { return num(localStorage.getItem(GOAL_KEY)); } catch { return 0; } })();
+/** 목표: 직접 설정 > 몸무게 × 100 > 7,500kg */
+function dailyGoal(date) {
+  if (customGoal > 0) return customGoal;
+  return Math.round((bodyweightOn(date) || 75) * 100);
+}
+const GRADES = [
+  { min: 1.4, label: '🔥 불태움' },
+  { min: 1.0, label: '💪 잘했어요' },
+  { min: 0.7, label: '👍 보통' },
+  { min: 0.4, label: '🙂 가볍게' },
+  { min: 0.0001, label: '🌱 몸풀기' },
+];
+function gradeOf(vol, goal) {
+  const r = goal ? vol / goal : 0;
+  return GRADES.find((g) => r >= g.min) || null;
+}
+function setCustomGoal(v, sync = true) {
+  customGoal = Math.max(0, Math.round(num(v)));
+  try { if (customGoal) localStorage.setItem(GOAL_KEY, customGoal); else localStorage.removeItem(GOAL_KEY); } catch { /* 없음 */ }
+  const inp = document.getElementById('goal-input');
+  if (inp) inp.value = customGoal || '';
+  updateGoalNote();
+  if (sync) cloud.markDirty();
+}
+function updateGoalNote() {
+  const el = document.getElementById('goal-auto-note');
+  if (el) el.textContent = customGoal ? '직접 설정' : `자동 · ${fmtKg(dailyGoal(todayStr()))}`;
+}
 function updateDaySummary() {
   updateBwRow();
   const list = db[state.day] || [];
   const total = dayVolume(state.day);
   $('#day-total').textContent = fmtKg(total);
+  const goal = dailyGoal(state.day);
+  const grade = gradeOf(total, goal);
+  const pct = goal ? Math.round((total / goal) * 100) : 0;
+  $('#goal-grade').textContent = grade ? grade.label : '아직 시작 전';
+  $('#goal-text').textContent = `목표 ${fmtKg(goal)} · ${pct}%`;
+  $('#goal-fill').style.width = `${Math.min(100, (total / (goal * 1.4)) * 100)}%`;
+  $('#day-goal').classList.toggle('reached', total >= goal);
   const sets = list.reduce((a, ex) => a + ex.sets.length, 0);
   const label = state.day === todayStr() ? '오늘' : fmtDate(state.day);
   document.querySelector('#view-day .summary-label').textContent = `${label} 근력 볼륨`;
@@ -785,6 +824,7 @@ function renderMonth() {
   const avg = stats.days ? stats.total / stats.days : 0;
   $('#month-sub').innerHTML = [
     `운동한 날 ${stats.days}일 · ${stats.sets}세트 · 하루 평균 ${fmtKg(avg)}`,
+    `목표 달성 ${dates.filter((d) => { const v = dayVolume(d); return v > 0 && v >= dailyGoal(d); }).length}일`,
     diffText(stats.total, prevTotal, '지난달'),
     cardioLine(stats),
   ].filter(Boolean).join('<br />');
@@ -876,6 +916,7 @@ function render() {
   else if (v === 'week') renderWeek();
   else if (v === 'month') renderMonth();
   else if (v === 'rank') social.render();
+  else if (v === 'settings') updateGoalNote();
 }
 
 /* ---------- 설정: 백업 ---------- */
@@ -969,6 +1010,10 @@ function setRestSeconds(v, sync = true) {
 }
 restInput.value = restSeconds();
 restInput.addEventListener('change', () => setRestSeconds(restInput.value));
+const goalInput = $('#goal-input');
+goalInput.value = customGoal || '';
+goalInput.addEventListener('change', () => { setCustomGoal(goalInput.value); render(); toast(customGoal ? `하루 목표 ${fmtKg(customGoal)}` : '목표를 자동(몸무게 × 100)으로 바꿨어요'); });
+updateGoalNote();
 
 const restTimer = (() => {
   const box = $('#rest-timer');
