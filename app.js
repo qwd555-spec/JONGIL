@@ -1788,7 +1788,7 @@ const social = (() => {
   $('#person-close').addEventListener('click', closeProfile);
   $('#person-modal .rest-backdrop').addEventListener('click', closeProfile);
   $('#comment-form').addEventListener('submit', (e) => { e.preventDefault(); sendComment($('#comment-input').value); });
-  document.querySelectorAll('.cheer').forEach((b) => b.addEventListener('click', () => sendComment(b.dataset.cheer)));
+  document.querySelectorAll('#person-modal .cheer').forEach((b) => b.addEventListener('click', () => sendComment(b.dataset.cheer)));
   const shareToggle = $('#share-log');
   shareToggle.checked = shareLog();
   shareToggle.addEventListener('change', async () => {
