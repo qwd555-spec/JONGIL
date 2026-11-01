@@ -185,3 +185,37 @@ main { max-width: 720px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
   cursor: pointer;
 }
 .danger-btn { background: #3a1d1d; border-color: #5c2b2b; color: var(--danger); }
+
+/* 카드 하단 버튼 */
+.card-actions { display: flex; gap: 8px; margin-top: 8px; }
+.card-actions .add-set { flex: 1; margin-top: 0; }
+.rest-btn { flex: 1.5; white-space: nowrap; font-size: 14px; padding: 10px 8px; background: var(--accent-2); border-color: var(--accent-2); color: #08130c; font-weight: 700; }
+
+/* 휴식 타이머 */
+.rest-timer {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 20;
+  background: #0b1f14;
+  border-top: 2px solid var(--accent-2);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rest-timer[hidden] { display: none; }
+.rest-info { flex: 1; min-width: 0; }
+.rest-title { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rest-time { font-size: 32px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.rest-progress { height: 6px; background: var(--card-2); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.rest-progress > div { height: 100%; background: var(--accent-2); transition: width .25s linear; }
+.rest-controls { display: flex; gap: 6px; }
+.rest-controls button { padding: 10px 10px; font-size: 13px; }
+.rest-timer.done { background: #3a2a0b; border-top-color: #facc15; animation: flash .5s ease-in-out 6 alternate; }
+.rest-timer.done .rest-time { color: #facc15; }
+@keyframes flash { from { filter: brightness(1); } to { filter: brightness(1.8); } }
+body.resting main { padding-bottom: 130px; }
+
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setting-row input { width: 100px; text-align: center; }
+#rest-test { margin-top: 12px; }
