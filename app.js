@@ -394,6 +394,7 @@ function addExercise(name) {
     const fc = friendCustoms.find((f) => f.name === name);
     if (fc && fc.bw) entry.bw = 'bw';
   }
+  if (isCardio && CARDIO[name].goals) entry.detail = true;
   if (isCardio) entry.mode = CARDIO[name].kcalOnly ? 'watch' : last && last.mode ? last.mode : preferredCardioMode();
   (db[state.day] ||= []).push(entry);
   save();
@@ -728,7 +729,7 @@ function renderDay() {
       const db2 = document.createElement('button');
       db2.type = 'button';
       db2.className = 'detail-btn' + (ex.detail ? ' on' : '');
-      db2.textContent = ex.detail ? '상세 닫기' : '페이스·심박·메모';
+      db2.textContent = ex.detail ? '상세 닫기' : cinfo.goals ? '골·심박·메모' : '페이스·심박·메모';
       db2.addEventListener('click', () => { ex.detail = !ex.detail; save(); renderDay(); });
       node.querySelector('.card-actions').appendChild(db2);
       node.classList.add('cardio');
@@ -777,6 +778,8 @@ function renderDay() {
         if (pt) parts.push(pt.includes('km/h') ? `평균 ${pt}` : `페이스 ${pt}`);
         const hr = avgHr(ex.sets);
         if (hr) parts.push(`♥ ${hr}bpm`);
+        const goals = ex.sets.reduce((a, x) => a + num(x.goals), 0);
+        if (cinfo.goals && goals) parts.unshift(`⚽ ${goals}골`);
         const head = parts.length ? parts.join(' · ') : cardioMode(ex) === 'watch' ? '워치에 찍힌 활동 칼로리를 입력하세요' : (cinfo.perKm ? '거리(km)와 시간(분)을 입력하세요' : '운동한 시간(분)을 입력하세요');
         cardioMeta.innerHTML = `<div>${escapeHtml(head)}</div>` + (kcal
           ? `<div class="conv"><span class="conv-pill">${cardioMode(ex) === 'watch' ? '⌚ ' : ''}${Math.round(kcal).toLocaleString('ko-KR')} kcal</span><span class="conv-op">× ${CARDIO_KCAL_TO_VOLUME}${(cinfo.scale ?? 1) !== 1 ? ` × ${Math.round(cinfo.scale * 100)}%` : ''}</span><span class="conv-arrow">→</span><span class="conv-pill dark">${fmtKg(cardioToVolume(kcal, cinfo))}</span></div>`
@@ -824,8 +827,9 @@ function renderDay() {
         const watch = cardioMode(ex) === 'watch';
         dr.innerHTML = `<td></td><td colspan="4"><div class="detail-fields">
           ${watch ? `<label><span>거리</span><input type="text" autocomplete="off" inputmode="decimal" data-k="km" value="${set.km ?? ''}" placeholder="km" /></label>` : ''}
+          ${cinfo.goals ? `<label><span>⚽ 골</span><input type="text" autocomplete="off" inputmode="numeric" data-k="goals" value="${set.goals ?? ''}" placeholder="0" /></label>` : ''}
           <label><span>♥ 평균 심박</span><input type="text" autocomplete="off" inputmode="numeric" data-k="hr" value="${set.hr ?? ''}" placeholder="bpm" /></label>
-          <input type="text" class="detail-note" data-k="note" maxlength="40" value="${escapeHtml(set.note ?? '')}" placeholder="메모 · 코스, 컨디션, 경기 결과" />
+          <input type="text" class="detail-note" data-k="note" maxlength="40" value="${escapeHtml(set.note ?? '')}" placeholder="${cinfo.goals ? '메모 · 어시스트, 컨디션' : '메모 · 코스, 컨디션'}" />
         </div></td>`;
         dr.querySelectorAll('input').forEach((inp) => inp.addEventListener('input', () => {
           if (inp.dataset.k === 'note') set.note = inp.value.slice(0, 40);
@@ -1527,6 +1531,7 @@ const social = (() => {
         num(st.min) ? `${num(st.min)}분` : '',
         paceText(ex.name, num(st.km), num(st.min)),
         cardioMode(ex) === 'watch' && num(st.wkcal) ? `⌚${num(st.wkcal)}kcal` : '',
+        num(st.goals) ? `⚽${num(st.goals)}골` : '',
         num(st.hr) ? `♥${num(st.hr)}` : '',
         st.note ? String(st.note).slice(0, 40) : '',
       ].filter(Boolean).join(' · ')).join(' / ');

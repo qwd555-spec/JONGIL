@@ -688,3 +688,4 @@ body.modal-open { overflow: hidden; }
 .nf-chip small { color: var(--muted); font-weight: 600; margin-left: 2px; }
 .nf-more { padding: 6px 11px; font-size: 13px; font-weight: 700; color: var(--muted); }
 #nightly-time { width: 110px; height: 40px; border: none; border-radius: 12px; background: var(--layer); font-weight: 700; font-size: 15px; text-align: center; color: var(--ink); }
+.sets input.detail-note { text-align: left; }
