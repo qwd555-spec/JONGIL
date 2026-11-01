@@ -1825,7 +1825,7 @@ const social = (() => {
   });
   setInterval(() => { if (currentView() === 'rank') render(); }, 60000);
 
-  /* ---- 사진 피드 (셋로그처럼 사진만 모아보기) ---- */
+  /* ---- 눈바디 피드 (셋로그처럼 사진만 모아보기) ---- */
   let mode = 'board', feedSrc = 'friends', feedList = [], feedIdx = 0;
   $('#rank-mode').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
     mode = b.dataset.mode;
@@ -1843,7 +1843,7 @@ const social = (() => {
     if (feedSrc === 'friends') {
       feedList = allComments().filter((c) => c.kind === 'share' && typeof c.img === 'string' && c.img.startsWith('data:image/'))
         .map((c) => ({ img: c.img, who: nickOf(c.from), from: c.from, date: c.date, summary: c.summary, text: c.text, items: c.items, at: c.at, mine: c.from === myId }));
-      hint.textContent = feedList.length ? '공유할 때 눈바디 사진을 켜면 여기에 모여요' : '아직 공유된 사진이 없어요. 운동 마감 → 친구에게 공유 → 눈바디 사진 켜기';
+      hint.textContent = feedList.length ? '공유할 때 눈바디 사진을 켜면 여기에 모여요' : '아직 공유된 눈바디가 없어요. 운동 마감 → 친구에게 공유 → 눈바디 사진 켜기';
     } else {
       const ds = photos.dates().slice().reverse();
       hint.textContent = ds.length ? '내 눈바디는 나만 볼 수 있어요' : '아직 올린 눈바디 사진이 없어요. 일간 화면에서 올려보세요';

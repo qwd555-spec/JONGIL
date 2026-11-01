@@ -630,7 +630,7 @@ body.modal-open { overflow: hidden; }
 .share-items span { color: var(--muted); }
 .share-img { width: 100%; max-height: 360px; object-fit: cover; border-radius: 14px; margin-top: 8px; cursor: zoom-in; }
 
-/* 사진 피드 */
+/* 눈바디 피드 */
 .mode-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
 .mode-tabs button { flex: 1; height: 46px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 14px; color: #5d5d66; background: var(--layer); box-shadow: var(--shadow-layer); }
 .mode-tabs button.active { background: var(--ink); color: #fff; }
