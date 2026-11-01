@@ -227,7 +227,7 @@ const DEFAULT_BW = 70;
 /** 유산소 소모 kcal (순수 운동분) */
 /** 유산소 기록 방식: 'calc' = 거리·시간으로 계산, 'watch' = 워치 칼로리 입력 */
 const CARDIO_MODE_KEY = 'gymlog.cardioMode';
-function cardioMode(ex) { return ex && ex.mode === 'watch' ? 'watch' : 'calc'; }
+function cardioMode(ex) { return (ex && ex.mode === 'watch') || cardioInfo(ex)?.kcalOnly ? 'watch' : 'calc'; }
 function preferredCardioMode() { try { return localStorage.getItem(CARDIO_MODE_KEY) === 'watch' ? 'watch' : 'calc'; } catch { return 'calc'; } }
 /** 유산소 소모 kcal: 칼로리 방식은 워치 값 그대로, 계산 방식은 거리 > 시간 */
 function cardioKcal(set, info, bw, mode = 'calc') {
@@ -354,7 +354,7 @@ function addExercise(name) {
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
   const sets = last ? last.sets.map((s) => ({ ...s })) : [isCardio ? { km: '', min: '' } : { w: '', r: '' }];
   const entry = { id: uid(), name, sets };
-  if (isCardio) entry.mode = last && last.mode ? last.mode : preferredCardioMode();
+  if (isCardio) entry.mode = CARDIO[name].kcalOnly ? 'watch' : last && last.mode ? last.mode : preferredCardioMode();
   (db[state.day] ||= []).push(entry);
   save();
   renderDay();
@@ -553,7 +553,7 @@ function renderDay() {
         save();
         renderDay();
       }));
-      node.querySelector('.exercise-head').after(toggle);
+      if (!cinfo.kcalOnly) node.querySelector('.exercise-head').after(toggle);
       node.querySelector('.rest-btn').hidden = true;
       node.querySelector('.add-set').lastChild.textContent = '기록 추가';
       node.classList.add('cardio');
