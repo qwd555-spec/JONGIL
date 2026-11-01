@@ -87,6 +87,17 @@
           <span class="bw-field"><input type="text" autocomplete="off" id="bw-input" inputmode="decimal" min="0" step="0.1" placeholder="00.0" /><em>kg</em></span>
         </label>
 
+        <div class="panel plan-panel" id="plan-panel">
+          <div class="panel-head"><span>오늘 운동 부위 <small id="plan-hint">고르면 부위별 목표가 나와요</small></span><svg class="i"><use href="#i-layers"/></svg></div>
+          <div class="plan-chips" id="plan-chips"></div>
+          <div class="plan-rows" id="plan-rows"></div>
+        </div>
+
+        <div class="closed-banner" id="closed-banner" hidden>
+          <div><b>✓ 운동 마감</b><small id="closed-time"></small></div>
+          <button id="reopen-btn" type="button">다시 열기</button>
+        </div>
+
         <div class="panel picker">
           <form id="add-exercise-form" class="search-form" autocomplete="off">
             <svg class="i search-icon"><use href="#i-search"/></svg>
@@ -106,6 +117,7 @@
           <svg class="i"><use href="#i-folder"/></svg>
           <p>아직 기록이 없어요<br /><small>위에서 운동을 검색해 추가해보세요</small></p>
         </div>
+        <button class="finish-btn" id="finish-btn" type="button" hidden><svg class="i"><use href="#i-check"/></svg>오늘 운동 마감</button>
       </section>
 
       <!-- 주간 -->
@@ -254,7 +266,7 @@
             <div><b>🙂 가볍게</b><span>목표 40% 이상</span></div>
             <div><b>🌱 몸풀기</b><span>40% 미만</span></div>
           </div>
-          <p class="hint">30대 남성 기준 자동 목표 = <b>몸무게 × 110kg</b> (500kg 단위 올림)<br />60kg → 7,000 · 70kg → 8,000 · 80kg → 9,000 · <b>90kg → 10,000</b> · 100kg → 11,000 (미입력 시 8,500kg).<br /><br />주 3~5회 운동하는 중급자가 한 번에 본세트 15~25세트 하는 양이에요. 하체 날(스쿼트·레그프레스)은 볼륨이 크게, 상체·팔 날은 작게 나오니 일주일 평균으로 보세요. 근력 볼륨만 계산해요.</p>
+          <p class="hint"><b>오늘 운동 부위를 고르면</b> 목표 = 고른 부위 목표의 합<br />부위별 목표 = 몸무게 × 하체 110 · 등 75 · 가슴 60 · 전신 75 · 어깨 40 · 복근 30 · 삼두 22 · 이두 18 · 전완 8<br />(90kg: 하체 9,900 · 등 6,800 · 가슴 5,400 · 어깨 3,600 · 삼두 2,000 · 이두 1,700)<br /><br />부위를 안 고르면 30대 남성 기준 자동 목표 = <b>몸무게 × 110kg</b> (500kg 단위 올림)<br />60kg → 7,000 · 70kg → 8,000 · 80kg → 9,000 · <b>90kg → 10,000</b> · 100kg → 11,000 (미입력 시 8,500kg).<br /><br />주 3~5회 운동하는 중급자가 한 번에 본세트 15~25세트 하는 양이에요. 하체 날(스쿼트·레그프레스)은 볼륨이 크게, 상체·팔 날은 작게 나오니 일주일 평균으로 보세요. 근력 볼륨만 계산해요.</p>
         </div>
 
         <div class="panel">

@@ -15,7 +15,16 @@ const STORAGE_KEY = 'gymlog.v1';
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
 let db = load();
-let friendCustoms = [];        // 친구들이 직접 추가한 운동 [{ name, bw, by }]
+let friendCustoms = [];
+const PLAN_KEY = 'gymlog.plan', CLOSED_KEY = 'gymlog.closed';
+const loadJson = (k) => { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch { return {}; } };
+let planMap = loadJson(PLAN_KEY);      // 날짜 → ['가슴', '삼두']
+let closedMap = loadJson(CLOSED_KEY);  // 날짜 → 마감 시각(ms)
+function savePlanClosed() {
+  try { localStorage.setItem(PLAN_KEY, JSON.stringify(planMap)); localStorage.setItem(CLOSED_KEY, JSON.stringify(closedMap)); } catch { /* 없음 */ }
+  cloud.markDirty();
+}
+const isClosed = (date) => !!closedMap[date];        // 친구들이 직접 추가한 운동 [{ name, bw, by }]
 const BW_KEY = 'gymlog.bodyweight';
 let bwMap = (() => {           // 날짜 → 몸무게(kg)
   try { return JSON.parse(localStorage.getItem(BW_KEY)) || {}; } catch { return {}; }
@@ -117,8 +126,10 @@ const cloud = (() => {
         if (d.id === 'settings') {
           if (body.restSeconds) setRestSeconds(body.restSeconds, false);
           if (body.goal !== undefined) setCustomGoal(body.goal, false);
+          if (body.plan && typeof body.plan === 'object') planMap = { ...planMap, ...body.plan };
+          if (body.closed && typeof body.closed === 'object') closedMap = { ...closedMap, ...body.closed };
           if (body.bodyweight && typeof body.bodyweight === 'object') bwMap = { ...bwMap, ...body.bodyweight };
-          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0 });
+          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {} });
         }
       }
       for (const [k, v] of Object.entries(remote)) synced[k] = JSON.stringify(v);
@@ -155,7 +166,7 @@ const cloud = (() => {
         if (cur === null) { await col.doc(k).delete(); delete synced[k]; }
         else { await col.doc(k).set({ list: JSON.parse(cur), updatedAt: Date.now() }); synced[k] = cur; }
       }
-      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal });
+      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap });
       if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
       try { await social.publish(); } catch { /* 순위 참가 권한 없음 → 개인 기록만 저장 */ }
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
@@ -368,6 +379,7 @@ $('#day-today').addEventListener('click', () => { state.day = todayStr(); render
 function addExercise(name) {
   name = name.trim();
   if (!name) return;
+  if (isClosed(state.day)) { toast('마감된 날이에요. 다시 열기를 눌러주세요'); return; }
   // 마지막으로 했던 같은 운동의 세트를 기본값으로 불러오기
   const last = findLastExercise(name, state.day);
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
@@ -701,9 +713,40 @@ function renderDay() {
   });
 
   $('#day-empty').style.display = list.length ? 'none' : 'block';
+  const closed = isClosed(state.day);
+  $('#view-day').classList.toggle('is-closed', closed);
+  $('#closed-banner').hidden = !closed;
+  $('#finish-btn').hidden = closed || !list.length;
+  if (closed) {
+    const t = new Date(closedMap[state.day]);
+    $('#closed-time').textContent = ` ${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    container.querySelectorAll('input, button').forEach((el) => { el.disabled = true; });
+  }
+  bwInput.disabled = closed;
   if (!resultsEl.hidden) renderResults();
   updateDaySummary();
 }
+
+/* ---------- 운동 마감 ---------- */
+$('#finish-btn').addEventListener('click', async () => {
+  const date = state.day;
+  const vol = dayVolume(date), goal = dailyGoal(date), g = gradeOf(vol, goal);
+  const ok = await askConfirm(`오늘 운동을 마감할까요?\n${fmtKg(vol)} · 목표의 ${goal ? Math.round((vol / goal) * 100) : 0}%${g ? ` · ${g.label}` : ''}\n\n마감하면 기록을 고칠 수 없어요.`, { okText: '마감하기' });
+  if (!ok) return;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  closedMap[date] = Date.now();
+  savePlanClosed();
+  restTimer.stop();
+  renderDay();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast(g ? `${g.label} · ${fmtKg(vol)} 마감` : '운동을 마감했어요');
+});
+$('#reopen-btn').addEventListener('click', async () => {
+  if (!(await askConfirm('마감을 풀고 다시 수정할까요?', { okText: '다시 열기' }))) return;
+  delete closedMap[state.day];
+  savePlanClosed();
+  renderDay();
+});
 
 const bwInput = $('#bw-input');
 bwInput.addEventListener('change', () => {
@@ -735,7 +778,47 @@ let customGoal = (() => { try { return num(localStorage.getItem(GOAL_KEY)); } ca
 /** 목표: 직접 설정 > 몸무게 × 110 (500kg 단위 올림) — 90kg → 10,000kg */
 function dailyGoal(date) {
   if (customGoal > 0) return customGoal;
+  const plan = planMap[date] || [];
+  if (plan.length) return plan.reduce((a, p) => a + partTarget(p, date), 0);
   return Math.ceil(((bodyweightOn(date) || 75) * 110) / 500) * 500;
+}
+/* ---------- 부위별 목표 (30대 남성 중급자 기준, 몸무게 배수) ---------- */
+const PART_FACTOR = { '하체': 110, '등': 75, '가슴': 60, '전신': 75, '어깨': 40, '복근': 30, '삼두': 22, '이두': 18, '전완': 8 };
+const PLAN_PARTS = ['가슴', '등', '어깨', '하체', '이두', '삼두', '전완', '복근', '전신'];
+function partTarget(part, date) {
+  return Math.ceil(((bodyweightOn(date) || 75) * (PART_FACTOR[part] || 30)) / 100) * 100;
+}
+function partVolumes(date) {
+  const out = {};
+  for (const ex of db[date] || []) {
+    if (cardioInfo(ex)) continue;
+    const p = partOf(ex.name);
+    out[p] = (out[p] || 0) + exerciseVolume(ex, date);
+  }
+  return out;
+}
+function renderPlan() {
+  const date = state.day, closed = isClosed(date);
+  const plan = planMap[date] || [];
+  const vols = partVolumes(date);
+  $('#plan-chips').innerHTML = PLAN_PARTS.map((p) => `<button type="button" class="chip ${plan.includes(p) ? 'active' : ''}" data-p="${p}" ${closed ? 'disabled' : ''}>${p}</button>`).join('');
+  $('#plan-chips').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
+    const cur = new Set(planMap[date] || []);
+    cur.has(b.dataset.p) ? cur.delete(b.dataset.p) : cur.add(b.dataset.p);
+    if (cur.size) planMap[date] = PLAN_PARTS.filter((p) => cur.has(p)); else delete planMap[date];
+    savePlanClosed();
+    renderPlan();
+    updateDaySummary();
+  }));
+  $('#plan-hint').textContent = plan.length ? `목표 합계 ${fmtKg(plan.reduce((a, p) => a + partTarget(p, date), 0))}` : '고르면 부위별 목표가 나와요';
+  const extra = Object.keys(vols).filter((p) => !plan.includes(p) && vols[p] > 0);
+  $('#plan-rows').innerHTML = plan.map((p) => {
+    const v = vols[p] || 0, t = partTarget(p, date), g = gradeOf(v, t);
+    return `<div class="plan-row">
+      <div class="plan-top"><b>${p}</b><span>${g ? g.label.split(' ')[0] : ''} ${fmtKg(v)} <small>/ ${fmtKg(t)}</small></span></div>
+      <div class="plan-bar ${v >= t ? 'done' : ''}"><div style="width:${Math.min(100, (v / t) * 100)}%"></div></div>
+    </div>`;
+  }).join('') + (extra.length ? `<p class="plan-extra">계획 외: ${extra.map((p) => `${escapeHtml(p)} ${fmtKg(vols[p])}`).join(' · ')}</p>` : '');
 }
 const GRADES = [
   { min: 1.4, label: '🔥 불태움' },
@@ -762,6 +845,7 @@ function updateGoalNote() {
 }
 function updateDaySummary() {
   updateBwRow();
+  renderPlan();
   const list = db[state.day] || [];
   const total = dayVolume(state.day);
   $('#day-total').textContent = fmtKg(total);
