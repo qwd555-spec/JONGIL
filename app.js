@@ -2015,7 +2015,9 @@ const nightly = (() => {
   $('#nightly-modal .rest-backdrop').addEventListener('click', close);
   $('#nightly-go').addEventListener('click', () => { close(); state.day = todayStr(); showView('day'); });
 
-  // 앱이 열려 있는 동안 20초마다 확인
+  // 앱이 열려 있는 동안 20초마다 확인 + 알림 시각에 앱이 열리면(단축어 자동화 등) 바로 확인
+  setTimeout(check, 3500);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(check, 2000); });
   setInterval(check, 20000);
   return { show, check };
 })();
