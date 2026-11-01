@@ -227,8 +227,9 @@ const DEFAULT_BW = 70;
 /** 유산소 소모 kcal (순수 운동분) */
 function cardioKcal(set, info, bw) {
   const km = num(set.km), min = num(set.min);
-  if (info.perKm && km > 0) return info.perKm * bw * km;
-  return Math.max(0, info.met - 1) * bw * (min / 60);
+  const scale = info.scale ?? 1;
+  if (info.perKm && km > 0) return info.perKm * bw * km * scale;
+  return Math.max(0, info.met - 1) * bw * (min / 60) * scale;
 }
 function setVolume(set, ex, date) {
   const cinfo = cardioInfo(ex);
