@@ -713,10 +713,10 @@ function cardioLine(stats) {
 /* ---------- 하루 목표 볼륨 (30대 남성 기준) ---------- */
 const GOAL_KEY = 'gymlog.dailyGoal';
 let customGoal = (() => { try { return num(localStorage.getItem(GOAL_KEY)); } catch { return 0; } })();
-/** 목표: 직접 설정 > 몸무게 × 100 > 7,500kg */
+/** 목표: 직접 설정 > 몸무게 × 110 (500kg 단위 올림) — 90kg → 10,000kg */
 function dailyGoal(date) {
   if (customGoal > 0) return customGoal;
-  return Math.round((bodyweightOn(date) || 75) * 100);
+  return Math.ceil(((bodyweightOn(date) || 75) * 110) / 500) * 500;
 }
 const GRADES = [
   { min: 1.4, label: '🔥 불태움' },
@@ -1012,7 +1012,7 @@ restInput.value = restSeconds();
 restInput.addEventListener('change', () => setRestSeconds(restInput.value));
 const goalInput = $('#goal-input');
 goalInput.value = customGoal || '';
-goalInput.addEventListener('change', () => { setCustomGoal(goalInput.value); render(); toast(customGoal ? `하루 목표 ${fmtKg(customGoal)}` : '목표를 자동(몸무게 × 100)으로 바꿨어요'); });
+goalInput.addEventListener('change', () => { setCustomGoal(goalInput.value); render(); toast(customGoal ? `하루 목표 ${fmtKg(customGoal)}` : '목표를 자동(몸무게 × 110)으로 바꿨어요'); });
 updateGoalNote();
 
 const restTimer = (() => {
