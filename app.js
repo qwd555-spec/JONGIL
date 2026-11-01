@@ -15,6 +15,7 @@ const STORAGE_KEY = 'gymlog.v1';
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
 let db = load();
+let friendCustoms = [];        // 친구들이 직접 추가한 운동 [{ name, bw, by }]
 const BW_KEY = 'gymlog.bodyweight';
 let bwMap = (() => {           // 날짜 → 몸무게(kg)
   try { return JSON.parse(localStorage.getItem(BW_KEY)) || {}; } catch { return {}; }
@@ -354,6 +355,11 @@ function addExercise(name) {
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
   const sets = last ? last.sets.map((s) => ({ ...s })) : [isCardio ? { km: '', min: '' } : { w: '', r: '' }];
   const entry = { id: uid(), name, sets };
+  if (last && last.bw !== undefined) entry.bw = last.bw;
+  else if (!isCardio && !EXERCISES.some((e) => e.name === name)) {
+    const fc = friendCustoms.find((f) => f.name === name);
+    if (fc && fc.bw) entry.bw = 'bw';
+  }
   if (isCardio) entry.mode = CARDIO[name].kcalOnly ? 'watch' : last && last.mode ? last.mode : preferredCardioMode();
   (db[state.day] ||= []).push(entry);
   save();
@@ -375,7 +381,7 @@ function partOf(name) {
 }
 
 function renderPartChips() {
-  const parts = ['전체', '최근', ...EXERCISE_PARTS, '내 운동'];
+  const parts = ['전체', '최근', ...EXERCISE_PARTS, '내 운동', '친구 운동'];
   $('#part-chips').innerHTML = parts
     .map((p) => `<button type="button" class="chip ${p === picker.part ? 'active' : ''}" data-part="${p}">${p}</button>`)
     .join('');
@@ -411,10 +417,14 @@ function renderResults() {
   const custom = Object.keys(usage)
     .filter((n) => !EXERCISES.some((e) => e.name === n))
     .map((n) => ({ part: '내 운동', name: n, en: '', alias: [], custom: true }));
-  let pool = [...EXERCISES, ...custom];
+  const friends = friendCustoms
+    .filter((f) => !usage[f.name] && !EXERCISES.some((e) => e.name === f.name))
+    .map((f) => ({ part: '친구 운동', name: f.name, en: `${f.by} 님이 추가${f.bw ? ' · 맨몸' : ''}`, alias: [], custom: true, friend: true }));
+  let pool = [...EXERCISES, ...custom, ...friends];
 
   if (picker.part === '최근') pool = pool.filter((e) => usage[e.name]);
-  else if (picker.part === '내 운동') pool = pool.filter((e) => e.custom);
+  else if (picker.part === '내 운동') pool = pool.filter((e) => e.custom && !e.friend);
+  else if (picker.part === '친구 운동') pool = pool.filter((e) => e.friend);
   else if (picker.part !== '전체') pool = pool.filter((e) => e.part === picker.part);
 
   let items = pool
@@ -1100,6 +1110,29 @@ const social = (() => {
   let lastPublished = null;
   let period = 'week', metric = 'volume', bestEx = '';
   let openPerson = null;
+  function rebuildFriendCustoms() {
+    const map = new Map();
+    for (const [uid, doc] of Object.entries(members)) {
+      if (uid === myId) continue;
+      const items = Array.isArray(doc.custom) ? doc.custom : [];
+      for (const it of items) {
+        const name = String(it && it.n || '').trim().slice(0, 40);
+        if (!name || map.has(name)) continue;
+        map.set(name, { name, bw: !!it.bw, by: (members[uid] && members[uid].nick) || '친구' });
+      }
+    }
+    friendCustoms = [...map.values()];
+    if (!resultsEl.hidden) renderResults();
+  }
+  /** 내가 직접 추가한 운동 목록 (순위 데이터에 함께 실어 친구들과 공유) */
+  function myCustoms() {
+    const seen = new Map();
+    for (const d of Object.keys(db)) for (const ex of db[d]) {
+      if (EXERCISES.some((e) => e.name === ex.name)) continue;
+      seen.set(ex.name, bwType(ex) === 'bw' ? 1 : 0);
+    }
+    return [...seen.entries()].sort((a, b) => a[0].localeCompare(b[0], 'ko')).map(([n, bw]) => (bw ? { n, bw } : { n }));
+  }
   const SEEN_KEY = 'gymlog.feedSeen';
 
   function init(s, id) {
@@ -1112,9 +1145,10 @@ const social = (() => {
       snap.docs.forEach((d) => { if (d.exists) next[d.id] = d.data(); });
       members = next;
       Object.keys(members).forEach(subscribeComments);
+      rebuildFriendCustoms();
       if (members[myId] && !lastPublished) {
         const m = members[myId];
-        lastPublished = JSON.stringify({ nick: m.nick, days: m.days || {}, best: m.best || {}, cdays: m.cdays || {}, log: m.log || {} });
+        lastPublished = JSON.stringify({ nick: m.nick, days: m.days || {}, best: m.best || {}, cdays: m.cdays || {}, log: m.log || {}, custom: m.custom || [] });
       }
       refresh();
     }, () => { loaded = true; clearTimeout(t); failed = true; refresh(); });
@@ -1153,7 +1187,7 @@ const social = (() => {
         }
       }
     }
-    return { days, best, cdays, log: shareLog() ? recentLog(30) : {} };
+    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms() };
   }
 
   /* ---- 운동 내용 공유 (최근 30일) ---- */
@@ -1193,10 +1227,10 @@ const social = (() => {
     if (!store || !myId) return;
     const nick = nickOverride || myNick();
     if (!nick) return;                       // 참가 전에는 올리지 않음
-    const { days, best, cdays, log } = mySummary();
-    const key = JSON.stringify({ nick, days, best, cdays, log });
+    const { days, best, cdays, log, custom } = mySummary();
+    const key = JSON.stringify({ nick, days, best, cdays, log, custom });
     if (key === lastPublished) return;
-    await store.doc('board/' + myId).set({ nick, days, best, cdays, log, updatedAt: Date.now() });
+    await store.doc('board/' + myId).set({ nick, days, best, cdays, log, custom, updatedAt: Date.now() });
     lastPublished = key;
   }
 
