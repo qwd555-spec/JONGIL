@@ -798,3 +798,25 @@ body.modal-open { overflow: hidden; }
 .page-dots button.active { background: var(--ink); color: #fff; }
 .aw-desc { font-style: normal; font-size: 10.5px; color: var(--muted); margin: -3px 0 5px; }
 .aw-row.hero .aw-desc { color: rgba(255,255,255,.55); }
+/* 🏆 볼륨도르 */
+.dor-card { display: block; width: 100%; text-align: left; margin-bottom: 12px; padding: 18px 16px 14px; border-radius: 24px; color: #fff;
+  background: radial-gradient(120% 90% at 50% 0%, #3a3320 0%, #15130e 55%, #0c0c0d 100%); box-shadow: 0 18px 36px -18px rgba(0,0,0,.55); }
+.dor-card:active { transform: scale(.98); }
+.dor-head { display: flex; align-items: center; gap: 12px; }
+.dor-trophy { font-size: 34px; line-height: 1; filter: drop-shadow(0 4px 10px rgba(240,200,90,.45)); }
+.dor-head b { display: block; font-size: 21px; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(90deg, #f6dd8c, #e8b64c, #fff1c4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.dor-head small { font-size: 11px; color: rgba(255,255,255,.55); }
+.dor-podium { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: end; gap: 8px; margin-top: 16px; }
+.pod { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.pod b { font-size: 14px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pod small { font-size: 11px; color: rgba(255,255,255,.7); font-weight: 600; }
+.pod-medal { font-size: 24px; }
+.pod i { display: block; width: 100%; margin-top: 6px; border-radius: 12px 12px 4px 4px; background: rgba(255,255,255,.1); }
+.pod.p1 i { height: 64px; background: linear-gradient(180deg, rgba(240,200,90,.55), rgba(240,200,90,.12)); }
+.pod.p2 i { height: 44px; }
+.pod.p3 i { height: 30px; }
+.pod.p1 b { font-size: 16px; color: #f6dd8c; }
+.pod.me b::after { content: ' (나)'; font-size: 10px; color: var(--pink); }
+.dor-empty { margin: 14px 0 4px; font-size: 13px; color: rgba(255,255,255,.65); grid-column: 1 / -1; }
+.dor-me { display: block; margin-top: 10px; text-align: center; font-size: 12px; color: var(--pink); font-weight: 700; }
+.dor-me:empty { display: none; }
