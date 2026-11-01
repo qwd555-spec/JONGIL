@@ -326,7 +326,7 @@ EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
  *    (달리기는 속도와 상관없이 약 1kcal/kg/km 소모 — 운동생리학 일반식)
  * 2) 시간 기준(그 외):            소모 kcal ≈ (MET − 1) × 몸무게 × 시간(h)
  *    (MET: 2024 Compendium of Physical Activities 기준, 쉬는 상태 1MET는 뺀 순수 운동량)
- * scale: 종목별 보정 (풋살 0.7 = 30% 낮춤)
+ * timeScale: 시간 기준 계산일 때만 보정 (풋살 0.7 = 30% 낮춤)
  * 환산 볼륨 = 소모 kcal × 25
  *    (근력운동 1시간 ≈ 볼륨 1만kg ≈ 350kcal → 1kcal ≈ 25kg 으로 맞춤)
  */
@@ -348,8 +348,8 @@ const CARDIO = {
   '스키 에르그': { met: 8.0 },
   '줄넘기': { met: 11.0 },
   '수영': { met: 7.0, perKm: 3.0 },
-  '풋살': { met: 8.0, scale: 0.7 },   // 실제 뛰는 양 반영해 30% 낮춤
-  '축구': { met: 7.0 },
+  '풋살': { met: 8.0, perKm: 1.0, timeScale: 0.7 },   // 거리 입력 시 실제 뛴 거리로, 시간만 입력 시 30% 낮춤
+  '축구': { met: 7.0, perKm: 1.0 },
   '농구': { met: 6.5 },
   '배드민턴': { met: 5.5 },
   '테니스': { met: 7.3 },
