@@ -674,7 +674,7 @@ const restTimer = (() => {
     timeEl.textContent = fmt(left);
     const ratio = total ? Math.min(1, (endAt - Date.now()) / (total * 1000)) : 0;
     barEl.style.width = `${Math.max(0, ratio) * 100}%`;
-    ringEl.style.strokeDashoffset = String(125.66 * (1 - Math.max(0, ratio)));
+    ringEl.style.strokeDashoffset = String(578.05 * (1 - Math.max(0, ratio)));
     if (left === 0 && !finished) finish();
   }
   function finish() {
@@ -682,7 +682,10 @@ const restTimer = (() => {
     clearInterval(tickId);
     tickId = null;
     box.classList.add('done');
-    titleEl.textContent = '휴식 끝! 다음 세트 시작하세요 💪';
+    titleEl.textContent = '다음 세트 시작하세요 💪';
+    $('#rest-state').textContent = '휴식 끝!';
+    ringEl.style.strokeDashoffset = '0';
+    $('#rest-stop').textContent = '다음 세트 시작';
     timeEl.textContent = '0:00';
     vibrate();
     beep();
@@ -700,8 +703,10 @@ const restTimer = (() => {
     finished = false;
     titleEl.textContent = title;
     box.classList.remove('done');
+    $('#rest-state').textContent = '남은 휴식 시간';
+    $('#rest-stop').textContent = '휴식 건너뛰기';
     box.hidden = false;
-    document.body.classList.add('resting');
+    document.body.classList.add('modal-open');
     clearInterval(tickId);
     tickId = setInterval(tick, 250);
     keepAwake();
@@ -718,7 +723,7 @@ const restTimer = (() => {
     tickId = null;
     box.hidden = true;
     box.classList.remove('done');
-    document.body.classList.remove('resting');
+    document.body.classList.remove('modal-open');
     if ('vibrate' in navigator) navigator.vibrate(0);
     releaseWake();
   }
@@ -731,6 +736,8 @@ const restTimer = (() => {
   $('#rest-minus').addEventListener('click', () => adjust(-10));
   $('#rest-plus').addEventListener('click', () => adjust(10));
   $('#rest-stop').addEventListener('click', stop);
+  $('#rest-close').addEventListener('click', stop);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) stop(); });
   $('#rest-test').addEventListener('click', () => {
     unlockAudio();
     vibrate();

@@ -201,21 +201,28 @@
     </main>
   </div>
 
-  <!-- 휴식 타이머 -->
-  <div id="rest-timer" class="rest-timer" hidden>
-    <div class="rest-ring">
-      <svg viewBox="0 0 48 48"><circle class="ring-bg" cx="24" cy="24" r="20"/><circle class="ring-fg" id="rest-ring" cx="24" cy="24" r="20"/></svg>
-      <svg class="i"><use href="#i-timer"/></svg>
-    </div>
-    <div class="rest-info">
+  <!-- 휴식 타이머 팝업 -->
+  <div id="rest-timer" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="rest-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet">
+      <div class="rest-head">
+        <span class="rest-chip"><svg class="i"><use href="#i-timer"/></svg>휴식 타이머</span>
+        <button id="rest-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="rest-ring">
+        <svg viewBox="0 0 200 200"><circle class="ring-bg" cx="100" cy="100" r="92"/><circle class="ring-fg" id="rest-ring" cx="100" cy="100" r="92"/></svg>
+        <div class="rest-center">
+          <div class="rest-time" id="rest-time">1:00</div>
+          <div class="rest-state" id="rest-state">남은 휴식 시간</div>
+        </div>
+      </div>
       <div class="rest-title" id="rest-title">휴식 중</div>
-      <div class="rest-time" id="rest-time">1:00</div>
       <div class="rest-progress" hidden><div id="rest-progress-bar"></div></div>
-    </div>
-    <div class="rest-controls">
-      <button id="rest-minus" aria-label="10초 줄이기">-10</button>
-      <button id="rest-plus" aria-label="10초 늘리기">+10</button>
-      <button id="rest-stop" aria-label="종료"><svg class="i"><use href="#i-x"/></svg></button>
+      <div class="rest-controls">
+        <button id="rest-minus" class="rest-adj">-10초</button>
+        <button id="rest-plus" class="rest-adj">+10초</button>
+      </div>
+      <button id="rest-stop" class="rest-main">휴식 건너뛰기</button>
     </div>
   </div>
 
