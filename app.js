@@ -225,10 +225,14 @@ function cardioInfo(ex) {
 }
 const DEFAULT_BW = 70;
 /** 유산소 소모 kcal (순수 운동분) */
-/** 유산소 소모 kcal: ① 워치 칼로리 입력 > ② 거리 > ③ 시간 */
-function cardioKcal(set, info, bw) {
-  const wk = num(set.wkcal), km = num(set.km), min = num(set.min);
-  if (wk > 0) return wk;
+/** 유산소 기록 방식: 'calc' = 거리·시간으로 계산, 'watch' = 워치 칼로리 입력 */
+const CARDIO_MODE_KEY = 'gymlog.cardioMode';
+function cardioMode(ex) { return ex && ex.mode === 'watch' ? 'watch' : 'calc'; }
+function preferredCardioMode() { try { return localStorage.getItem(CARDIO_MODE_KEY) === 'watch' ? 'watch' : 'calc'; } catch { return 'calc'; } }
+/** 유산소 소모 kcal: 칼로리 방식은 워치 값 그대로, 계산 방식은 거리 > 시간 */
+function cardioKcal(set, info, bw, mode = 'calc') {
+  const km = num(set.km), min = num(set.min);
+  if (mode === 'watch') return num(set.wkcal);
   if (info.perKm && km > 0) return info.perKm * bw * km;
   return Math.max(0, info.met - 1) * bw * (min / 60) * (info.timeScale ?? 1);
 }
@@ -238,7 +242,7 @@ const cardioToVolume = (kcal, info) => kcal * CARDIO_KCAL_TO_VOLUME * (info.scal
 function stampCardio(set, ex, date) {
   const cinfo = cardioInfo(ex);
   if (!cinfo) return false;
-  const raw = cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW);
+  const raw = cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW, cardioMode(ex));
   const kcal = Math.round(raw);
   const vol = Math.round(cardioToVolume(raw, cinfo));
   if (set.kcal === kcal && set.vol === vol) return false;
@@ -247,7 +251,7 @@ function stampCardio(set, ex, date) {
 }
 function setVolume(set, ex, date) {
   const cinfo = cardioInfo(ex);
-  if (cinfo) return cardioToVolume(cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW), cinfo);
+  if (cinfo) return cardioToVolume(cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW, cardioMode(ex)), cinfo);
   const w = num(set.w), r = num(set.r);
   const type = bwType(ex);
   if (!type) return w * r;
@@ -349,7 +353,9 @@ function addExercise(name) {
   const last = findLastExercise(name, state.day);
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
   const sets = last ? last.sets.map((s) => ({ ...s })) : [isCardio ? { km: '', min: '' } : { w: '', r: '' }];
-  (db[state.day] ||= []).push({ id: uid(), name, sets });
+  const entry = { id: uid(), name, sets };
+  if (isCardio) entry.mode = last && last.mode ? last.mode : preferredCardioMode();
+  (db[state.day] ||= []).push(entry);
   save();
   renderDay();
   // 방금 추가한 운동 카드로 스크롤 + 무게칸 포커스
@@ -533,9 +539,21 @@ function renderDay() {
       chip.disabled = true;
       chip.textContent = bw ? `유산소 볼륨 · ${bw}kg 기준` : `유산소 볼륨 · ${DEFAULT_BW}kg 기준`;
       const th = node.querySelectorAll('thead th');
-      th[0].textContent = '회차'; th[1].textContent = 'km'; th[2].textContent = '분';
-      const kth = document.createElement('th'); kth.innerHTML = '⌚kcal'; kth.title = '애플워치 등에 찍힌 활동 칼로리';
-      th[2].after(kth);
+      const watch = cardioMode(ex) === 'watch';
+      th[0].textContent = '회차';
+      th[1].textContent = watch ? '분' : 'km';
+      th[2].textContent = watch ? '⌚kcal' : '분';
+      const toggle = document.createElement('div');
+      toggle.className = 'mode-toggle';
+      toggle.innerHTML = `<button type="button" data-mode="calc" class="${watch ? '' : 'active'}">거리·시간</button><button type="button" data-mode="watch" class="${watch ? 'active' : ''}">⌚ 칼로리 입력</button>`;
+      toggle.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+        if (b.dataset.mode === cardioMode(ex)) return;
+        ex.mode = b.dataset.mode;
+        try { localStorage.setItem(CARDIO_MODE_KEY, ex.mode); } catch { /* 없음 */ }
+        save();
+        renderDay();
+      }));
+      node.querySelector('.exercise-head').after(toggle);
       node.querySelector('.rest-btn').hidden = true;
       node.querySelector('.add-set').lastChild.textContent = '기록 추가';
       node.classList.add('cardio');
@@ -562,21 +580,21 @@ function renderDay() {
     if (cinfo) {
       cardioMeta = document.createElement('div');
       cardioMeta.className = 'cardio-meta';
-      node.querySelector('.exercise-head').after(cardioMeta);
+      (node.querySelector('.mode-toggle') || node.querySelector('.exercise-head')).after(cardioMeta);
     }
     const refreshTotals = () => {
       volEl.textContent = fmtKg(exerciseVolume(ex, state.day));
       if (cardioMeta) {
-        const km = ex.sets.reduce((a, x) => a + num(x.km), 0);
+        const km = cardioMode(ex) === 'watch' ? 0 : ex.sets.reduce((a, x) => a + num(x.km), 0);
         const min = ex.sets.reduce((a, x) => a + num(x.min), 0);
-        const kcal = ex.sets.reduce((a, x) => a + cardioKcal(x, cinfo, bodyweightOn(state.day) || DEFAULT_BW), 0);
+        const kcal = ex.sets.reduce((a, x) => a + cardioKcal(x, cinfo, bodyweightOn(state.day) || DEFAULT_BW, cardioMode(ex)), 0);
         const parts = [];
         if (km) parts.push(`${+km.toFixed(2)}km`);
         if (min) parts.push(min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60 ? `${min % 60}분` : ''}`.trim() : `${min}분`);
         if (km && min && cinfo.perKm) { const pace = min / km; parts.push(`페이스 ${Math.floor(pace)}'${String(Math.round((pace % 1) * 60)).padStart(2, '0')}"/km`); }
-        const head = parts.length ? parts.join(' · ') : (cinfo.perKm ? '거리(km)와 시간(분)을 입력하세요' : '운동한 시간(분)을 입력하세요');
+        const head = parts.length ? parts.join(' · ') : cardioMode(ex) === 'watch' ? '워치에 찍힌 활동 칼로리를 입력하세요' : (cinfo.perKm ? '거리(km)와 시간(분)을 입력하세요' : '운동한 시간(분)을 입력하세요');
         cardioMeta.innerHTML = `<div>${escapeHtml(head)}</div>` + (kcal
-          ? `<div class="conv"><span class="conv-pill">${ex.sets.some((x) => num(x.wkcal) > 0) ? '⌚ ' : ''}${Math.round(kcal).toLocaleString('ko-KR')} kcal</span><span class="conv-op">× ${CARDIO_KCAL_TO_VOLUME}${(cinfo.scale ?? 1) !== 1 ? ` × ${Math.round(cinfo.scale * 100)}%` : ''}</span><span class="conv-arrow">→</span><span class="conv-pill dark">${fmtKg(cardioToVolume(kcal, cinfo))}</span></div>`
+          ? `<div class="conv"><span class="conv-pill">${cardioMode(ex) === 'watch' ? '⌚ ' : ''}${Math.round(kcal).toLocaleString('ko-KR')} kcal</span><span class="conv-op">× ${CARDIO_KCAL_TO_VOLUME}${(cinfo.scale ?? 1) !== 1 ? ` × ${Math.round(cinfo.scale * 100)}%` : ''}</span><span class="conv-arrow">→</span><span class="conv-pill dark">${fmtKg(cardioToVolume(kcal, cinfo))}</span></div>`
           : '');
       }
       updateDaySummary();
@@ -585,9 +603,11 @@ function renderDay() {
     ex.sets.forEach((set, i) => {
       const tr = document.createElement('tr');
       const inputs = cinfo
-        ? `<td><input type="number" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
-        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>
+        ? (cardioMode(ex) === 'watch'
+          ? `<td><input type="number" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>
         <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.wkcal ?? ''}" data-k="wkcal" placeholder="워치" class="kcal-in" /></td>`
+          : `<td><input type="number" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>`)
         : `<td><input type="number" inputmode="decimal" min="0" step="0.5" value="${set.w ?? ''}" data-k="w" /></td>
         <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.r ?? ''}" data-k="r" /></td>`;
       tr.innerHTML = `
@@ -874,7 +894,7 @@ $('#export-csv-btn').addEventListener('click', () => {
   const rows = [['날짜', '운동', '세트', '무게(kg)', '횟수', '거리(km)', '시간(분)', '칼로리(kcal)', '볼륨(kg)']];
   for (const d of Object.keys(db).sort()) {
     for (const ex of db[d]) {
-      ex.sets.forEach((s, i) => rows.push([d, ex.name, i + 1, num(s.w), num(s.r), num(s.km), num(s.min), cardioInfo(ex) ? Math.round(cardioKcal(s, cardioInfo(ex), bodyweightOn(d) || DEFAULT_BW)) : '', Math.round(setVolume(s, ex, d))]));
+      ex.sets.forEach((s, i) => rows.push([d, ex.name, i + 1, num(s.w), num(s.r), num(s.km), num(s.min), cardioInfo(ex) ? Math.round(cardioKcal(s, cardioInfo(ex), bodyweightOn(d) || DEFAULT_BW, cardioMode(ex))) : '', Math.round(setVolume(s, ex, d))]));
     }
   }
   const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');

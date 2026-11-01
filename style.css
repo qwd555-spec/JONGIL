@@ -524,3 +524,6 @@ body.modal-open { overflow: hidden; }
 .exercise-card.cardio .sets input { font-size: 15px; padding: 0 2px; }
 .exercise-card.cardio .sets td.vol { width: 46px; font-size: 12px; }
 .kcal-in::placeholder { font-size: 12px; color: #b4b4bc; font-weight: 600; }
+.mode-toggle { display: flex; gap: 4px; padding: 4px; background: var(--layer); border-radius: 999px; margin: 0 0 8px; }
+.mode-toggle button { flex: 1; height: 36px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #6b6b74; }
+.mode-toggle button.active { background: var(--ink); color: #fff; }
