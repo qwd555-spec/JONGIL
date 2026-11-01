@@ -1017,6 +1017,46 @@ function renderPlan() {
     </div>`;
   }).join('') + (extra.length ? `<p class="plan-extra">계획 외: ${extra.map((p) => `${escapeHtml(p)} ${fmtKg(vols[p])}`).join(' · ')}</p>` : '');
 }
+/* ---------- 오늘의 칭호 (매일 랜덤, 그날 가장 많이 한 부위 기준) ---------- */
+const TITLES = {
+  '가슴': ['가슴 학살자', '대흉근 건축가', '벤치 위의 지배자', '강철 갑옷 가슴', '가슴으로 문 여는 자', '푸시의 신', '흉근 폭격기'],
+  '등': ['광배 날개 장착', '등짝 조각가', '풀업 머신', '데드리프트 수도승', '날다람쥐 광배', '등으로 말하는 남자', '견갑 마스터'],
+  '하체': ['크레인 허벅지', '스쿼트 지옥 생존자', '하체 폭격기', '계단이 무서운 자', '말벅지 제조기', '레그데이 탈주 실패', '대퇴사두 장군'],
+  '어깨': ['대포알 어깨', '삼각근 조각가', '어깨 깡패', '옷걸이 어깨', '문 옆으로 지나가는 자', '프레스 장인'],
+  '이두': ['알통 장인', '이두 폭발', '컬 중독자', '팔뚝 펌프왕', '반팔 찢는 자'],
+  '삼두': ['말굽 삼두', '삼두 저격수', '팔 뒤태 장인', '딥스 중독자', '삼두 망치'],
+  '전완': ['악력 괴물', '뽀빠이 팔뚝', '병뚜껑 파괴자', '그립의 신'],
+  '복근': ['초콜릿 공장장', '복근 장인', '코어 철벽', '식스팩 예약자', '플랭크 석상'],
+  '전신': ['전신 불도저', '인간 엔진', '올라운더', '쇳덩이 수집가', '헬스장 지박령'],
+  '유산소': ['심폐 괴물', '폐활량 무한', '땀샘 폭발', '러닝머신 지배자', '지칠 줄 모르는 자', '심박수 사냥꾼'],
+  '축구': ['그라운드의 지배자', '동네 메시', '풋살장 폭주기관차', '무릎은 소중해', '골문 앞 해결사', '아저씨 손흥민'],
+  '휴식': ['소파 수호자', '오늘은 충전 중', '근손실 걱정러', '휴식도 운동이다', '내일의 전설'],
+};
+function hashStr(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+/** items: [{n: 운동명, v: 볼륨, c: 유산소면 1}] → 칭호 문자열 */
+function titleFor(seed, date, items) {
+  const by = {};
+  for (const x of items || []) {
+    if (!x || !(num(x.v) > 0)) continue;
+    let p = x.c ? '유산소' : partOf(x.n);
+    if (x.c && /풋살|축구/.test(String(x.n))) p = '축구';
+    if (!TITLES[p] || p === '휴식') p = '전신';
+    by[p] = (by[p] || 0) + num(x.v);
+  }
+  const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
+  const pool = TITLES[top ? top[0] : '휴식'];
+  return pool[hashStr(`${seed}|${date}|${top ? top[0] : ''}`) % pool.length];
+}
+function myTitle(date) {
+  const items = (db[date] || []).map((ex) => ({ n: ex.name, v: exerciseVolume(ex, date), c: cardioInfo(ex) ? 1 : 0 }));
+  let seed = 'me';
+  try { seed = social.id() || 'me'; } catch {}
+  return titleFor(seed, date, items);
+}
 const GRADES = [
   { min: 1.4, label: '🔥 불태움' },
   { min: 1.0, label: '💪 잘했어요' },
@@ -1046,6 +1086,8 @@ function updateDaySummary() {
   const list = db[state.day] || [];
   const total = dayVolume(state.day);
   $('#day-total').textContent = fmtKg(total);
+  const tEl = $('#day-title');
+  if (tEl) { const has = total > 0; tEl.hidden = !has; if (has) tEl.innerHTML = `<span>오늘의 칭호</span><b>${escapeHtml(myTitle(state.day))}</b>`; }
   const goal = dailyGoal(state.day);
   const grade = gradeOf(total, goal);
   const pct = goal ? Math.round((total / goal) * 100) : 0;
@@ -1670,7 +1712,7 @@ const social = (() => {
       <button class="rank-row ${r.id === myId ? 'me' : ''}" data-id="${escapeHtml(r.id)}">
         <span class="rank-no">${i + 1}</span>
         <span class="rank-main">
-          <span class="rank-name">${escapeHtml(r.m.nick)}${r.id === myId ? '<span class="me-tag">나</span>' : ''}
+          <span class="rank-name">${escapeHtml(r.m.nick)}${r.id === myId ? '<span class="me-tag">나</span>' : ''}<span class="title-chip">${escapeHtml(titleOf(r.id, todayStr()))}</span>
             ${cmtCount[r.id] ? `<span class="rank-cmt"><svg class="i"><use href="#i-chat"/></svg>${cmtCount[r.id]}</span>` : ''}</span>
           <span class="rank-bar"><div style="width:${(r.value / max) * 100}%"></div></span>
         </span>
@@ -1720,7 +1762,7 @@ const social = (() => {
     const rows = ranking();
     const idx = rows.findIndex((r) => r.id === openPerson);
     $('#person-rank').textContent = `${periodLabel()} ${idx + 1}위`;
-    $('#person-name').textContent = m.nick + (openPerson === myId ? ' (나)' : '');
+    $('#person-name').innerHTML = `${escapeHtml(m.nick + (openPerson === myId ? ' (나)' : ''))}<span class="person-title">✦ ${escapeHtml(titleOf(openPerson, todayStr()))}</span>`;
     const days = {};
     for (const [d, v] of Object.entries(m.days || {})) days[d] = num(days[d]) + num(v);
     for (const [d, v] of Object.entries(m.cdays || {})) days[d] = num(days[d]) + num(v);
@@ -1946,6 +1988,16 @@ const social = (() => {
   const wasShared = (date) => !!sharedMap[date] || (comments[myId] || []).some((c) => c.kind === 'share' && c.date === date);
 
   /** 오늘 운동한 친구 (나 제외), 볼륨 큰 순 */
+  /** 친구의 그날 칭호 (공유 기록 기반, 기록 비공개면 볼륨만으로) */
+  function titleOf(id, date) {
+    const m = members[id];
+    if (!m) return '';
+    if (id === myId) return myTitle(date);
+    const v = num((m.days || {})[date]) + num((m.cdays || {})[date]);
+    const items = (m.log || {})[date];
+    if (Array.isArray(items) && items.length) return titleFor(id, date, items);
+    return titleFor(id, date, v > 0 ? [{ n: '', v, c: 0 }] : []);
+  }
   function activeToday() {
     const t = todayStr();
     return Object.entries(members)
@@ -1955,7 +2007,7 @@ const social = (() => {
       .sort((a, b) => b.v - a.v);
   }
 
-  return { init, publish, render, openShare, wasShared, activeToday, ready: () => ready };
+  return { init, publish, render, openShare, wasShared, activeToday, titleOf, id: () => myId, ready: () => ready };
 })();
 
 /* =========================================================
