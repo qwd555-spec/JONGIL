@@ -591,3 +591,23 @@ body.modal-open { overflow: hidden; }
 .is-closed .picker, .is-closed .card-actions, .is-closed .del-set, .is-closed .delete-exercise, .is-closed .mode-toggle, .is-closed .db-note { display: none; }
 .is-closed .sets input { background: transparent; color: var(--ink); opacity: 1; -webkit-text-fill-color: var(--ink); }
 .is-closed .exercise-card { box-shadow: 0 1px 2px rgba(20,20,30,.05); }
+
+/* 눈바디 */
+.photo-panel .panel-head small { font-weight: 500; margin-left: 4px; }
+.photo-add { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--r-md); border: 1.5px dashed #c8c8d0; text-align: left; }
+.photo-add .i { width: 26px; height: 26px; color: #6b6b74; }
+.photo-add span { display: flex; flex-direction: column; font-weight: 700; font-size: 15px; gap: 2px; }
+.photo-add small { font-weight: 500; }
+.photo-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.photo-grid.two { grid-template-columns: 1fr 1fr; }
+.photo-grid figure { margin: 0; position: relative; }
+.photo-grid img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 16px; display: block; background: var(--sheet); cursor: zoom-in; }
+.photo-grid:not(.two) img { aspect-ratio: auto; max-height: 420px; object-fit: contain; }
+.photo-grid figcaption { position: absolute; left: 8px; bottom: 8px; background: rgba(17,17,19,.72); color: #fff; font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 999px; }
+.photo-actions { display: flex; gap: 8px; margin-top: 10px; }
+.photo-actions button { flex: 1; height: 42px; border-radius: 999px; background: var(--raised); box-shadow: var(--shadow-raised); font-weight: 600; font-size: 14px; }
+.photo-actions .danger-text { color: var(--danger); }
+.photo-viewer { position: fixed; inset: 0; z-index: 70; background: rgba(10,10,12,.92); display: grid; place-items: center; padding: 20px; }
+.photo-viewer[hidden] { display: none; }
+.photo-viewer img { max-width: 100%; max-height: 100%; border-radius: 16px; }
+.photo-viewer .rest-close { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 16px); right: 16px; }

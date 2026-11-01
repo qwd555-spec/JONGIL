@@ -93,6 +93,12 @@
           <div class="plan-rows" id="plan-rows"></div>
         </div>
 
+        <div class="panel photo-panel" id="photo-panel">
+          <div class="panel-head"><span>눈바디 <small>하루 1장 · 나만 보기</small></span><svg class="i"><use href="#i-body"/></svg></div>
+          <div id="photo-body"></div>
+          <input type="file" id="photo-file" accept="image/*" hidden />
+        </div>
+
         <div class="closed-banner" id="closed-banner" hidden>
           <div><b>✓ 운동 마감</b><small id="closed-time"></small></div>
           <button id="reopen-btn" type="button">다시 열기</button>
@@ -340,6 +346,12 @@
   </div>
 
   <div id="toast" class="toast" hidden></div>
+
+  <!-- 사진 크게 보기 -->
+  <div id="photo-viewer" class="photo-viewer" hidden>
+    <img id="photo-viewer-img" alt="눈바디 사진" />
+    <button id="photo-viewer-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
 
   <!-- 친구 프로필 / 댓글 팝업 -->
   <div id="person-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="person-name">

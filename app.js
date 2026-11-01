@@ -128,14 +128,16 @@ const cloud = (() => {
           if (body.goal !== undefined) setCustomGoal(body.goal, false);
           if (body.plan && typeof body.plan === 'object') planMap = { ...planMap, ...body.plan };
           if (body.closed && typeof body.closed === 'object') closedMap = { ...closedMap, ...body.closed };
+          if (Array.isArray(body.photoDates)) photos.mergeDates(body.photoDates);
           if (body.bodyweight && typeof body.bodyweight === 'object') bwMap = { ...bwMap, ...body.bodyweight };
-          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {} });
+          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {}, photoDates: body.photoDates || [] });
         }
       }
       for (const [k, v] of Object.entries(remote)) synced[k] = JSON.stringify(v);
       // 클라우드 기록 우선, 이 브라우저에만 있던 날짜는 클라우드로 올림
       Object.assign(db, remote);
       col = c;
+      photos.attach(store.doc('data/users/' + id + '/photos').collection('items'));
       social.init(store, id);
       saveLocal();
       try { localStorage.setItem(BW_KEY, JSON.stringify(bwMap)); } catch { /* 없음 */ }
@@ -166,7 +168,7 @@ const cloud = (() => {
         if (cur === null) { await col.doc(k).delete(); delete synced[k]; }
         else { await col.doc(k).set({ list: JSON.parse(cur), updatedAt: Date.now() }); synced[k] = cur; }
       }
-      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap });
+      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap, photoDates: photos.dates() });
       if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
       try { await social.publish(); } catch { /* 순위 참가 권한 없음 → 개인 기록만 저장 */ }
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
@@ -555,7 +557,132 @@ function findLastExercise(name, beforeDate) {
   return null;
 }
 
+/* =========================================================
+ * 눈바디 사진 — 하루 1장, 본인만 (data/users/<id>/photos/items/<날짜>)
+ * 업로드 시 긴 변 900px JPEG로 줄여 저장
+ * ========================================================= */
+const photos = (() => {
+  const DATES_KEY = 'gymlog.photoDates';
+  let col = null;
+  let dateSet = new Set(Array.isArray(loadJson(DATES_KEY)) ? loadJson(DATES_KEY) : []);
+  const cache = {};            // 날짜 → dataURL | null
+  let shown = null;            // 현재 그려진 날짜+상태
+  const saveDates = () => { try { localStorage.setItem(DATES_KEY, JSON.stringify([...dateSet].sort())); } catch {} cloud.markDirty(); };
+  const localKey = (d) => 'gymlog.photo.' + d;
+  const cloudExpected = () => !!(window.claude && typeof window.claude.use === 'function') && !cloudGaveUp;
+  let cloudGaveUp = false;
+  setTimeout(() => { if (!col) { cloudGaveUp = true; shown = null; render(); } }, 12000);
+
+  function attach(c) { col = c; shown = null; render(); }
+  function mergeDates(list) { list.forEach((d) => DATE_RE.test(d) && dateSet.add(d)); shown = null; }
+  const dates = () => [...dateSet].sort();
+
+  async function get(date) {
+    if (date in cache) return cache[date];
+    let img = null;
+    if (col) {
+      try { const snap = await col.doc(date).get(); if (snap.exists) img = snap.data().img || null; } catch { /* 네트워크 */ }
+    }
+    if (!img) { try { img = localStorage.getItem(localKey(date)); } catch {} }
+    if (img || col || !cloudExpected()) cache[date] = img;   // 클라우드 연결 전이면 '없음'으로 확정하지 않음
+    return img;
+  }
+  async function put(date, dataUrl) {
+    if (col) await col.doc(date).set({ img: dataUrl, at: Date.now() });
+    else {
+      try { localStorage.setItem(localKey(date), dataUrl); }
+      catch { throw new Error('이 브라우저에 사진을 저장할 공간이 부족해요'); }
+    }
+    cache[date] = dataUrl; dateSet.add(date); saveDates();
+  }
+  async function remove(date) {
+    if (col) await col.doc(date).delete();
+    try { localStorage.removeItem(localKey(date)); } catch {}
+    cache[date] = null; dateSet.delete(date); saveDates();
+  }
+
+  function shrink(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const max = 900, r = Math.min(1, max / Math.max(img.width, img.height));
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(img.width * r); cv.height = Math.round(img.height * r);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        let q = 0.78, out = cv.toDataURL('image/jpeg', q);
+        while (out.length > 220000 && q > 0.4) { q -= 0.1; out = cv.toDataURL('image/jpeg', q); }
+        resolve(out);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('사진을 읽을 수 없어요')); };
+      img.src = url;
+    });
+  }
+
+  async function render(force) {
+    const date = state.day;
+    const key = date + '|' + dateSet.has(date) + '|' + (cache[date] ? 1 : 0);
+    if (!force && shown === key) return;
+    shown = key;
+    const body = $('#photo-body');
+    const prevDate = dates().filter((d) => d < date).pop();
+    if (!dateSet.has(date) && !(cache[date])) {
+      body.innerHTML = `<button type="button" class="photo-add" id="photo-add"><svg class="i"><use href="#i-body"/></svg><span>사진 올리기<small>${prevDate ? `지난 사진 ${escapeHtml(fmtDate(prevDate))}` : '거울 앞에서 같은 자세로 찍으면 비교하기 좋아요'}</small></span></button>`;
+      $('#photo-add').addEventListener('click', () => $('#photo-file').click());
+      return;
+    }
+    body.innerHTML = '<p class="empty-text">사진 불러오는 중…</p>';
+    const [img, prev] = await Promise.all([get(date), prevDate ? get(prevDate) : null]);
+    if (state.day !== date) return;
+    if (!img) {
+      if (!col && cloudExpected()) { body.innerHTML = '<p class="empty-text">사진 불러오는 중…</p>'; shown = null; return; }
+      dateSet.delete(date); saveDates(); shown = null; render(); return;
+    }
+    body.innerHTML = `
+      <div class="photo-grid ${prev ? 'two' : ''}">
+        ${prev ? `<figure><img src="${prev}" alt="" data-full="1" /><figcaption>${escapeHtml(fmtDate(prevDate))}</figcaption></figure>` : ''}
+        <figure><img src="${img}" alt="" data-full="1" /><figcaption>${escapeHtml(fmtDate(date))}${prev ? ' · 오늘' : ''}</figcaption></figure>
+      </div>
+      <div class="photo-actions">
+        <button type="button" id="photo-change">사진 바꾸기</button>
+        <button type="button" id="photo-del" class="danger-text">삭제</button>
+      </div>`;
+    body.querySelectorAll('img[data-full]').forEach((el) => el.addEventListener('click', () => {
+      $('#photo-viewer-img').src = el.src; $('#photo-viewer').hidden = false;
+    }));
+    $('#photo-change').addEventListener('click', () => $('#photo-file').click());
+    $('#photo-del').addEventListener('click', async () => {
+      if (!(await askConfirm('이 날짜 눈바디 사진을 삭제할까요?', { okText: '삭제', danger: true }))) return;
+      try { await remove(date); shown = null; render(); toast('사진을 삭제했어요'); } catch { toast('삭제하지 못했어요'); }
+    });
+  }
+
+  $('#photo-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const date = state.day;
+    try {
+      $('#photo-body').innerHTML = '<p class="empty-text">사진 올리는 중…</p>';
+      const dataUrl = await shrink(file);
+      await put(date, dataUrl);
+      shown = null; render();
+      toast('눈바디 사진 저장 완료 📸');
+    } catch (err) {
+      shown = null; render();
+      toast(err && err.message ? err.message : '사진을 저장하지 못했어요');
+    }
+  });
+  const closeViewer = () => { $('#photo-viewer').hidden = true; $('#photo-viewer-img').src = ''; };
+  $('#photo-viewer-close').addEventListener('click', closeViewer);
+  $('#photo-viewer').addEventListener('click', (e) => { if (e.target.id === 'photo-viewer') closeViewer(); });
+
+  return { attach, mergeDates, dates, render };
+})();
+
 function renderDay() {
+  photos.render();
   if ((db[state.day] || []).reduce((ch, ex) => ex.sets.reduce((c, st) => stampCardio(st, ex, state.day) || c, ch), false)) save();
   dayInput.value = state.day;
   const list = db[state.day] || [];
