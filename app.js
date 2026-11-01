@@ -218,7 +218,21 @@ function bwType(ex) {
   if (ex && ex.bw !== undefined) return ex.bw;
   return (typeof BODYWEIGHT_TYPE !== 'undefined' && BODYWEIGHT_TYPE[ex?.name]) || null;
 }
+/** 유산소/스포츠 정보 (없으면 null). 직접 추가한 운동은 ex.cardio 로 지정 */
+function cardioInfo(ex) {
+  if (ex && ex.cardio !== undefined) return ex.cardio;
+  return (typeof CARDIO !== 'undefined' && CARDIO[ex?.name]) || null;
+}
+const DEFAULT_BW = 70;
+/** 유산소 소모 kcal (순수 운동분) */
+function cardioKcal(set, info, bw) {
+  const km = num(set.km), min = num(set.min);
+  if (info.perKm && km > 0) return info.perKm * bw * km;
+  return Math.max(0, info.met - 1) * bw * (min / 60);
+}
 function setVolume(set, ex, date) {
+  const cinfo = cardioInfo(ex);
+  if (cinfo) return cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW) * CARDIO_KCAL_TO_VOLUME;
   const w = num(set.w), r = num(set.r);
   const type = bwType(ex);
   if (!type) return w * r;
@@ -237,11 +251,13 @@ function rangeStats(dates) {
     const list = db[d] || [];
     if (list.some((ex) => ex.sets.length)) days++;
     for (const ex of list) {
-      const e = (byEx[ex.name] ||= { volume: 0, sets: 0, reps: 0 });
+      const e = (byEx[ex.name] ||= { volume: 0, sets: 0, reps: 0, km: 0, min: 0 });
       for (const s of ex.sets) {
         e.volume += setVolume(s, ex, d);
         e.sets++;
         e.reps += num(s.r);
+        e.km += num(s.km);
+        e.min += num(s.min);
         sets++;
         reps += num(s.r);
       }
@@ -304,7 +320,8 @@ function addExercise(name) {
   if (!name) return;
   // 마지막으로 했던 같은 운동의 세트를 기본값으로 불러오기
   const last = findLastExercise(name, state.day);
-  const sets = last ? last.sets.map((s) => ({ ...s })) : [{ w: '', r: '' }];
+  const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
+  const sets = last ? last.sets.map((s) => ({ ...s })) : [isCardio ? { km: '', min: '' } : { w: '', r: '' }];
   (db[state.day] ||= []).push({ id: uid(), name, sets });
   save();
   renderDay();
@@ -478,9 +495,21 @@ function renderDay() {
     node.querySelector('.part-badge').textContent = partOf(ex.name);
     const volEl = node.querySelector('.exercise-volume');
     const type = bwType(ex);
+    const cinfo = cardioInfo(ex);
     const isCatalog = EXERCISES.some((e) => e.name === ex.name);
     const chip = node.querySelector('.bw-chip');
-    if (type || !isCatalog) {
+    if (cinfo) {
+      const bw = bodyweightOn(state.day);
+      chip.hidden = false;
+      chip.classList.add('on');
+      chip.disabled = true;
+      chip.textContent = bw ? `유산소 · ${bw}kg 기준` : `유산소 · ${DEFAULT_BW}kg 기준(몸무게 미입력)`;
+      const th = node.querySelectorAll('thead th');
+      th[0].textContent = '회차'; th[1].textContent = 'km'; th[2].textContent = '분';
+      node.querySelector('.rest-btn').hidden = true;
+      node.querySelector('.add-set').lastChild.textContent = '기록 추가';
+      node.classList.add('cardio');
+    } else if (type || !isCatalog) {
       chip.hidden = false;
       const bw = bodyweightOn(state.day);
       chip.classList.toggle('on', !!type);
@@ -499,17 +528,38 @@ function renderDay() {
     if (type) node.querySelector('thead th:nth-child(2)').textContent = type === 'assist' ? '보조kg' : '+kg';
     const tbody = node.querySelector('tbody');
 
+    let cardioMeta = null;
+    if (cinfo) {
+      cardioMeta = document.createElement('div');
+      cardioMeta.className = 'cardio-meta';
+      node.querySelector('.exercise-head').after(cardioMeta);
+    }
     const refreshTotals = () => {
       volEl.textContent = fmtKg(exerciseVolume(ex, state.day));
+      if (cardioMeta) {
+        const km = ex.sets.reduce((a, x) => a + num(x.km), 0);
+        const min = ex.sets.reduce((a, x) => a + num(x.min), 0);
+        const kcal = ex.sets.reduce((a, x) => a + cardioKcal(x, cinfo, bodyweightOn(state.day) || DEFAULT_BW), 0);
+        const parts = [];
+        if (km) parts.push(`${+km.toFixed(2)}km`);
+        if (min) parts.push(min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60 ? `${min % 60}분` : ''}`.trim() : `${min}분`);
+        if (km && min && cinfo.perKm) { const pace = min / km; parts.push(`페이스 ${Math.floor(pace)}'${String(Math.round((pace % 1) * 60)).padStart(2, '0')}"/km`); }
+        if (kcal) parts.push(`약 ${Math.round(kcal)}kcal`);
+        cardioMeta.textContent = parts.length ? parts.join(' · ') : (cinfo.perKm ? '거리(km)와 시간(분)을 입력하세요' : '운동한 시간(분)을 입력하세요');
+      }
       updateDaySummary();
     };
 
     ex.sets.forEach((set, i) => {
       const tr = document.createElement('tr');
+      const inputs = cinfo
+        ? `<td><input type="number" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>`
+        : `<td><input type="number" inputmode="decimal" min="0" step="0.5" value="${set.w ?? ''}" data-k="w" /></td>
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.r ?? ''}" data-k="r" /></td>`;
       tr.innerHTML = `
         <td><span class="set-no">${i + 1}</span></td>
-        <td><input type="number" inputmode="decimal" min="0" step="0.5" value="${set.w}" data-k="w" /></td>
-        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.r}" data-k="r" /></td>
+        ${inputs}
         <td class="vol">${fmtShort(setVolume(set, ex, state.day)) || '-'}</td>
         <td><button class="del-set" title="세트 삭제" aria-label="세트 삭제"><svg class="i"><use href="#i-x"/></svg></button></td>`;
       const volTd = tr.querySelector('.vol');
@@ -531,7 +581,7 @@ function renderDay() {
 
     node.querySelector('.add-set').addEventListener('click', () => {
       const prev = ex.sets[ex.sets.length - 1];
-      ex.sets.push(prev ? { ...prev } : { w: '', r: '' });
+      ex.sets.push(prev ? { ...prev } : cardioInfo(ex) ? { km: '', min: '' } : { w: '', r: '' });
       save();
       renderDay();
       // 새로 추가된 세트의 무게 입력칸에 포커스
@@ -707,7 +757,7 @@ function breakdownHtml(stats) {
   return entries.map(([name, e]) => `
     <div class="breakdown-row">
       <div class="breakdown-top">
-        <span>${escapeHtml(name)} <span class="meta">${e.sets}세트 · ${e.reps}회</span></span>
+        <span>${escapeHtml(name)} <span class="meta">${e.km || e.min ? [e.km ? `${+e.km.toFixed(1)}km` : '', e.min ? `${e.min}분` : ''].filter(Boolean).join(' · ') : `${e.sets}세트 · ${e.reps}회`}</span></span>
         <strong>${fmtKg(e.volume)}</strong>
       </div>
       <div class="breakdown-bar"><div style="width:${(e.volume / max) * 100}%"></div></div>
@@ -772,10 +822,10 @@ $('#export-btn').addEventListener('click', () => {
 });
 
 $('#export-csv-btn').addEventListener('click', () => {
-  const rows = [['날짜', '운동', '세트', '무게(kg)', '횟수', '볼륨']];
+  const rows = [['날짜', '운동', '세트', '무게(kg)', '횟수', '거리(km)', '시간(분)', '볼륨']];
   for (const d of Object.keys(db).sort()) {
     for (const ex of db[d]) {
-      ex.sets.forEach((s, i) => rows.push([d, ex.name, i + 1, num(s.w), num(s.r), setVolume(s, ex, d)]));
+      ex.sets.forEach((s, i) => rows.push([d, ex.name, i + 1, num(s.w), num(s.r), num(s.km), num(s.min), Math.round(setVolume(s, ex, d))]));
     }
   }
   const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -1016,7 +1066,7 @@ const social = (() => {
       const v = Math.round(dayVolume(d));
       if (v > 0) days[d] = v;
       for (const ex of db[d]) {
-        if (bwType(ex)) continue;
+        if (bwType(ex) || cardioInfo(ex)) continue;
         for (const st of ex.sets) {
           if (num(st.r) > 0 && num(st.w) > 0) best[ex.name] = Math.max(best[ex.name] || 0, num(st.w));
         }

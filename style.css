@@ -511,3 +511,6 @@ body.modal-open { overflow: hidden; }
 .cheer-row { display: flex; gap: 6px; margin-bottom: 8px; }
 .cheer { flex: 1; height: 40px; border-radius: 999px; background: var(--raised); box-shadow: var(--shadow-raised); font-size: 18px; }
 .tabbar .tab { padding: 0 12px; }
+.cardio-meta { margin: -2px 2px 8px; font-size: 13px; font-weight: 600; color: #4b4b53; background: var(--layer); padding: 9px 12px; border-radius: 12px; }
+.exercise-card.cardio .add-set { flex: 1; }
+.rest-btn[hidden] { display: none; }

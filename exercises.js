@@ -5,7 +5,7 @@
  * 형식: "부위|운동 이름|영문 이름|검색용 별칭(쉼표 구분)"
  * ========================================================= */
 
-const EXERCISE_PARTS = ['가슴', '등', '어깨', '하체', '이두', '삼두', '전완', '복근', '전신', '유산소'];
+const EXERCISE_PARTS = ['가슴', '등', '어깨', '하체', '이두', '삼두', '전완', '복근', '전신', '유산소', '스포츠'];
 
 const EXERCISE_DATA = `
 가슴|바벨 벤치프레스|Barbell Bench Press|벤치,벤치프레스,플랫벤치
@@ -244,6 +244,22 @@ const EXERCISE_DATA = `
 유산소|에어 바이크|Air Bike|어썰트바이크
 유산소|스키 에르그|Ski Erg|
 유산소|등산|Hiking|하이킹
+유산소|걷기|Walking|산책,워킹
+유산소|인터벌 러닝|Interval Running|인터벌,HIIT러닝
+유산소|야외 자전거|Cycling|라이딩,로드바이크
+스포츠|풋살|Futsal|풋살
+스포츠|축구|Soccer|
+스포츠|농구|Basketball|
+스포츠|배드민턴|Badminton|
+스포츠|테니스|Tennis|
+스포츠|탁구|Table Tennis|
+스포츠|클라이밍|Climbing|암벽,볼더링
+스포츠|복싱|Boxing|권투,스파링
+스포츠|주짓수|Jiu-Jitsu|
+스포츠|스쿼시|Squash|
+스포츠|골프|Golf|
+스포츠|요가|Yoga|
+스포츠|필라테스|Pilates|
 `;
 
 const EXERCISES = EXERCISE_DATA.trim().split('\n').map((line) => {
@@ -303,3 +319,46 @@ const BODYWEIGHT_TYPE = {};
 버피,박스 점프`.split(',').forEach((n) => { BODYWEIGHT_TYPE[n.trim()] = 'bw'; });
 ['어시스트 딥스', '어시스트 풀업 머신'].forEach((n) => { BODYWEIGHT_TYPE[n] = 'assist'; });
 EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
+
+/* ---------- 유산소 / 스포츠 환산 기준 ----------
+ * 기록: 거리(km) + 시간(분)
+ * 1) 거리 기준(perKm 있음, 거리 입력 시): 소모 kcal ≈ perKm × 몸무게 × km
+ *    (달리기는 속도와 상관없이 약 1kcal/kg/km 소모 — 운동생리학 일반식)
+ * 2) 시간 기준(그 외):            소모 kcal ≈ (MET − 1) × 몸무게 × 시간(h)
+ *    (MET: 2024 Compendium of Physical Activities 기준, 쉬는 상태 1MET는 뺀 순수 운동량)
+ * 환산 볼륨 = 소모 kcal × 25
+ *    (근력운동 1시간 ≈ 볼륨 1만kg ≈ 350kcal → 1kcal ≈ 25kg 으로 맞춤)
+ */
+const CARDIO_KCAL_TO_VOLUME = 25;
+const CARDIO = {
+  '러닝': { met: 9.8, perKm: 1.0 },
+  '트레드밀': { met: 9.0, perKm: 1.0 },
+  '인터벌 러닝': { met: 11.0, perKm: 1.05 },
+  '걷기': { met: 3.5, perKm: 0.5 },
+  '인클라인 워킹': { met: 6.0, perKm: 0.8 },
+  '등산': { met: 6.5, perKm: 0.9 },
+  '실내 사이클': { met: 7.0, perKm: 0.3 },
+  '야외 자전거': { met: 7.5, perKm: 0.3 },
+  '스핀 바이크': { met: 8.5, perKm: 0.3 },
+  '에어 바이크': { met: 10.0 },
+  '일립티컬': { met: 5.0 },
+  '천국의 계단': { met: 9.0 },
+  '로잉 머신': { met: 7.0, perKm: 0.8 },
+  '스키 에르그': { met: 8.0 },
+  '줄넘기': { met: 11.0 },
+  '수영': { met: 7.0, perKm: 3.0 },
+  '풋살': { met: 8.0 },
+  '축구': { met: 7.0 },
+  '농구': { met: 6.5 },
+  '배드민턴': { met: 5.5 },
+  '테니스': { met: 7.3 },
+  '탁구': { met: 4.0 },
+  '클라이밍': { met: 8.0 },
+  '복싱': { met: 7.8 },
+  '주짓수': { met: 7.8 },
+  '스쿼시': { met: 7.3 },
+  '골프': { met: 3.5 },
+  '요가': { met: 2.5 },
+  '필라테스': { met: 3.0 },
+};
+EXERCISES.forEach((e) => { e.cardio = CARDIO[e.name] || null; });
