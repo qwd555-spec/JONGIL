@@ -187,7 +187,7 @@
 
         <div class="panel join-card" id="rank-join" hidden>
           <div class="panel-head"><span>그룹에 참가하기</span><svg class="i"><use href="#i-trophy"/></svg></div>
-          <p class="hint" style="margin:0 2px 12px">친구들에게 보일 닉네임을 정하면 순위에 내 기록이 올라가요. 운동 세부 내용은 공개되지 않고 <b>날짜별 총볼륨·최고 중량</b>만 공유돼요.</p>
+          <p class="hint" style="margin:0 2px 12px">친구들에게 보일 닉네임을 정하면 순위에 내 기록이 올라가요. 친구들에게는 <b>날짜별 볼륨·최고 중량·최근 30일 운동 내용</b>이 보여요. 운동 내용 공개는 참가 후 끌 수 있어요.</p>
           <form id="join-form" class="join-form" autocomplete="off">
             <input type="text" id="join-nick" maxlength="12" placeholder="닉네임 (최대 12자)" required />
             <button type="submit">참가</button>
@@ -219,7 +219,7 @@
             </div>
             <select id="rank-exercise" class="rank-select" hidden></select>
             <div id="rank-list" class="rank-list"></div>
-            <p class="hint center">친구를 누르면 기록을 보고 댓글을 남길 수 있어요</p>
+            <p class="hint center">친구를 누르면 무슨 운동을 했는지 보고 댓글을 남길 수 있어요</p>
           </div>
 
           <div class="panel">
@@ -227,6 +227,10 @@
             <div id="feed-list" class="feed-list"></div>
           </div>
 
+          <label class="list-btn share-row">
+            <svg class="i"><use href="#i-list"/></svg><span>내 운동 내용 공개 <small>최근 30일</small></span>
+            <input type="checkbox" id="share-log" class="switch" />
+          </label>
           <button class="list-btn nick-btn" id="nick-change"><svg class="i"><use href="#i-settings"/></svg><span>닉네임 변경 <small id="my-nick"></small></span></button>
         </div>
       </section>
@@ -316,6 +320,7 @@
       <h3 class="person-name" id="person-name"></h3>
       <div class="person-stats" id="person-stats"></div>
       <div class="person-week" id="person-week"></div>
+      <div class="person-log" id="person-log"></div>
       <div class="person-comments" id="person-comments"></div>
       <div class="cheer-row">
         <button class="cheer" data-cheer="🔥">🔥</button>

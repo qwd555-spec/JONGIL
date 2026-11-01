@@ -1112,7 +1112,10 @@ const social = (() => {
       snap.docs.forEach((d) => { if (d.exists) next[d.id] = d.data(); });
       members = next;
       Object.keys(members).forEach(subscribeComments);
-      if (members[myId]) lastPublished = lastPublished || JSON.stringify(members[myId].days || {}) + JSON.stringify(members[myId].best || {}) + JSON.stringify(members[myId].cdays || {}) + members[myId].nick;
+      if (members[myId] && !lastPublished) {
+        const m = members[myId];
+        lastPublished = JSON.stringify({ nick: m.nick, days: m.days || {}, best: m.best || {}, cdays: m.cdays || {}, log: m.log || {} });
+      }
       refresh();
     }, () => { loaded = true; clearTimeout(t); failed = true; refresh(); });
   }
@@ -1150,16 +1153,50 @@ const social = (() => {
         }
       }
     }
-    return { days, best, cdays };
+    return { days, best, cdays, log: shareLog() ? recentLog(30) : {} };
+  }
+
+  /* ---- 운동 내용 공유 (최근 30일) ---- */
+  const SHARE_KEY = 'gymlog.shareLog';
+  function shareLog() { try { return localStorage.getItem(SHARE_KEY) !== 'off'; } catch { return true; } }
+  const kgStr = (w) => `${+num(w).toFixed(2)}kg`;
+  function describeSets(ex) {
+    const sets = ex.sets.filter((st) => num(st.r) > 0 || num(st.km) > 0 || num(st.min) > 0 || num(st.wkcal) > 0);
+    if (!sets.length) return '';
+    if (cardioInfo(ex)) {
+      return sets.map((st) => cardioMode(ex) === 'watch'
+        ? [num(st.min) ? `${num(st.min)}분` : '', num(st.wkcal) ? `⌚${num(st.wkcal)}kcal` : ''].filter(Boolean).join(' · ')
+        : [num(st.km) ? `${num(st.km)}km` : '', num(st.min) ? `${num(st.min)}분` : ''].filter(Boolean).join(' · ')).join(' / ');
+    }
+    const t = bwType(ex);
+    const groups = [];
+    for (const st of sets) {
+      const w = t === 'bw' ? (num(st.w) ? `맨몸+${kgStr(st.w)}` : '맨몸') : t === 'assist' ? `보조 ${kgStr(st.w)}` : kgStr(st.w);
+      const label = `${w} × ${num(st.r)}회`;
+      const g = groups[groups.length - 1];
+      if (g && g.label === label) g.n++; else groups.push({ label, n: 1 });
+    }
+    return groups.map((g) => g.n > 1 ? `${g.label} × ${g.n}세트` : g.label).join(', ');
+  }
+  function recentLog(daysBack) {
+    const from = addDays(todayStr(), -(daysBack - 1));
+    const log = {};
+    for (const d of Object.keys(db)) {
+      if (d < from) continue;
+      const items = db[d].map((ex) => ({ n: ex.name, d: describeSets(ex), v: Math.round(exerciseVolume(ex, d)), c: cardioInfo(ex) ? 1 : 0 }))
+        .filter((x) => x.d);
+      if (items.length) log[d] = items;
+    }
+    return log;
   }
   async function publish(nickOverride) {
     if (!store || !myId) return;
     const nick = nickOverride || myNick();
     if (!nick) return;                       // 참가 전에는 올리지 않음
-    const { days, best, cdays } = mySummary();
-    const key = JSON.stringify(days) + JSON.stringify(best) + JSON.stringify(cdays) + nick;
+    const { days, best, cdays, log } = mySummary();
+    const key = JSON.stringify({ nick, days, best, cdays, log });
     if (key === lastPublished) return;
-    await store.doc('board/' + myId).set({ nick, days, best, cdays, updatedAt: Date.now() });
+    await store.doc('board/' + myId).set({ nick, days, best, cdays, log, updatedAt: Date.now() });
     lastPublished = key;
   }
 
@@ -1265,6 +1302,7 @@ const social = (() => {
 
   function openProfile(id) {
     openPerson = id;
+    logDay = null;
     $('#person-modal').hidden = false;
     document.body.classList.add('modal-open');
     renderPerson();
@@ -1292,6 +1330,7 @@ const social = (() => {
     const vals = wk.map((d) => num(days[d]));
     const max = Math.max(...vals, 1);
     $('#person-week').innerHTML = wk.map((d, i) => `<div class="pw"><i class="${vals[i] ? '' : 'zero'}" style="height:${Math.max(6, (vals[i] / max) * 100)}%"></i>${WEEKDAYS[i]}</div>`).join('');
+    renderPersonLog(m);
 
     const list = allComments().filter((c) => c.to === openPerson).reverse();
     const box = $('#person-comments');
@@ -1305,6 +1344,27 @@ const social = (() => {
       try { await store.doc(`comments/${myId}/items/${b.dataset.id}`).delete(); } catch { toast('삭제하지 못했어요'); }
     }));
     box.scrollTop = box.scrollHeight;
+  }
+
+  let logDay = null;
+  function renderPersonLog(m) {
+    const box = $('#person-log');
+    const log = m.log || {};
+    const dates = Object.keys(log).sort().reverse().slice(0, 14);
+    if (!dates.length) {
+      box.innerHTML = `<p class="empty-text">${openPerson === myId && !shareLog() ? '운동 내용 공개가 꺼져 있어요' : '최근 30일 운동 내용이 없어요'}</p>`;
+      return;
+    }
+    if (!logDay || !dates.includes(logDay)) logDay = dates[0];
+    const items = Array.isArray(log[logDay]) ? log[logDay] : [];
+    box.innerHTML = `
+      <div class="log-dates">${dates.map((d) => `<button type="button" class="log-date ${d === logDay ? 'active' : ''}" data-d="${escapeHtml(d)}">${escapeHtml(fmtDate(d))}</button>`).join('')}</div>
+      <div class="log-items">${items.map((x) => `
+        <div class="log-item">
+          <div class="log-top"><b>${escapeHtml(x.n)}</b><span>${x.c ? '유산소 ' : ''}${fmtKg(num(x.v))}</span></div>
+          <div class="log-desc">${escapeHtml(x.d)}</div>
+        </div>`).join('')}</div>`;
+    box.querySelectorAll('.log-date').forEach((b) => b.addEventListener('click', () => { logDay = b.dataset.d; renderPersonLog(m); }));
   }
 
   async function sendComment(text) {
@@ -1348,6 +1408,12 @@ const social = (() => {
   $('#person-modal .rest-backdrop').addEventListener('click', closeProfile);
   $('#comment-form').addEventListener('submit', (e) => { e.preventDefault(); sendComment($('#comment-input').value); });
   document.querySelectorAll('.cheer').forEach((b) => b.addEventListener('click', () => sendComment(b.dataset.cheer)));
+  const shareToggle = $('#share-log');
+  shareToggle.checked = shareLog();
+  shareToggle.addEventListener('change', async () => {
+    try { localStorage.setItem(SHARE_KEY, shareToggle.checked ? 'on' : 'off'); } catch { /* 없음 */ }
+    try { await publish(); toast(shareToggle.checked ? '운동 내용을 친구들에게 공개해요' : '운동 내용을 비공개로 바꿨어요'); } catch { toast('저장하지 못했어요'); }
+  });
   $('#nick-change').addEventListener('click', () => {
     $('#rank-join').hidden = false;
     $('#join-nick').value = myNick();

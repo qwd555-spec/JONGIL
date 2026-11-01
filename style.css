@@ -532,3 +532,23 @@ body.modal-open { overflow: hidden; }
 .db-note { margin: -2px 2px 10px; padding: 9px 12px; border-radius: 12px; background: #fff4e5; color: #7a4a00; font-size: 12.5px; line-height: 1.5; }
 .db-note b { font-weight: 700; }
 .db-note span { color: #a06a1a; }
+/* 친구 운동 내용 */
+.person-log { margin-bottom: 10px; }
+.log-dates { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: none; }
+.log-dates::-webkit-scrollbar { display: none; }
+.log-date { flex-shrink: 0; padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: #5d5d66; background: var(--raised); box-shadow: 0 1px 2px rgba(20,20,30,.06); }
+.log-date.active { background: var(--ink); color: #fff; }
+.log-items { display: flex; flex-direction: column; gap: 6px; max-height: 26vh; overflow-y: auto; padding: 2px; }
+.log-item { background: var(--raised); border-radius: 14px; padding: 9px 12px; box-shadow: 0 1px 2px rgba(20,20,30,.05); }
+.log-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.log-top span { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 13px; }
+.log-desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+.person-sheet { overflow-y: auto; }
+.person-comments { max-height: 22vh; }
+
+.share-row { justify-content: flex-start; cursor: pointer; }
+.share-row span { flex: 1; }
+.switch { appearance: none; -webkit-appearance: none; width: 46px; height: 28px; border-radius: 999px; background: #d4d4da; position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; margin: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s; }
+.switch:checked { background: var(--ink); }
+.switch:checked::after { transform: translateX(18px); }
