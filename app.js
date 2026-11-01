@@ -1859,7 +1859,7 @@ const social = (() => {
     const pod = [dor[1], dor[0], dor[2]];
     $('#dor-title').textContent = `${periodPrefix()} 볼륨도르`;
     $('#dor-podium').innerHTML = dor.length ? pod.map((x, k) => x ? `<div class="pod p${[2, 1, 3][k]} ${x.id === myId ? 'me' : ''}">
-        <span class="pod-medal">${['🥈', '🥇', '🥉'][k]}</span><b>${escapeHtml(x.nick)}</b><small>${x.label}</small><i></i></div>` : '<div class="pod empty"></div>').join('')
+        <b>${escapeHtml(x.nick)}${x.id === myId ? '<em>나</em>' : ''}</b><small>${x.label}</small><i><span>${[2, 1, 3][k]}</span></i></div>` : '<div class="pod empty"></div>').join('')
       : '<p class="dor-empty">아직 기록이 없어요. 첫 볼륨도르의 주인공이 되어보세요!</p>';
     const myI = dor.findIndex((x) => x.id === myId);
     $('#dor-me').textContent = myI > 2 ? `나는 ${myI + 1}위 · ${dor[myI].label}` : myI === -1 && dor.length ? '나는 아직 기록 없음' : '';
