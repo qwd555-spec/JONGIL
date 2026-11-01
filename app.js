@@ -29,11 +29,126 @@ function load() {
     return {};
   }
 }
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch { /* 저장소 없음 */ }
+}
 function save() {
   // 빈 날짜는 정리
   for (const k of Object.keys(db)) if (!db[k] || db[k].length === 0) delete db[k];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  saveLocal();
+  cloud.markDirty();
 }
+
+/* ---------- 팝업 확인창 / 토스트 (alert·confirm 대체) ---------- */
+function askConfirm(message, { okText = '확인', danger = false } = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirm-modal');
+    const ok = document.getElementById('confirm-ok');
+    const cancel = document.getElementById('confirm-cancel');
+    document.getElementById('confirm-msg').textContent = message;
+    ok.textContent = okText;
+    ok.classList.toggle('danger', danger);
+    modal.hidden = false;
+    const done = (v) => {
+      modal.hidden = true;
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      modal.querySelector('.rest-backdrop').removeEventListener('click', onCancel);
+      resolve(v);
+    };
+    const onOk = () => done(true);
+    const onCancel = () => done(false);
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    modal.querySelector('.rest-backdrop').addEventListener('click', onCancel);
+  });
+}
+let toastTimer = null;
+function toast(message) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+
+/* ---------- 클라우드 동기화 (Claude 아티팩트에서 열었을 때만) ---------- */
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const cloud = (() => {
+  let col = null;
+  let synced = {};          // 날짜 → 마지막으로 클라우드에 저장된 JSON
+  let syncedSettings = null;
+  let timer = null, busy = false, again = false;
+  const status = (t) => { const el = document.getElementById('sync-status'); if (el) el.textContent = t; };
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
+
+  async function init() {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    try {
+      const [store, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      if (!store || !user) return;
+      const id = await user.id();
+      if (!id) return;
+      status('클라우드에서 기록을 불러오는 중…');
+      const c = store.collection('data/users/' + id);
+      const snap = await withTimeout(c.get(), 10000);
+      const remote = {};
+      for (const d of snap.docs) {
+        if (!d.exists) continue;
+        const body = d.data();
+        if (DATE_RE.test(d.id) && Array.isArray(body.list)) remote[d.id] = JSON.parse(JSON.stringify(body.list));
+        if (d.id === 'settings' && body.restSeconds) {
+          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds });
+          setRestSeconds(body.restSeconds, false);
+        }
+      }
+      for (const [k, v] of Object.entries(remote)) synced[k] = JSON.stringify(v);
+      // 클라우드 기록 우선, 이 브라우저에만 있던 날짜는 클라우드로 올림
+      Object.assign(db, remote);
+      col = c;
+      saveLocal();
+      render();
+      status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
+      markDirty();
+    } catch (e) {
+      col = null;
+      status('클라우드에 연결하지 못했어요. 지금은 이 브라우저에만 저장돼요.');
+    }
+  }
+
+  function markDirty() {
+    if (!col) return;
+    clearTimeout(timer);
+    timer = setTimeout(flush, 700);
+  }
+
+  async function flush() {
+    if (!col) return;
+    if (busy) { again = true; return; }
+    busy = true;
+    try {
+      const keys = new Set([...Object.keys(db), ...Object.keys(synced)]);
+      for (const k of keys) {
+        const cur = db[k] && db[k].length ? JSON.stringify(db[k]) : null;
+        if (cur === (synced[k] ?? null)) continue;
+        if (cur === null) { await col.doc(k).delete(); delete synced[k]; }
+        else { await col.doc(k).set({ list: JSON.parse(cur), updatedAt: Date.now() }); synced[k] = cur; }
+      }
+      const st = JSON.stringify({ restSeconds: restSeconds() });
+      if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
+      status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
+    } catch (e) {
+      status('클라우드 저장에 실패했어요. 이 브라우저에는 저장돼 있어요. 잠시 후 다시 시도해요.');
+      if (e && (e.code === 'unavailable' || e.code === 'resource_exhausted')) setTimeout(markDirty, 3000 + Math.random() * 2000);
+      if (e && e.code === 'quota_exceeded') toast('클라우드 저장 공간이 가득 찼어요');
+    } finally {
+      busy = false;
+      if (again) { again = false; flush(); }
+    }
+  }
+
+  return { init, markDirty };
+})();
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
@@ -381,8 +496,8 @@ function renderDay() {
       restTimer.start(`${ex.name} ${done}세트 기록 완료 · 휴식 중`);
     });
 
-    node.querySelector('.delete-exercise').addEventListener('click', () => {
-      if (!confirm(`"${ex.name}" 운동을 삭제할까요?`)) return;
+    node.querySelector('.delete-exercise').addEventListener('click', async () => {
+      if (!(await askConfirm(`"${ex.name}" 운동을 삭제할까요?`, { okText: '삭제', danger: true }))) return;
       db[state.day] = list.filter((e) => e !== ex);
       save();
       renderDay();
@@ -558,7 +673,22 @@ function render() {
 }
 
 /* ---------- 설정: 백업 ---------- */
-function download(filename, content, type) {
+async function download(filename, content, type) {
+  // Claude 아티팩트 안에서는 downloads 기능으로 저장
+  if (window.claude && typeof window.claude.use === 'function') {
+    try {
+      const dl = await window.claude.use('downloads');
+      if (dl) {
+        await dl.save({ filename, data: content });
+        toast('파일을 저장했어요');
+        return;
+      }
+    } catch (e) {
+      if (e && e.code === 'declined') return;
+      toast('이 화면에서는 파일 저장을 할 수 없어요');
+      return;
+    }
+  }
   const blob = new Blob([content], { type });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -591,20 +721,20 @@ $('#import-file').addEventListener('change', async (e) => {
     for (const [k, v] of Object.entries(data)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Array.isArray(v)) throw new Error('형식 오류');
     }
-    if (!confirm('가져온 데이터로 기존 기록을 덮어쓸까요?')) return;
+    if (!(await askConfirm('가져온 데이터로 기존 기록을 덮어쓸까요?', { okText: '덮어쓰기', danger: true }))) return;
     db = data;
     save();
-    alert('가져오기 완료!');
+    toast('가져오기 완료!');
     render();
   } catch (err) {
-    alert('파일을 읽을 수 없어요: ' + err.message);
+    toast('파일을 읽을 수 없어요: ' + err.message);
   } finally {
     e.target.value = '';
   }
 });
 
-$('#reset-btn').addEventListener('click', () => {
-  if (!confirm('정말 모든 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
+$('#reset-btn').addEventListener('click', async () => {
+  if (!(await askConfirm('정말 모든 기록을 삭제할까요?\n되돌릴 수 없어요.', { okText: '전부 삭제', danger: true }))) return;
   db = {};
   save();
   render();
@@ -613,16 +743,21 @@ $('#reset-btn').addEventListener('click', () => {
 /* ---------- 휴식 타이머 ---------- */
 const REST_KEY = 'gymlog.restSeconds';
 const restInput = $('#rest-seconds');
-function restSeconds() {
-  const v = parseInt(localStorage.getItem(REST_KEY), 10);
-  return Number.isFinite(v) && v > 0 ? v : 60;
+let restSec = (() => {
+  try {
+    const v = parseInt(localStorage.getItem(REST_KEY), 10);
+    return Number.isFinite(v) && v > 0 ? v : 60;
+  } catch { return 60; }
+})();
+function restSeconds() { return restSec; }
+function setRestSeconds(v, sync = true) {
+  restSec = Math.min(600, Math.max(5, parseInt(v, 10) || 60));
+  restInput.value = restSec;
+  try { localStorage.setItem(REST_KEY, restSec); } catch { /* 저장소 없음 */ }
+  if (sync) cloud.markDirty();
 }
 restInput.value = restSeconds();
-restInput.addEventListener('change', () => {
-  const v = Math.min(600, Math.max(5, parseInt(restInput.value, 10) || 60));
-  restInput.value = v;
-  localStorage.setItem(REST_KEY, v);
-});
+restInput.addEventListener('change', () => setRestSeconds(restInput.value));
 
 const restTimer = (() => {
   const box = $('#rest-timer');
@@ -742,7 +877,7 @@ const restTimer = (() => {
     unlockAudio();
     vibrate();
     beep();
-    if (!('vibrate' in navigator)) alert('이 브라우저는 진동을 지원하지 않아요. (소리로 알려드려요)');
+    if (!('vibrate' in navigator)) toast('이 브라우저는 진동을 지원하지 않아요 · 소리로 알려드려요');
   });
 
   return { start, stop };
@@ -750,3 +885,4 @@ const restTimer = (() => {
 
 renderPartChips();
 render();
+cloud.init();

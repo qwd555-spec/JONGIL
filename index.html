@@ -188,7 +188,7 @@
             <svg class="i"><use href="#i-upload"/></svg><span>JSON 가져오기</span>
             <input type="file" id="import-file" accept="application/json,.json" hidden />
           </label>
-          <p class="hint">기록은 이 브라우저에 저장돼요. 기기나 브라우저를 바꾸기 전에 백업하세요.</p>
+          <p class="hint" id="sync-status">기록은 이 브라우저에 저장돼요. 기기나 브라우저를 바꾸기 전에 백업하세요.</p>
         </div>
 
         <div class="panel">
@@ -225,6 +225,20 @@
       <button id="rest-stop" class="rest-main">휴식 건너뛰기</button>
     </div>
   </div>
+
+  <!-- 확인 팝업 -->
+  <div id="confirm-modal" class="rest-modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet confirm-sheet">
+      <p class="confirm-msg" id="confirm-msg"></p>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" class="rest-adj">취소</button>
+        <button id="confirm-ok" class="rest-main">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
 
   <!-- 하단 탭 -->
   <nav class="tabbar" role="tablist">

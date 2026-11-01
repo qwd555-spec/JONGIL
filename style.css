@@ -410,6 +410,25 @@ main {
 @keyframes beat { from { transform: scale(1); box-shadow: 0 0 0 0 rgba(233,140,230,0), var(--shadow-raised); } to { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(233,140,230,.35), var(--shadow-raised); } }
 body.modal-open { overflow: hidden; }
 
+/* ---------- 확인 팝업 / 토스트 ---------- */
+.confirm-sheet { padding: 26px 18px 18px; }
+.confirm-msg { margin: 0 6px 22px; font-size: 16px; font-weight: 600; line-height: 1.5; white-space: pre-line; }
+.confirm-actions { display: flex; gap: 8px; }
+.confirm-actions .rest-adj { flex: 1; height: 52px; }
+.confirm-actions .rest-main { flex: 1.4; width: auto; height: 52px; }
+.confirm-actions .rest-main.danger { background: var(--danger); }
+.toast {
+  position: fixed; z-index: 60; left: 50%; transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  max-width: calc(100% - 40px);
+  padding: 12px 18px; border-radius: 999px;
+  background: var(--ink); color: #fff; font-size: 14px; font-weight: 600;
+  box-shadow: 0 16px 30px -14px rgba(0,0,0,.6);
+  animation: toastIn .3s cubic-bezier(.2,.9,.25,1.1);
+}
+.toast[hidden] { display: none; }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
 @media (min-width: 520px) {
   .app { padding-top: 28px; }
 }
