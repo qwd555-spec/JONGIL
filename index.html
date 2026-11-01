@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111418" />
+  <title>헬스 볼륨 기록</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>💪 헬스 볼륨 기록</h1>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="day">일간</button>
+      <button class="tab" data-view="week">주간</button>
+      <button class="tab" data-view="month">월간</button>
+      <button class="tab" data-view="settings">설정</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 일간 -->
+    <section id="view-day" class="view active">
+      <div class="period-nav">
+        <button class="nav-btn" data-shift="-1" aria-label="이전 날">‹</button>
+        <input type="date" id="day-date" />
+        <button class="nav-btn" data-shift="1" aria-label="다음 날">›</button>
+        <button class="today-btn" id="day-today">오늘</button>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">오늘의 총 볼륨</div>
+        <div class="summary-value" id="day-total">0 kg</div>
+        <div class="summary-sub" id="day-sub"></div>
+      </div>
+
+      <form id="add-exercise-form" class="add-form" autocomplete="off">
+        <input type="text" id="exercise-name" list="exercise-list" placeholder="운동 이름 (예: 벤치프레스)" required />
+        <datalist id="exercise-list"></datalist>
+        <button type="submit">+ 운동 추가</button>
+      </form>
+
+      <div id="exercise-container"></div>
+      <p class="empty" id="day-empty">아직 기록이 없어요. 운동을 추가해보세요!</p>
+    </section>
+
+    <!-- 주간 -->
+    <section id="view-week" class="view">
+      <div class="period-nav">
+        <button class="nav-btn" data-shift="-1" aria-label="이전 주">‹</button>
+        <span class="period-label" id="week-label"></span>
+        <button class="nav-btn" data-shift="1" aria-label="다음 주">›</button>
+        <button class="today-btn" id="week-today">이번 주</button>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">주간 총 볼륨</div>
+        <div class="summary-value" id="week-total">0 kg</div>
+        <div class="summary-sub" id="week-sub"></div>
+      </div>
+
+      <div class="card">
+        <h3>요일별 볼륨</h3>
+        <div class="bar-chart" id="week-chart"></div>
+      </div>
+
+      <div class="card">
+        <h3>운동별 볼륨</h3>
+        <div id="week-breakdown"></div>
+      </div>
+    </section>
+
+    <!-- 월간 -->
+    <section id="view-month" class="view">
+      <div class="period-nav">
+        <button class="nav-btn" data-shift="-1" aria-label="이전 달">‹</button>
+        <span class="period-label" id="month-label"></span>
+        <button class="nav-btn" data-shift="1" aria-label="다음 달">›</button>
+        <button class="today-btn" id="month-today">이번 달</button>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">월간 총 볼륨</div>
+        <div class="summary-value" id="month-total">0 kg</div>
+        <div class="summary-sub" id="month-sub"></div>
+      </div>
+
+      <div class="card">
+        <h3>달력</h3>
+        <div class="calendar" id="month-calendar"></div>
+        <p class="hint">날짜를 누르면 해당 날 기록으로 이동해요.</p>
+      </div>
+
+      <div class="card">
+        <h3>주차별 볼륨</h3>
+        <div id="month-weeks"></div>
+      </div>
+
+      <div class="card">
+        <h3>운동별 볼륨</h3>
+        <div id="month-breakdown"></div>
+      </div>
+    </section>
+
+    <!-- 설정 -->
+    <section id="view-settings" class="view">
+      <div class="card">
+        <h3>데이터 백업</h3>
+        <p class="hint">기록은 이 브라우저(localStorage)에 저장돼요. 기기를 바꾸거나 브라우저 데이터를 지우기 전에 백업하세요.</p>
+        <div class="btn-row">
+          <button id="export-btn">JSON 내보내기</button>
+          <button id="export-csv-btn">CSV 내보내기</button>
+          <label class="file-btn">
+            JSON 가져오기
+            <input type="file" id="import-file" accept="application/json,.json" hidden />
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <h3>볼륨 계산 방법</h3>
+        <p class="hint">볼륨 = 무게(kg) × 횟수, 세트별로 합산합니다.<br />맨몸 운동은 무게를 0으로 두면 횟수만 기록돼요 (볼륨 0).</p>
+      </div>
+      <div class="card danger">
+        <h3>전체 삭제</h3>
+        <button id="reset-btn" class="danger-btn">모든 기록 삭제</button>
+      </div>
+    </section>
+  </main>
+
+  <template id="exercise-template">
+    <div class="exercise-card">
+      <div class="exercise-head">
+        <h4 class="exercise-name"></h4>
+        <span class="exercise-volume"></span>
+        <button class="icon-btn delete-exercise" title="운동 삭제">🗑</button>
+      </div>
+      <table class="sets">
+        <thead><tr><th>세트</th><th>무게(kg)</th><th>횟수</th><th>볼륨</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button class="add-set">+ 세트 추가</button>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
