@@ -1588,7 +1588,32 @@ const social = (() => {
         }
       }
     }
-    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms() };
+    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), mon: monthSummary() };
+  }
+  /* ---- 이달의 부위별 볼륨 · 러닝 거리 · 골 ---- */
+  const RUN_NAMES = ['러닝', '트레드밀', '인터벌 러닝'];
+  function monthSummary() {
+    const ym = todayStr().slice(0, 7);
+    const p = {};
+    let km = 0, goals = 0, days = 0;
+    for (const d of Object.keys(db)) {
+      if (d.slice(0, 7) !== ym) continue;
+      let any = false;
+      for (const ex of db[d]) {
+        const v = exerciseVolume(ex, d);
+        if (v > 0) any = true;
+        const info = cardioInfo(ex);
+        let part = info ? '유산소' : partOf(ex.name);
+        if (part === '이두' || part === '삼두' || part === '전완') part = '팔';
+        if (v > 0) p[part] = Math.round((p[part] || 0) + v);
+        if (info) for (const st of ex.sets) {
+          if (RUN_NAMES.includes(ex.name)) km += num(st.km);
+          goals += num(st.goals);
+        }
+      }
+      if (any) days++;
+    }
+    return { ym, p, km: +km.toFixed(1), goals, days };
   }
 
   /* ---- 운동 내용 공유 (최근 30일) ---- */
@@ -1634,10 +1659,10 @@ const social = (() => {
     if (!store || !myId) return;
     const nick = nickOverride || myNick();
     if (!nick) return;                       // 참가 전에는 올리지 않음
-    const { days, best, cdays, log, custom } = mySummary();
-    const key = JSON.stringify({ nick, days, best, cdays, log, custom });
+    const { days, best, cdays, log, custom, mon } = mySummary();
+    const key = JSON.stringify({ nick, days, best, cdays, log, custom, mon });
     if (key === lastPublished) return;
-    await store.doc('board/' + myId).set({ nick, days, best, cdays, log, custom, updatedAt: Date.now() });
+    await store.doc('board/' + myId).set({ nick, days, best, cdays, log, custom, mon, updatedAt: Date.now() });
     lastPublished = key;
   }
 
@@ -1691,6 +1716,54 @@ const social = (() => {
   }
 
   /* ---- 화면 ---- */
+  /* ---- 이달의 왕 (월간 부문별 1위) ---- */
+  const AWARDS = [
+    { k: 'total', icon: '👑', name: '월간 총 볼륨', get: (mo) => Object.values(mo.p || {}).reduce((a, v) => a + num(v), 0), fmt: fmtKg },
+    { k: '가슴', icon: '🛡️', name: '가슴 볼륨', get: (mo) => num((mo.p || {})['가슴']), fmt: fmtKg },
+    { k: '등', icon: '🦅', name: '등 볼륨', get: (mo) => num((mo.p || {})['등']), fmt: fmtKg },
+    { k: '하체', icon: '🦵', name: '하체 볼륨', get: (mo) => num((mo.p || {})['하체']), fmt: fmtKg },
+    { k: '어깨', icon: '🎯', name: '어깨 볼륨', get: (mo) => num((mo.p || {})['어깨']), fmt: fmtKg },
+    { k: '팔', icon: '💪', name: '팔 볼륨', get: (mo) => num((mo.p || {})['팔']), fmt: fmtKg },
+    { k: 'km', icon: '🏃', name: '이달의 마라토너', get: (mo) => num(mo.km), fmt: (v) => `${+v.toFixed(1)}km` },
+    { k: 'goals', icon: '⚽', name: '득점왕', get: (mo) => num(mo.goals), fmt: (v) => `${v}골` },
+    { k: 'days', icon: '📅', name: '개근왕', get: (mo) => num(mo.days), fmt: (v) => `${v}일` },
+  ];
+  // 아직 새 버전으로 기록을 안 올린 친구: 공유된 30일 기록으로 추정
+  function monFromLog(m, ym) {
+    const p = {};
+    let days = 0;
+    for (const [d, items] of Object.entries(m.log || {})) {
+      if (d.slice(0, 7) !== ym || !Array.isArray(items)) continue;
+      days++;
+      for (const x of items) {
+        let part = x.c ? '유산소' : partOf(x.n);
+        if (part === '이두' || part === '삼두' || part === '전완') part = '팔';
+        p[part] = (p[part] || 0) + num(x.v);
+      }
+    }
+    for (const d of new Set([...Object.keys(m.days || {}), ...Object.keys(m.cdays || {})])) {
+      if (d.slice(0, 7) === ym && !(m.log || {})[d]) { days++; p['기타'] = (p['기타'] || 0) + num((m.days || {})[d]) + num((m.cdays || {})[d]); }
+    }
+    return { ym, p, km: 0, goals: 0, days };
+  }
+  function renderAwards() {
+    const ym = todayStr().slice(0, 7);
+    $('#awards-month').textContent = `${+ym.slice(5)}월`;
+    const people = Object.entries(members).map(([id, m]) => ({ id, nick: m.nick, mo: id === myId ? monthSummary() : (m.mon && m.mon.ym === ym ? m.mon : monFromLog(m, ym)) }))
+      .filter((x) => x.mo && x.mo.ym === ym);
+    $('#awards-list').innerHTML = AWARDS.map((a) => {
+      const rows = people.map((x) => ({ ...x, v: a.get(x.mo) })).filter((x) => x.v > 0).sort((p, q) => q.v - p.v);
+      const top = rows[0];
+      const myIdx = rows.findIndex((x) => x.id === myId);
+      const meTxt = top && top.id === myId ? '<span class="aw-me win">나 🔥</span>' : myIdx > 0 ? `<span class="aw-me">나 ${myIdx + 1}위</span>` : '';
+      return `<button type="button" class="aw-row ${top ? '' : 'empty'}" ${top ? `data-id="${escapeHtml(top.id)}"` : ''}>
+        <span class="aw-icon">${a.icon}</span>
+        <span class="aw-main"><small>${a.name} 1위</small><b>${top ? escapeHtml(top.nick) : '아직 없음'}</b></span>
+        <span class="aw-val">${top ? a.fmt(top.v) : '-'}${meTxt}</span>
+      </button>`;
+    }).join('');
+    $('#awards-list').querySelectorAll('.aw-row[data-id]').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
+  }
   function render() {
     const unavailable = !store;
     $('#rank-unavailable').hidden = !(unavailable || failed);
@@ -1698,6 +1771,7 @@ const social = (() => {
     $('#rank-join').hidden = unavailable || failed || !ready || !!myNick();
     $('#rank-main').hidden = unavailable || failed || !ready || !myNick();
     if ($('#rank-main').hidden) return;
+    renderAwards();
     try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch {}
     updateDot();
     $('#rank-board').hidden = mode !== 'board';
