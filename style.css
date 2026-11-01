@@ -796,3 +796,5 @@ body.modal-open { overflow: hidden; }
 .page-dots { display: flex; justify-content: center; gap: 6px; margin: -4px 0 14px; }
 .page-dots button { font-size: 12px; font-weight: 600; color: var(--muted); padding: 5px 12px; border-radius: 999px; background: transparent; }
 .page-dots button.active { background: var(--ink); color: #fff; }
+.aw-desc { font-style: normal; font-size: 10.5px; color: var(--muted); margin: -3px 0 5px; }
+.aw-row.hero .aw-desc { color: rgba(255,255,255,.55); }

@@ -1789,31 +1789,30 @@ const social = (() => {
   }
   const pace = (v) => `${Math.floor(v)}'${String(Math.round((v % 1) * 60)).padStart(2, '0')}"/km`;
   const AWARDS = [
-    { icon: '👑', name: '볼륨 황제', desc: '총 볼륨', get: (S) => S.total, fmt: fmtKg, hero: true },
-    { icon: '🛡️', name: '갑빠왕', desc: '가슴 볼륨', get: (S) => num(S.p['가슴']), fmt: fmtKg },
-    { icon: '🦅', name: '광배 날개왕', desc: '등 볼륨', get: (S) => num(S.p['등']), fmt: fmtKg },
-    { icon: '🍗', name: '꿀벅지왕', desc: '하체 볼륨', get: (S) => num(S.p['하체']), fmt: fmtKg },
-    { icon: '🥥', name: '어깨깡패', desc: '어깨 볼륨', get: (S) => num(S.p['어깨']), fmt: fmtKg },
-    { icon: '💪', name: '알통왕', desc: '팔 볼륨 (이두·삼두·전완)', get: (S) => num(S.p['팔']), fmt: fmtKg },
-    { icon: '🏃', name: '마라토너', desc: '러닝 거리', get: (S) => S.km, fmt: (v) => `${+v.toFixed(1)}km` },
+    { icon: '👑', name: '볼륨왕', desc: '총 볼륨', get: (S) => S.total, fmt: fmtKg, hero: true },
+    { icon: '🛡️', name: '가슴왕', desc: '가슴 볼륨', get: (S) => num(S.p['가슴']), fmt: fmtKg },
+    { icon: '🦅', name: '등왕', desc: '등 볼륨', get: (S) => num(S.p['등']), fmt: fmtKg },
+    { icon: '🦵', name: '하체왕', desc: '하체 볼륨', get: (S) => num(S.p['하체']), fmt: fmtKg },
+    { icon: '🎯', name: '어깨왕', desc: '어깨 볼륨', get: (S) => num(S.p['어깨']), fmt: fmtKg },
+    { icon: '💪', name: '팔왕', desc: '팔 볼륨 (이두·삼두·전완)', get: (S) => num(S.p['팔']), fmt: fmtKg },
+    { icon: '🏃', name: '이봉주', desc: '러닝 거리', get: (S) => S.km, fmt: (v) => `${+v.toFixed(1)}km` },
     { icon: '⚽', name: '득점왕', desc: '풋살·축구 골', get: (S) => S.goals, fmt: (v) => `${v}골` },
     { icon: '📅', name: '출석왕', desc: '운동한 날 수', get: (S) => S.dates.size, fmt: (v) => `${v}일` },
     { icon: '🏅', name: '개근상', desc: '하루도 안 빠진 사람 전원', all: (S) => S.perfect, sub: (S) => `${S.dates.size}일째 개근`, none: '하루도 안 빠지면 받아요', meWin: '나도 받음 🎉' },
     { icon: '🛋️', name: '휴식왕', desc: '가장 많이 쉰 사람', get: (S) => S.rest, fmt: (v) => `${v}일 쉼`, ties: true, meWin: '나… 😅' },
   ];
   const FUN_AWARDS = [
-    { icon: '🐘', name: '코끼리왕', desc: '가장 무거운 한 세트', get: (S) => S.maxW, fmt: (v) => `${+v.toFixed(1)}kg` },
-    { icon: '🔁', name: '반복 장인', desc: '총 반복 횟수', get: (S) => S.reps, fmt: (v) => `${v.toLocaleString()}회` },
-    { icon: '💥', name: '원데이 폭발', desc: '하루 최고 볼륨', get: (S) => S.dayMax, fmt: fmtKg },
-    { icon: '🎯', name: '한우물 장인', desc: '한 종목 최고 볼륨', get: (S) => S.top, fmt: fmtKg },
-    { icon: '🍱', name: '잡식왕', desc: '해본 종목 수', get: (S) => S.names.size, fmt: (v) => `${v}종목` },
-    { icon: '🔥', name: '불꽃 출석', desc: '최장 연속 운동', get: (S) => S.streak, fmt: (v) => `${v}일 연속` },
-    { icon: '📈', name: '떡상왕', desc: '지난 기간보다 볼륨 증가율', get: (S) => S.growth, fmt: (v) => `+${v}%` },
-    { icon: '🏖️', name: '주말 전사', desc: '토·일 볼륨', get: (S) => S.weekend, fmt: fmtKg },
-    { icon: '⚡', name: '번개 다리', desc: '러닝 평균 페이스 (3km 이상)', get: (S) => S.pace, fmt: pace, low: true },
-    { icon: '🦉', name: '올빼미', desc: '밤 10시 넘어 운동한 날', get: (S) => S.late, fmt: (v) => `${v}번` },
-    { icon: '🐓', name: '새벽닭', desc: '오전 8시 전에 운동한 날', get: (S) => S.early, fmt: (v) => `${v}번` },
-    { icon: '📣', name: '응원단장', desc: '댓글·응원 많이 단 사람', get: (S) => S.cmt, fmt: (v) => `${v}개` },
+    { icon: '🏋️', name: '최고중량왕', desc: '가장 무거운 한 세트', get: (S) => S.maxW, fmt: (v) => `${+v.toFixed(1)}kg` },
+    { icon: '🔁', name: '횟수왕', desc: '총 반복 횟수', get: (S) => S.reps, fmt: (v) => `${v.toLocaleString()}회` },
+    { icon: '💥', name: '하루 볼륨왕', desc: '하루 최고 볼륨', get: (S) => S.dayMax, fmt: fmtKg },
+    { icon: '🍱', name: '종목왕', desc: '해본 종목 수', get: (S) => S.names.size, fmt: (v) => `${v}종목` },
+    { icon: '🔥', name: '연속 출석왕', desc: '최장 연속 운동', get: (S) => S.streak, fmt: (v) => `${v}일 연속` },
+    { icon: '📈', name: '성장왕', desc: '지난 기간보다 볼륨 증가율', get: (S) => S.growth, fmt: (v) => `+${v}%` },
+    { icon: '🏖️', name: '주말왕', desc: '토·일 볼륨', get: (S) => S.weekend, fmt: fmtKg },
+    { icon: '⚡', name: '페이스왕', desc: '러닝 평균 페이스 (3km 이상)', get: (S) => S.pace, fmt: pace, low: true },
+    { icon: '🌙', name: '야간 운동왕', desc: '밤 10시 넘어 운동한 날', get: (S) => S.late, fmt: (v) => `${v}번` },
+    { icon: '🌅', name: '새벽 운동왕', desc: '오전 8시 전에 운동한 날', get: (S) => S.early, fmt: (v) => `${v}번` },
+    { icon: '💬', name: '댓글왕', desc: '댓글·응원 많이 단 사람', get: (S) => S.cmt, fmt: (v) => `${v}개` },
     { icon: '🐔', name: '하체 도망자', desc: '3일 이상 운동했는데 하체 0', all: (S) => S.legSkip, sub: (S) => `${S.dates.size}일 운동 · 하체 0kg`, none: '모두 하체 했어요 👏', meWin: '나… 🐔' },
   ];
   const ALL_AWARDS = [...AWARDS, ...FUN_AWARDS];
@@ -1838,7 +1837,7 @@ const social = (() => {
     const second = !a.all && !a.ties && rows[1] ? `<span class="aw-next">2위 ${escapeHtml(rows[1].nick)}${rows[2] ? ` · 3위 ${escapeHtml(rows[2].nick)}` : ''}</span>` : '';
     return `<button type="button" class="aw-row ${a.hero ? 'hero' : ''} ${win.length ? '' : 'empty'}" data-aw="${idx}">
       <span class="aw-icon">${a.icon}</span>
-      <span class="aw-main"><small>${periodPrefix()}</small><strong>${a.name}</strong><b>${names}</b>${second}</span>
+      <span class="aw-main"><small>${periodPrefix()}</small><strong>${a.name}</strong><em class="aw-desc">${a.desc}</em><b>${names}</b>${second}</span>
       <span class="aw-val">${val}${meTxt}</span>
     </button>`;
   }
