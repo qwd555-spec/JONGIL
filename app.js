@@ -1446,6 +1446,7 @@ render();
  * 모두 읽을 수 있고, 각자 자기 것만 쓸 수 있음
  * ========================================================= */
 const social = (() => {
+  const openFolds = new Set(); // 피드에서 펼쳐둔 운동 상세
   let store = null, myId = null, ready = false, failed = false;
   let members = {};            // id → board 문서
   const comments = {};          // 작성자 id → [{id, to, text, at}]
@@ -1678,13 +1679,15 @@ const social = (() => {
     $('#rank-list').querySelectorAll('.rank-row').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
 
     const feed = allComments().slice(0, 30);
+    // 펼쳐둔 상세는 새로고침돼도 그대로
+    document.querySelectorAll('#feed-list details[data-fold]').forEach((d) => { d.open ? openFolds.add(d.dataset.fold) : openFolds.delete(d.dataset.fold); });
     $('#feed-list').innerHTML = feed.length ? feed.map((c) => c.kind === 'share' ? `
       <div class="feed-item share-post" data-from="${escapeHtml(c.from)}">
         <div class="feed-meta"><b>${escapeHtml(nickOf(c.from))}</b> 님이 운동을 공유했어요 · ${relTime(c.at)}
           ${c.from === myId ? `<button class="comment-del" data-del="${escapeHtml(c.id)}">삭제</button>` : ''}</div>
         <div class="share-sum">${escapeHtml(String(c.summary || ''))}</div>
         ${c.text ? `<div class="feed-text">${escapeHtml(c.text)}</div>` : ''}
-        ${Array.isArray(c.items) && c.items.length ? `<div class="share-items">${c.items.slice(0, 15).map((x) => `<div><b>${escapeHtml(String(x.n || ''))}</b> <span>${escapeHtml(String(x.d || ''))}</span></div>`).join('')}</div>` : ''}
+        ${Array.isArray(c.items) && c.items.length ? `<details class="share-fold" data-fold="${escapeHtml(c.from + '/' + c.id)}" ${openFolds.has(c.from + '/' + c.id) ? 'open' : ''}><summary><span>운동 ${c.items.length}개 상세 보기</span><svg class="i"><use href="#i-right"/></svg></summary><div class="share-items">${c.items.slice(0, 15).map((x) => `<div><b>${escapeHtml(String(x.n || ''))}</b> <span>${escapeHtml(String(x.d || ''))}</span></div>`).join('')}</div></details>` : ''}
         ${typeof c.img === 'string' && c.img.startsWith('data:image/') ? `<img class="share-img" src="${c.img}" alt="" />` : ''}
       </div>` : `
       <div class="feed-item">

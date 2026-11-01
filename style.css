@@ -716,3 +716,11 @@ body.modal-open { overflow: hidden; }
 #nightly-time { width: 110px; height: 40px; border: none; border-radius: 12px; background: var(--layer); font-weight: 700; font-size: 15px; text-align: center; color: var(--ink); }
 .sets input.detail-note { text-align: left; }
 .plan-chips .chip.auto.active::after { content: '자동'; margin-left: 4px; font-size: 10px; opacity: .65; font-weight: 500; }
+.share-fold { margin-top: 8px; }
+.share-fold summary { list-style: none; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; background: var(--layer); font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; user-select: none; }
+.share-fold summary::-webkit-details-marker { display: none; }
+.share-fold summary .i { width: 14px; height: 14px; transition: transform .2s; }
+.share-fold[open] summary .i { transform: rotate(90deg); }
+.share-fold[open] summary span::after { content: ' 접기'; }
+.share-fold[open] summary span { font-size: 0; }
+.share-fold[open] summary span::after { font-size: 12.5px; }
