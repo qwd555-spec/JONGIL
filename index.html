@@ -42,6 +42,7 @@
       <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7.5 4.5h9v5a4.5 4.5 0 0 1-9 0v-5Z"/><path d="M7.5 6.5H4.5a3 3 0 0 0 3 4M16.5 6.5h3a3 3 0 0 1-3 4M12 14v3.5M8.5 20h7M9.5 17.5h5"/></symbol>
       <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4 3.5v-3.5h-.5a2 2 0 0 1-2-2v-8Z"/></symbol>
       <symbol id="i-send" viewBox="0 0 24 24"><path d="m4.5 12 15-7.5-5 15-2.5-6-7.5-1.5Z"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
       <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></symbol>
     </defs>
   </svg>
@@ -220,6 +221,12 @@
         </div>
 
         <div id="rank-main" hidden>
+          <div class="mode-tabs" id="rank-mode">
+            <button data-mode="board" class="active"><svg class="i"><use href="#i-trophy"/></svg>순위 · 소식</button>
+            <button data-mode="photos"><svg class="i"><use href="#i-grid"/></svg>사진 피드</button>
+          </div>
+
+          <div id="rank-board">
           <div class="segmented" id="rank-period">
             <button data-period="week" class="active">이번 주</button>
             <button data-period="month">이번 달</button>
@@ -250,6 +257,16 @@
           <div class="panel">
             <div class="panel-head"><span>친구 소식 <small>운동 공유 · 응원 댓글</small></span><svg class="i"><use href="#i-chat"/></svg></div>
             <div id="feed-list" class="feed-list"></div>
+          </div>
+          </div>
+
+          <div id="photo-feed" hidden>
+            <div class="part-chips feed-chips" id="feed-chips">
+              <button class="chip active" data-src="friends">친구 공유</button>
+              <button class="chip" data-src="mine">내 눈바디 <small>나만</small></button>
+            </div>
+            <div class="photo-feed-grid" id="photo-feed-grid"></div>
+            <p class="hint center" id="photo-feed-hint"></p>
           </div>
 
           <label class="list-btn share-row">
@@ -363,6 +380,30 @@
       <label class="list-btn share-opt" id="share-opt-photo-row"><span>눈바디 사진 <small>이 사진만 친구에게 보여요</small></span><input type="checkbox" id="share-opt-photo" class="switch" /></label>
       <input type="text" id="share-text" class="share-text" maxlength="100" placeholder="한마디 (선택) · 오늘 하체 지옥이었다" />
       <button id="share-send" class="rest-main">공유하기</button>
+    </div>
+  </div>
+
+  <!-- 피드 게시물 -->
+  <div id="post-modal" class="rest-modal" hidden role="dialog" aria-modal="true">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet post-sheet">
+      <div class="rest-head">
+        <span class="rest-chip" id="post-who"></span>
+        <button id="post-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <img id="post-img" class="post-img" alt="" />
+      <div class="post-sum" id="post-sum"></div>
+      <div class="post-text" id="post-text"></div>
+      <div class="share-items" id="post-items"></div>
+      <div class="post-nav">
+        <button id="post-prev" type="button" aria-label="이전"><svg class="i"><use href="#i-left"/></svg></button>
+        <div class="cheer-row" id="post-cheers">
+          <button class="cheer" data-cheer="🔥">🔥</button>
+          <button class="cheer" data-cheer="💪">💪</button>
+          <button class="cheer" data-cheer="👏">👏</button>
+        </div>
+        <button id="post-next" type="button" aria-label="다음"><svg class="i"><use href="#i-right"/></svg></button>
+      </div>
     </div>
   </div>
 

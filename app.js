@@ -1573,6 +1573,9 @@ const social = (() => {
     if ($('#rank-main').hidden) return;
     try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch {}
     updateDot();
+    $('#rank-board').hidden = mode !== 'board';
+    $('#photo-feed').hidden = mode !== 'photos';
+    if (mode === 'photos') { renderPhotoFeed(); return; }
 
     // 운동 선택 (최고 중량)
     const exNames = [...new Set(Object.values(members).flatMap((m) => Object.keys(m.best || {})))].sort((a, b) => a.localeCompare(b, 'ko'));
@@ -1747,6 +1750,77 @@ const social = (() => {
     $('#join-nick').focus();
   });
   setInterval(() => { if (currentView() === 'rank') render(); }, 60000);
+
+  /* ---- 사진 피드 (셋로그처럼 사진만 모아보기) ---- */
+  let mode = 'board', feedSrc = 'friends', feedList = [], feedIdx = 0;
+  $('#rank-mode').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    $('#rank-mode').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+    render();
+  }));
+  $('#feed-chips').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
+    feedSrc = b.dataset.src;
+    $('#feed-chips').querySelectorAll('.chip').forEach((x) => x.classList.toggle('active', x === b));
+    renderPhotoFeed();
+  }));
+
+  async function renderPhotoFeed() {
+    const grid = $('#photo-feed-grid'), hint = $('#photo-feed-hint');
+    if (feedSrc === 'friends') {
+      feedList = allComments().filter((c) => c.kind === 'share' && typeof c.img === 'string' && c.img.startsWith('data:image/'))
+        .map((c) => ({ img: c.img, who: nickOf(c.from), from: c.from, date: c.date, summary: c.summary, text: c.text, items: c.items, at: c.at, mine: c.from === myId }));
+      hint.textContent = feedList.length ? '공유할 때 눈바디 사진을 켜면 여기에 모여요' : '아직 공유된 사진이 없어요. 운동 마감 → 친구에게 공유 → 눈바디 사진 켜기';
+    } else {
+      const ds = photos.dates().slice().reverse();
+      hint.textContent = ds.length ? '내 눈바디는 나만 볼 수 있어요' : '아직 올린 눈바디 사진이 없어요. 일간 화면에서 올려보세요';
+      grid.innerHTML = ds.map(() => '<div class="pf-cell loading"></div>').join('');
+      const imgs = await Promise.all(ds.map((d) => photos.get(d)));
+      if (feedSrc !== 'mine') return;
+      feedList = ds.map((d, i) => ({ img: imgs[i], who: '나', date: d, summary: `${fmtDate(d)} · ${fmtKg(dayVolume(d))}`, mine: true, own: true })).filter((x) => x.img);
+    }
+    grid.innerHTML = feedList.map((x, i) => `
+      <button type="button" class="pf-cell" data-i="${i}">
+        <img src="${x.img}" alt="" loading="lazy" />
+        <span class="pf-tag">${x.own ? escapeHtml(fmtDate(x.date)) : escapeHtml(x.who)}</span>
+      </button>`).join('');
+    grid.querySelectorAll('.pf-cell[data-i]').forEach((el) => el.addEventListener('click', () => openPost(+el.dataset.i)));
+  }
+
+  function openPost(i) {
+    feedIdx = (i + feedList.length) % feedList.length;
+    const x = feedList[feedIdx];
+    if (!x) return;
+    $('#post-who').textContent = x.own ? `내 눈바디 · ${fmtDate(x.date)}` : `${x.who} · ${x.at ? relTime(x.at) : ''}`;
+    $('#post-img').src = x.img;
+    $('#post-sum').textContent = String(x.summary || '');
+    $('#post-text').textContent = String(x.text || '');
+    $('#post-items').innerHTML = Array.isArray(x.items) ? x.items.slice(0, 15).map((it) => `<div><b>${escapeHtml(String(it.n || ''))}</b> <span>${escapeHtml(String(it.d || ''))}</span></div>`).join('') : '';
+    $('#post-cheers').hidden = !!x.mine;
+    $('#post-modal').hidden = false;
+    document.body.classList.add('modal-open');
+  }
+  function closePost() { $('#post-modal').hidden = true; document.body.classList.remove('modal-open'); }
+  $('#post-close').addEventListener('click', closePost);
+  $('#post-modal .rest-backdrop').addEventListener('click', closePost);
+  $('#post-prev').addEventListener('click', () => openPost(feedIdx - 1));
+  $('#post-next').addEventListener('click', () => openPost(feedIdx + 1));
+  $('#post-img').addEventListener('click', () => { $('#photo-viewer-img').src = $('#post-img').src; $('#photo-viewer').hidden = false; });
+  // 좌우 스와이프로 넘기기
+  let sx = null;
+  $('#post-img').addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
+  $('#post-img').addEventListener('touchend', (e) => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 50) openPost(feedIdx + (dx < 0 ? 1 : -1));
+  });
+  $('#post-cheers').querySelectorAll('.cheer').forEach((b) => b.addEventListener('click', async () => {
+    const x = feedList[feedIdx];
+    if (!x || x.mine || !store) return;
+    try {
+      await store.collection(`comments/${myId}/items`).add({ to: x.from, text: `${b.dataset.cheer} (${fmtDate(x.date)} 사진)`, at: Date.now() });
+      toast(`${x.who}님에게 ${b.dataset.cheer} 보냈어요`);
+    } catch { toast('보내지 못했어요'); }
+  }));
 
   /* ---- 운동 공유 ---- */
   let shareDate = null;

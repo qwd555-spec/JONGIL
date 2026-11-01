@@ -629,3 +629,29 @@ body.modal-open { overflow: hidden; }
 .share-items { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
 .share-items span { color: var(--muted); }
 .share-img { width: 100%; max-height: 360px; object-fit: cover; border-radius: 14px; margin-top: 8px; cursor: zoom-in; }
+
+/* 사진 피드 */
+.mode-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.mode-tabs button { flex: 1; height: 46px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 14px; color: #5d5d66; background: var(--layer); box-shadow: var(--shadow-layer); }
+.mode-tabs button.active { background: var(--ink); color: #fff; }
+.mode-tabs .i { width: 18px; height: 18px; }
+#rank-board[hidden], #photo-feed[hidden] { display: none; }
+.feed-chips { padding-top: 0; margin-bottom: 10px; }
+.feed-chips .chip small { color: inherit; opacity: .7; }
+.photo-feed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; border-radius: 18px; overflow: hidden; }
+.pf-cell { position: relative; aspect-ratio: 3 / 4; padding: 0; border-radius: 0; background: var(--sheet); overflow: hidden; }
+.pf-cell:active { transform: none; opacity: .85; }
+.pf-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pf-cell.loading { animation: shimmer 1.2s ease-in-out infinite alternate; }
+@keyframes shimmer { from { opacity: .5; } to { opacity: 1; } }
+.pf-tag { position: absolute; left: 5px; bottom: 5px; max-width: calc(100% - 10px); background: rgba(17,17,19,.7); color: #fff; font-size: 10.5px; font-weight: 700; padding: 3px 7px; border-radius: 999px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.post-sheet { text-align: left; max-height: calc(100vh - 40px); overflow-y: auto; }
+.post-img { width: 100%; max-height: 52vh; object-fit: contain; background: #0f0f11; border-radius: 20px; margin: 14px 0 10px; display: block; cursor: zoom-in; }
+.post-sum { font-weight: 800; font-size: 15px; margin: 0 4px; }
+.post-text { font-size: 14.5px; margin: 4px 4px 0; }
+.post-text:empty { display: none; }
+#post-items { margin: 6px 4px 0; }
+.post-nav { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.post-nav > button { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); box-shadow: var(--shadow-raised); flex-shrink: 0; }
+.post-nav .cheer-row { flex: 1; margin: 0; }
+.post-nav .cheer-row[hidden] { display: flex; visibility: hidden; }
