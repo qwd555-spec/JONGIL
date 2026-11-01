@@ -1751,17 +1751,51 @@ const social = (() => {
     $('#awards-month').textContent = `${+ym.slice(5)}월`;
     const people = Object.entries(members).map(([id, m]) => ({ id, nick: m.nick, mo: id === myId ? monthSummary() : (m.mon && m.mon.ym === ym ? m.mon : monFromLog(m, ym)) }))
       .filter((x) => x.mo && x.mo.ym === ym);
-    $('#awards-list').innerHTML = AWARDS.map((a) => {
+    // 운동한 날짜 (이번 달) — 출석 기반 상은 날짜로 계산
+    const today = todayStr(), dayNo = +today.slice(8);
+    const worked = (id) => {
+      const set = new Set();
+      if (id === myId) { for (const d of Object.keys(db)) if (d.slice(0, 7) === ym && dayVolume(d) > 0) set.add(d); }
+      else { const m = members[id]; for (const src of [m.days, m.cdays]) for (const [d, v] of Object.entries(src || {})) if (d.slice(0, 7) === ym && num(v) > 0) set.add(d); }
+      return set;
+    };
+    for (const x of people) { x.dates = worked(x.id); x.mo = { ...x.mo, days: Math.max(num(x.mo.days), x.dates.size) }; }
+    const card = (icon, title, top, nameHtml, val, meTxt) => `<button type="button" class="aw-row ${top ? '' : 'empty'}" ${top ? `data-id="${escapeHtml(top.id)}"` : ''}>
+        <span class="aw-icon">${icon}</span>
+        <span class="aw-main"><small>${title}</small><b>${nameHtml}</b></span>
+        <span class="aw-val">${val}${meTxt || ''}</span>
+      </button>`;
+    let html = AWARDS.map((a) => {
       const rows = people.map((x) => ({ ...x, v: a.get(x.mo) })).filter((x) => x.v > 0).sort((p, q) => q.v - p.v);
       const top = rows[0];
       const myIdx = rows.findIndex((x) => x.id === myId);
       const meTxt = top && top.id === myId ? '<span class="aw-me win">나 🔥</span>' : myIdx > 0 ? `<span class="aw-me">나 ${myIdx + 1}위</span>` : '';
-      return `<button type="button" class="aw-row ${top ? '' : 'empty'}" ${top ? `data-id="${escapeHtml(top.id)}"` : ''}>
-        <span class="aw-icon">${a.icon}</span>
-        <span class="aw-main"><small>${a.name} 1위</small><b>${top ? escapeHtml(top.nick) : '아직 없음'}</b></span>
-        <span class="aw-val">${top ? a.fmt(top.v) : '-'}${meTxt}</span>
-      </button>`;
+      return card(a.icon, `${a.name} 1위`, top, top ? escapeHtml(top.nick) : '아직 없음', top ? a.fmt(top.v) : '-', meTxt);
     }).join('');
+    // 🏅 개근상: 1일부터 어제까지 하루도 안 빠진 사람 전원 (오늘은 아직 안 해도 OK)
+    const perfect = people.filter((x) => {
+      if (!x.dates.size) return false;
+      for (let i = 1; i < dayNo; i++) if (!x.dates.has(`${ym}-${String(i).padStart(2, '0')}`)) return false;
+      return true;
+    });
+    const meP = perfect.some((x) => x.id === myId);
+    html += card('🏅', '개근상 · 하루도 안 빠짐', perfect[0],
+      perfect.length ? perfect.map((x) => escapeHtml(x.nick)).join('·') : '아직 없음',
+      perfect.length ? `${Math.max(...perfect.map((x) => x.dates.size))}일째 개근` : '하루도 안 빠지면 받아요',
+      meP ? '<span class="aw-me win">나도 받음 🎉</span>' : '');
+    // 🛋️ 휴식왕: 어제까지 쉰 날이 가장 많은 사람
+    const rests = people.map((x) => {
+      let r = 0;
+      for (let i = 1; i < dayNo; i++) if (!x.dates.has(`${ym}-${String(i).padStart(2, '0')}`)) r++;
+      return { ...x, v: r };
+    }).filter((x) => x.v > 0).sort((p, q) => q.v - p.v);
+    const rTop = rests[0], rMy = rests.findIndex((x) => x.id === myId);
+    const rTies = rTop ? rests.filter((x) => x.v === rTop.v) : [];
+    html += card('🛋️', '이달의 휴식왕', rTop,
+      rTop ? rTies.map((x) => escapeHtml(x.nick)).join('·') : '아직 없음',
+      rTop ? `${rTop.v}일 쉼` : '-',
+      rTop && rTies.some((x) => x.id === myId) ? '<span class="aw-me">나… 😅</span>' : rMy > 0 ? `<span class="aw-me">나 ${rMy + 1}위</span>` : '');
+    $('#awards-list').innerHTML = html;
     $('#awards-list').querySelectorAll('.aw-row[data-id]').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
   }
   function render() {
