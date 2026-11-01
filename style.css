@@ -104,9 +104,9 @@ main { max-width: 720px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
 .card h3 { margin: 0 0 12px; font-size: 16px; }
 .card.danger { border-color: #5c2b2b; }
 
-.add-form { display: flex; gap: 8px; margin-bottom: 14px; }
-.add-form input { flex: 1; }
-.add-form button { background: var(--accent-2); border-color: var(--accent-2); color: #08130c; font-weight: 700; white-space: nowrap; }
+
+
+
 
 .exercise-card {
   background: var(--card);
@@ -219,3 +219,33 @@ body.resting main { padding-bottom: 130px; }
 .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .setting-row input { width: 100px; text-align: center; }
 #rest-test { margin-top: 12px; }
+
+/* 운동 검색 / 목록 */
+.picker { padding: 12px; }
+.search-form { display: flex; align-items: center; gap: 8px; background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 0 0 0 10px; }
+.search-form:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; }
+.search-form input { flex: 1; border: none; background: none; padding: 12px 4px; outline: none; }
+.search-icon { font-size: 14px; opacity: .7; }
+.picker-toggle { border: none; border-left: 1px solid var(--border); border-radius: 0 10px 10px 0; font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+.part-chips { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 2px; scrollbar-width: none; }
+.part-chips::-webkit-scrollbar { display: none; }
+.chip { padding: 6px 12px; border-radius: 999px; font-size: 13px; white-space: nowrap; color: var(--muted); }
+.chip.active { background: var(--accent-2); border-color: var(--accent-2); color: #08130c; font-weight: 700; }
+
+.search-results { max-height: 50vh; overflow-y: auto; margin-top: 8px; border-top: 1px solid var(--border); }
+.result-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 10px 4px; }
+.result-item:active { background: var(--card-2); transform: none; }
+.result-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.result-name { font-weight: 600; }
+.result-name mark { background: none; color: var(--accent); }
+.result-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.add-mark { color: var(--accent); font-size: 18px; font-weight: 700; width: 20px; text-align: center; }
+.done-mark { color: var(--muted); width: 20px; text-align: center; }
+.custom-add .result-name { color: var(--accent); }
+.hint.center { text-align: center; padding: 8px 0; }
+
+.part-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.part-badge:empty { display: none; }
+.exercise-card.just-added { animation: pop .6s ease; }
+@keyframes pop { 0% { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,222,128,.3); } 100% { box-shadow: none; } }

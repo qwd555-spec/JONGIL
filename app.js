@@ -128,135 +128,7 @@ document.querySelectorAll('.tab').forEach((btn) =>
 function showView(view) {
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
-  /* ---------- 휴식 타이머 ---------- */
-const REST_KEY = 'gymlog.restSeconds';
-const restInput = $('#rest-seconds');
-function restSeconds() {
-  const v = parseInt(localStorage.getItem(REST_KEY), 10);
-  return Number.isFinite(v) && v > 0 ? v : 60;
-}
-restInput.value = restSeconds();
-restInput.addEventListener('change', () => {
-  const v = Math.min(600, Math.max(5, parseInt(restInput.value, 10) || 60));
-  restInput.value = v;
-  localStorage.setItem(REST_KEY, v);
-});
-
-const restTimer = (() => {
-  const box = $('#rest-timer');
-  const timeEl = $('#rest-time');
-  const titleEl = $('#rest-title');
-  const barEl = $('#rest-progress-bar');
-  let endAt = 0, total = 0, tickId = null, finished = false, audioCtx = null, wakeLock = null;
-
-  function unlockAudio() {
-    // 사용자 클릭 시점에 오디오를 열어둬야 모바일에서 나중에 소리가 남
-    try {
-      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch { /* 미지원 */ }
-  }
-  function beep() {
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    [0, 0.25, 0.5].forEach((dt) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.0001, t0 + dt);
-      gain.gain.exponentialRampToValueAtTime(0.4, t0 + dt + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.18);
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(t0 + dt);
-      osc.stop(t0 + dt + 0.2);
-    });
-  }
-  function vibrate() {
-    if ('vibrate' in navigator) navigator.vibrate([400, 150, 400, 150, 600]);
-  }
-  async function keepAwake() {
-    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* 미지원 */ }
-  }
-  function releaseWake() {
-    wakeLock?.release?.().catch(() => {});
-    wakeLock = null;
-  }
-  function fmt(sec) {
-    const m = Math.floor(sec / 60), s = sec % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-  }
-
-  function tick() {
-    const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
-    timeEl.textContent = fmt(left);
-    barEl.style.width = `${total ? (left / total) * 100 : 0}%`;
-    if (left === 0 && !finished) finish();
-  }
-  function finish() {
-    finished = true;
-    clearInterval(tickId);
-    tickId = null;
-    box.classList.add('done');
-    titleEl.textContent = '휴식 끝! 다음 세트 시작하세요 💪';
-    timeEl.textContent = '0:00';
-    vibrate();
-    beep();
-    releaseWake();
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-      try { new Notification('휴식 끝!', { body: '다음 세트 시작하세요 💪' }); } catch { /* 무시 */ }
-    }
-  }
-
-  function start(title) {
-    unlockAudio();
-    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
-    total = restSeconds();
-    endAt = Date.now() + total * 1000;
-    finished = false;
-    titleEl.textContent = title;
-    box.classList.remove('done');
-    box.hidden = false;
-    document.body.classList.add('resting');
-    clearInterval(tickId);
-    tickId = setInterval(tick, 250);
-    keepAwake();
-    tick();
-  }
-  function adjust(delta) {
-    if (finished) return;
-    endAt += delta * 1000;
-    total = Math.max(total + delta, 1);
-    tick();
-  }
-  function stop() {
-    clearInterval(tickId);
-    tickId = null;
-    box.hidden = true;
-    box.classList.remove('done');
-    document.body.classList.remove('resting');
-    if ('vibrate' in navigator) navigator.vibrate(0);
-    releaseWake();
-  }
-
-  // 백그라운드에서 돌아왔을 때 즉시 갱신
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !box.hidden && !finished) { tick(); keepAwake(); }
-  });
-
-  $('#rest-minus').addEventListener('click', () => adjust(-10));
-  $('#rest-plus').addEventListener('click', () => adjust(10));
-  $('#rest-stop').addEventListener('click', stop);
-  $('#rest-test').addEventListener('click', () => {
-    unlockAudio();
-    vibrate();
-    beep();
-    if (!('vibrate' in navigator)) alert('이 브라우저는 진동을 지원하지 않아요. (소리로 알려드려요)');
-  });
-
-  return { start, stop };
-})();
-
-render();
+  render();
 }
 function currentView() {
   return document.querySelector('.tab.active').dataset.view;
@@ -272,18 +144,158 @@ $('#view-day').querySelectorAll('.nav-btn').forEach((b) =>
 );
 $('#day-today').addEventListener('click', () => { state.day = todayStr(); renderDay(); });
 
-$('#add-exercise-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const input = $('#exercise-name');
-  const name = input.value.trim();
+function addExercise(name) {
+  name = name.trim();
   if (!name) return;
   // 마지막으로 했던 같은 운동의 세트를 기본값으로 불러오기
   const last = findLastExercise(name, state.day);
   const sets = last ? last.sets.map((s) => ({ ...s })) : [{ w: '', r: '' }];
   (db[state.day] ||= []).push({ id: uid(), name, sets });
   save();
-  input.value = '';
   renderDay();
+  // 방금 추가한 운동 카드로 스크롤 + 무게칸 포커스
+  const cards = document.querySelectorAll('#exercise-container .exercise-card');
+  const card = cards[cards.length - 1];
+  card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card?.classList.add('just-added');
+}
+
+/* ---------- 운동 검색 / 목록 ---------- */
+const picker = { part: '전체', open: false };
+const searchInput = $('#exercise-search');
+const resultsEl = $('#search-results');
+
+function partOf(name) {
+  return EXERCISES.find((e) => e.name === name)?.part || '내 운동';
+}
+
+function renderPartChips() {
+  const parts = ['전체', '최근', ...EXERCISE_PARTS, '내 운동'];
+  $('#part-chips').innerHTML = parts
+    .map((p) => `<button type="button" class="chip ${p === picker.part ? 'active' : ''}" data-part="${p}">${p}</button>`)
+    .join('');
+  $('#part-chips').querySelectorAll('.chip').forEach((c) =>
+    c.addEventListener('click', () => {
+      picker.part = c.dataset.part;
+      picker.open = true;
+      renderPartChips();
+      renderResults();
+    })
+  );
+}
+
+/** 최근 사용 순서 (최신 먼저) + 사용 횟수 */
+function usageInfo() {
+  const info = {};
+  for (const d of Object.keys(db).sort()) {
+    for (const ex of db[d]) {
+      const u = (info[ex.name] ||= { count: 0, last: '' });
+      u.count++;
+      u.last = d;
+    }
+  }
+  return info;
+}
+
+function renderResults() {
+  const q = searchInput.value.trim();
+  if (!picker.open && !q) { resultsEl.hidden = true; return; }
+
+  const usage = usageInfo();
+  // 카탈로그 + 직접 추가했던 운동
+  const custom = Object.keys(usage)
+    .filter((n) => !EXERCISES.some((e) => e.name === n))
+    .map((n) => ({ part: '내 운동', name: n, en: '', alias: [], custom: true }));
+  let pool = [...EXERCISES, ...custom];
+
+  if (picker.part === '최근') pool = pool.filter((e) => usage[e.name]);
+  else if (picker.part === '내 운동') pool = pool.filter((e) => e.custom);
+  else if (picker.part !== '전체') pool = pool.filter((e) => e.part === picker.part);
+
+  let items = pool
+    .map((e) => ({ e, score: matchScore(e, q) }))
+    .filter((x) => x.score > 0);
+
+  items.sort((a, b) => {
+    if (picker.part === '최근' && !q) return usage[b.e.name].last.localeCompare(usage[a.e.name].last);
+    if (b.score !== a.score) return b.score - a.score;
+    const ua = usage[a.e.name]?.count || 0, ub = usage[b.e.name]?.count || 0;
+    return ub - ua;
+  });
+
+  const limit = q || picker.part !== '전체' ? 60 : 40;
+  const total = items.length;
+  items = items.slice(0, limit);
+
+  const today = new Set((db[state.day] || []).map((e) => e.name));
+  let html = items.map(({ e }) => {
+    const u = usage[e.name];
+    return `
+      <button type="button" class="result-item" data-name="${escapeHtml(e.name)}">
+        <span class="result-main">
+          <span class="result-name">${highlight(e.name, q)}</span>
+          <span class="result-sub">${escapeHtml(e.en || '직접 추가한 운동')}${u ? ` · ${u.count}회 기록` : ''}</span>
+        </span>
+        <span class="part-badge">${e.part}</span>
+        ${today.has(e.name) ? '<span class="done-mark">✓</span>' : '<span class="add-mark">＋</span>'}
+      </button>`;
+  }).join('');
+
+  if (total > limit) html += `<p class="hint center">외 ${total - limit}개 · 검색어를 더 입력해보세요</p>`;
+  if (!items.length && picker.part !== '전체' && !q) html += '<p class="hint center">아직 없어요.</p>';
+  if (q && !items.some((x) => x.score >= 90)) {
+    html += `<button type="button" class="result-item custom-add" data-name="${escapeHtml(q)}">
+      <span class="result-main"><span class="result-name">"${escapeHtml(q)}" 직접 추가</span>
+      <span class="result-sub">목록에 없는 운동을 새로 기록해요</span></span><span class="add-mark">＋</span></button>`;
+  }
+
+  resultsEl.innerHTML = html;
+  resultsEl.hidden = false;
+  resultsEl.querySelectorAll('.result-item').forEach((b) =>
+    b.addEventListener('click', () => pickExercise(b.dataset.name))
+  );
+}
+
+function highlight(name, q) {
+  const n = normalize(q);
+  if (!n) return escapeHtml(name);
+  // 띄어쓰기 무시하고 원문에서 일치 구간 찾기
+  const chars = [...name];
+  const idxMap = [];
+  let flat = '';
+  chars.forEach((c, i) => { if (!/[\s\-_'·]/.test(c)) { flat += c.toLowerCase(); idxMap.push(i); } });
+  const pos = flat.indexOf(n);
+  if (pos < 0) return escapeHtml(name);
+  const s = idxMap[pos], e = idxMap[pos + n.length - 1] + 1;
+  return escapeHtml(chars.slice(0, s).join('')) + '<mark>' + escapeHtml(chars.slice(s, e).join('')) + '</mark>' + escapeHtml(chars.slice(e).join(''));
+}
+
+function pickExercise(name) {
+  searchInput.value = '';
+  picker.open = false;
+  updateToggle();
+  resultsEl.hidden = true;
+  searchInput.blur();
+  addExercise(name);
+}
+
+function updateToggle() {
+  $('#picker-toggle').textContent = picker.open ? '닫기 ▴' : '목록 ▾';
+}
+
+searchInput.addEventListener('input', renderResults);
+searchInput.addEventListener('focus', () => { picker.open = true; updateToggle(); renderResults(); });
+$('#picker-toggle').addEventListener('click', () => {
+  picker.open = !picker.open;
+  if (!picker.open) searchInput.value = '';
+  updateToggle();
+  renderResults();
+});
+$('#add-exercise-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  // 엔터: 첫 번째 결과 선택
+  const first = resultsEl.querySelector('.result-item');
+  if (first) pickExercise(first.dataset.name);
 });
 
 function findLastExercise(name, beforeDate) {
@@ -293,12 +305,6 @@ function findLastExercise(name, beforeDate) {
     if (ex) return ex;
   }
   return null;
-}
-
-function allExerciseNames() {
-  const set = new Set();
-  for (const list of Object.values(db)) for (const ex of list) set.add(ex.name);
-  return [...set].sort((a, b) => a.localeCompare(b, 'ko'));
 }
 
 function renderDay() {
@@ -311,6 +317,7 @@ function renderDay() {
   list.forEach((ex) => {
     const node = tpl.content.firstElementChild.cloneNode(true);
     node.querySelector('.exercise-name').textContent = ex.name;
+    node.querySelector('.part-badge').textContent = partOf(ex.name);
     const volEl = node.querySelector('.exercise-volume');
     const tbody = node.querySelector('tbody');
 
@@ -375,7 +382,7 @@ function renderDay() {
   });
 
   $('#day-empty').style.display = list.length ? 'none' : 'block';
-  $('#exercise-list').innerHTML = allExerciseNames().map((n) => `<option value="${escapeHtml(n)}">`).join('');
+  if (!resultsEl.hidden) renderResults();
   updateDaySummary();
 }
 
@@ -426,6 +433,7 @@ function renderWeek() {
     c.addEventListener('click', () => goToDay(c.dataset.date))
   );
 
+  $('#week-parts').innerHTML = partsHtml(stats);
   $('#week-breakdown').innerHTML = breakdownHtml(stats);
 }
 
@@ -488,6 +496,7 @@ function renderMonth() {
       <span>${fmtKg(rangeVolume(w.dates))}</span>
     </div>`).join('');
 
+  $('#month-parts').innerHTML = partsHtml(stats);
   $('#month-breakdown').innerHTML = breakdownHtml(stats);
 }
 
@@ -504,6 +513,17 @@ function breakdownHtml(stats) {
       </div>
       <div class="breakdown-bar"><div style="width:${(e.volume / max) * 100}%"></div></div>
     </div>`).join('');
+}
+
+function partsHtml(stats) {
+  const parts = {};
+  for (const [name, e] of Object.entries(stats.byEx)) {
+    const p = (parts[partOf(name)] ||= { volume: 0, sets: 0, reps: 0 });
+    p.volume += e.volume;
+    p.sets += e.sets;
+    p.reps += e.reps;
+  }
+  return breakdownHtml({ byEx: parts });
 }
 
 function goToDay(date) {
@@ -560,135 +580,7 @@ $('#import-file').addEventListener('change', async (e) => {
     db = data;
     save();
     alert('가져오기 완료!');
-    /* ---------- 휴식 타이머 ---------- */
-const REST_KEY = 'gymlog.restSeconds';
-const restInput = $('#rest-seconds');
-function restSeconds() {
-  const v = parseInt(localStorage.getItem(REST_KEY), 10);
-  return Number.isFinite(v) && v > 0 ? v : 60;
-}
-restInput.value = restSeconds();
-restInput.addEventListener('change', () => {
-  const v = Math.min(600, Math.max(5, parseInt(restInput.value, 10) || 60));
-  restInput.value = v;
-  localStorage.setItem(REST_KEY, v);
-});
-
-const restTimer = (() => {
-  const box = $('#rest-timer');
-  const timeEl = $('#rest-time');
-  const titleEl = $('#rest-title');
-  const barEl = $('#rest-progress-bar');
-  let endAt = 0, total = 0, tickId = null, finished = false, audioCtx = null, wakeLock = null;
-
-  function unlockAudio() {
-    // 사용자 클릭 시점에 오디오를 열어둬야 모바일에서 나중에 소리가 남
-    try {
-      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch { /* 미지원 */ }
-  }
-  function beep() {
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    [0, 0.25, 0.5].forEach((dt) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.0001, t0 + dt);
-      gain.gain.exponentialRampToValueAtTime(0.4, t0 + dt + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.18);
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(t0 + dt);
-      osc.stop(t0 + dt + 0.2);
-    });
-  }
-  function vibrate() {
-    if ('vibrate' in navigator) navigator.vibrate([400, 150, 400, 150, 600]);
-  }
-  async function keepAwake() {
-    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* 미지원 */ }
-  }
-  function releaseWake() {
-    wakeLock?.release?.().catch(() => {});
-    wakeLock = null;
-  }
-  function fmt(sec) {
-    const m = Math.floor(sec / 60), s = sec % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-  }
-
-  function tick() {
-    const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
-    timeEl.textContent = fmt(left);
-    barEl.style.width = `${total ? (left / total) * 100 : 0}%`;
-    if (left === 0 && !finished) finish();
-  }
-  function finish() {
-    finished = true;
-    clearInterval(tickId);
-    tickId = null;
-    box.classList.add('done');
-    titleEl.textContent = '휴식 끝! 다음 세트 시작하세요 💪';
-    timeEl.textContent = '0:00';
-    vibrate();
-    beep();
-    releaseWake();
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-      try { new Notification('휴식 끝!', { body: '다음 세트 시작하세요 💪' }); } catch { /* 무시 */ }
-    }
-  }
-
-  function start(title) {
-    unlockAudio();
-    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
-    total = restSeconds();
-    endAt = Date.now() + total * 1000;
-    finished = false;
-    titleEl.textContent = title;
-    box.classList.remove('done');
-    box.hidden = false;
-    document.body.classList.add('resting');
-    clearInterval(tickId);
-    tickId = setInterval(tick, 250);
-    keepAwake();
-    tick();
-  }
-  function adjust(delta) {
-    if (finished) return;
-    endAt += delta * 1000;
-    total = Math.max(total + delta, 1);
-    tick();
-  }
-  function stop() {
-    clearInterval(tickId);
-    tickId = null;
-    box.hidden = true;
-    box.classList.remove('done');
-    document.body.classList.remove('resting');
-    if ('vibrate' in navigator) navigator.vibrate(0);
-    releaseWake();
-  }
-
-  // 백그라운드에서 돌아왔을 때 즉시 갱신
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !box.hidden && !finished) { tick(); keepAwake(); }
-  });
-
-  $('#rest-minus').addEventListener('click', () => adjust(-10));
-  $('#rest-plus').addEventListener('click', () => adjust(10));
-  $('#rest-stop').addEventListener('click', stop);
-  $('#rest-test').addEventListener('click', () => {
-    unlockAudio();
-    vibrate();
-    beep();
-    if (!('vibrate' in navigator)) alert('이 브라우저는 진동을 지원하지 않아요. (소리로 알려드려요)');
-  });
-
-  return { start, stop };
-})();
-
-render();
+    render();
   } catch (err) {
     alert('파일을 읽을 수 없어요: ' + err.message);
   } finally {
@@ -700,135 +592,7 @@ $('#reset-btn').addEventListener('click', () => {
   if (!confirm('정말 모든 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
   db = {};
   save();
-  /* ---------- 휴식 타이머 ---------- */
-const REST_KEY = 'gymlog.restSeconds';
-const restInput = $('#rest-seconds');
-function restSeconds() {
-  const v = parseInt(localStorage.getItem(REST_KEY), 10);
-  return Number.isFinite(v) && v > 0 ? v : 60;
-}
-restInput.value = restSeconds();
-restInput.addEventListener('change', () => {
-  const v = Math.min(600, Math.max(5, parseInt(restInput.value, 10) || 60));
-  restInput.value = v;
-  localStorage.setItem(REST_KEY, v);
-});
-
-const restTimer = (() => {
-  const box = $('#rest-timer');
-  const timeEl = $('#rest-time');
-  const titleEl = $('#rest-title');
-  const barEl = $('#rest-progress-bar');
-  let endAt = 0, total = 0, tickId = null, finished = false, audioCtx = null, wakeLock = null;
-
-  function unlockAudio() {
-    // 사용자 클릭 시점에 오디오를 열어둬야 모바일에서 나중에 소리가 남
-    try {
-      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch { /* 미지원 */ }
-  }
-  function beep() {
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    [0, 0.25, 0.5].forEach((dt) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.0001, t0 + dt);
-      gain.gain.exponentialRampToValueAtTime(0.4, t0 + dt + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.18);
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(t0 + dt);
-      osc.stop(t0 + dt + 0.2);
-    });
-  }
-  function vibrate() {
-    if ('vibrate' in navigator) navigator.vibrate([400, 150, 400, 150, 600]);
-  }
-  async function keepAwake() {
-    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* 미지원 */ }
-  }
-  function releaseWake() {
-    wakeLock?.release?.().catch(() => {});
-    wakeLock = null;
-  }
-  function fmt(sec) {
-    const m = Math.floor(sec / 60), s = sec % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-  }
-
-  function tick() {
-    const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
-    timeEl.textContent = fmt(left);
-    barEl.style.width = `${total ? (left / total) * 100 : 0}%`;
-    if (left === 0 && !finished) finish();
-  }
-  function finish() {
-    finished = true;
-    clearInterval(tickId);
-    tickId = null;
-    box.classList.add('done');
-    titleEl.textContent = '휴식 끝! 다음 세트 시작하세요 💪';
-    timeEl.textContent = '0:00';
-    vibrate();
-    beep();
-    releaseWake();
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-      try { new Notification('휴식 끝!', { body: '다음 세트 시작하세요 💪' }); } catch { /* 무시 */ }
-    }
-  }
-
-  function start(title) {
-    unlockAudio();
-    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
-    total = restSeconds();
-    endAt = Date.now() + total * 1000;
-    finished = false;
-    titleEl.textContent = title;
-    box.classList.remove('done');
-    box.hidden = false;
-    document.body.classList.add('resting');
-    clearInterval(tickId);
-    tickId = setInterval(tick, 250);
-    keepAwake();
-    tick();
-  }
-  function adjust(delta) {
-    if (finished) return;
-    endAt += delta * 1000;
-    total = Math.max(total + delta, 1);
-    tick();
-  }
-  function stop() {
-    clearInterval(tickId);
-    tickId = null;
-    box.hidden = true;
-    box.classList.remove('done');
-    document.body.classList.remove('resting');
-    if ('vibrate' in navigator) navigator.vibrate(0);
-    releaseWake();
-  }
-
-  // 백그라운드에서 돌아왔을 때 즉시 갱신
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !box.hidden && !finished) { tick(); keepAwake(); }
-  });
-
-  $('#rest-minus').addEventListener('click', () => adjust(-10));
-  $('#rest-plus').addEventListener('click', () => adjust(10));
-  $('#rest-stop').addEventListener('click', stop);
-  $('#rest-test').addEventListener('click', () => {
-    unlockAudio();
-    vibrate();
-    beep();
-    if (!('vibrate' in navigator)) alert('이 브라우저는 진동을 지원하지 않아요. (소리로 알려드려요)');
-  });
-
-  return { start, stop };
-})();
-
-render();
+  render();
 });
 
 /* ---------- 휴식 타이머 ---------- */
@@ -959,4 +723,5 @@ const restTimer = (() => {
   return { start, stop };
 })();
 
+renderPartChips();
 render();

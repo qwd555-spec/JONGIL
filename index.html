@@ -34,11 +34,15 @@
         <div class="summary-sub" id="day-sub"></div>
       </div>
 
-      <form id="add-exercise-form" class="add-form" autocomplete="off">
-        <input type="text" id="exercise-name" list="exercise-list" placeholder="운동 이름 (예: 벤치프레스)" required />
-        <datalist id="exercise-list"></datalist>
-        <button type="submit">+ 운동 추가</button>
-      </form>
+      <div class="picker card">
+        <form id="add-exercise-form" class="search-form" autocomplete="off">
+          <span class="search-icon">🔍</span>
+          <input type="search" id="exercise-search" placeholder="운동 검색 (벤치, ㅂㅊ, squat…)" enterkeyhint="search" />
+          <button type="button" id="picker-toggle" class="picker-toggle">목록 ▾</button>
+        </form>
+        <div class="part-chips" id="part-chips"></div>
+        <div class="search-results" id="search-results" hidden></div>
+      </div>
 
       <div id="exercise-container"></div>
       <p class="empty" id="day-empty">아직 기록이 없어요. 운동을 추가해보세요!</p>
@@ -62,6 +66,11 @@
       <div class="card">
         <h3>요일별 볼륨</h3>
         <div class="bar-chart" id="week-chart"></div>
+      </div>
+
+      <div class="card">
+        <h3>부위별 볼륨</h3>
+        <div id="week-parts"></div>
       </div>
 
       <div class="card">
@@ -94,6 +103,11 @@
       <div class="card">
         <h3>주차별 볼륨</h3>
         <div id="month-weeks"></div>
+      </div>
+
+      <div class="card">
+        <h3>부위별 볼륨</h3>
+        <div id="month-parts"></div>
       </div>
 
       <div class="card">
@@ -153,6 +167,7 @@
     <div class="exercise-card">
       <div class="exercise-head">
         <h4 class="exercise-name"></h4>
+        <span class="part-badge"></span>
         <span class="exercise-volume"></span>
         <button class="icon-btn delete-exercise" title="운동 삭제">🗑</button>
       </div>
@@ -167,6 +182,7 @@
     </div>
   </template>
 
+  <script src="exercises.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
