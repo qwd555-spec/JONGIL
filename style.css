@@ -771,3 +771,24 @@ body.modal-open { overflow: hidden; }
 .aw-main b { white-space: normal; word-break: keep-all; }
 .aw-seg { margin: 0 0 12px; }
 .aw-sub { margin: 16px 4px 10px; }
+/* 왕 카드 v2 */
+.aw-main small { font-size: 10.5px; color: var(--muted); font-weight: 600; }
+.aw-main strong { font-size: 15.5px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+.aw-main b { font-size: 14px; font-weight: 700; color: #3a3a42; }
+.aw-row.hero .aw-main strong, .aw-row.hero .aw-main b { color: #fff; }
+.aw-next { font-size: 10.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.aw-row.hero .aw-next { color: rgba(255,255,255,.55); }
+/* 전체 순위 팝업 */
+.award-sheet { text-align: left; max-height: calc(100vh - 40px); overflow-y: auto; }
+.award-top { display: flex; align-items: center; gap: 14px; margin: 14px 4px 16px; }
+.award-icon { font-size: 40px; line-height: 1; }
+.award-top h3 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
+.award-top p { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
+.award-list { display: flex; flex-direction: column; gap: 6px; }
+.aw-rank { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--layer); text-align: left; }
+.aw-rank:first-child { background: var(--ink); color: #fff; }
+.aw-rank.me { box-shadow: 0 0 0 2px var(--pink) inset; }
+.aw-no { width: 28px; text-align: center; font-size: 18px; font-weight: 800; }
+.aw-who { flex: 1; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+.aw-who .me-tag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--pink); color: #fff; }
+.aw-v { font-weight: 800; font-size: 14px; }

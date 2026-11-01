@@ -253,7 +253,7 @@
           </div>
 
           <div class="panel awards">
-            <div class="panel-head"><span><b id="awards-title">이번 주의 왕</b> <small id="awards-hint"></small></span><svg class="i"><use href="#i-trophy"/></svg></div>
+            <div class="panel-head"><span><b id="awards-title">이주의 왕</b> <small id="awards-hint"></small></span><svg class="i"><use href="#i-trophy"/></svg></div>
             <div class="segmented aw-seg" id="aw-period">
               <button data-p="week" class="active">주간 왕</button>
               <button data-p="month">월간 왕</button>
@@ -478,6 +478,19 @@
   </div>
 
   <!-- 친구 프로필 / 댓글 팝업 -->
+  <div id="award-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="award-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet award-sheet">
+      <div class="rest-head">
+        <span class="rest-chip"><svg class="i"><use href="#i-trophy"/></svg><span>전체 순위</span></span>
+        <button id="award-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="award-top"><span class="award-icon" id="award-icon"></span><div><h3 id="award-title"></h3><p id="award-desc"></p></div></div>
+      <div class="award-list" id="award-list"></div>
+      <p class="hint" id="award-rest"></p>
+    </div>
+  </div>
+
   <div id="person-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="person-name">
     <div class="rest-backdrop"></div>
     <div class="rest-sheet person-sheet">

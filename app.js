@@ -1782,17 +1782,17 @@ const social = (() => {
   }
   const pace = (v) => `${Math.floor(v)}'${String(Math.round((v % 1) * 60)).padStart(2, '0')}"/km`;
   const AWARDS = [
-    { icon: '👑', name: '총 볼륨', get: (S) => S.total, fmt: fmtKg, hero: true },
-    { icon: '🛡️', name: '가슴 볼륨', get: (S) => num(S.p['가슴']), fmt: fmtKg },
-    { icon: '🦅', name: '등 볼륨', get: (S) => num(S.p['등']), fmt: fmtKg },
-    { icon: '🦵', name: '하체 볼륨', get: (S) => num(S.p['하체']), fmt: fmtKg },
-    { icon: '🎯', name: '어깨 볼륨', get: (S) => num(S.p['어깨']), fmt: fmtKg },
-    { icon: '💪', name: '팔 볼륨', get: (S) => num(S.p['팔']), fmt: fmtKg },
-    { icon: '🏃', name: '마라토너', get: (S) => S.km, fmt: (v) => `${+v.toFixed(1)}km` },
-    { icon: '⚽', name: '득점왕', get: (S) => S.goals, fmt: (v) => `${v}골` },
-    { icon: '📅', name: '개근왕', get: (S) => S.dates.size, fmt: (v) => `${v}일 운동` },
-    { icon: '🏅', name: '개근상', all: (S) => S.perfect, val: (w) => `${Math.max(...w.map((x) => x.S.dates.size))}일째 개근`, none: '하루도 안 빠지면 받아요', meWin: '나도 받음 🎉' },
-    { icon: '🛋️', name: '휴식왕', get: (S) => S.rest, fmt: (v) => `${v}일 쉼`, ties: true, meWin: '나… 😅' },
+    { icon: '👑', name: '볼륨 황제', desc: '총 볼륨', get: (S) => S.total, fmt: fmtKg, hero: true },
+    { icon: '🛡️', name: '갑빠왕', desc: '가슴 볼륨', get: (S) => num(S.p['가슴']), fmt: fmtKg },
+    { icon: '🦅', name: '광배 날개왕', desc: '등 볼륨', get: (S) => num(S.p['등']), fmt: fmtKg },
+    { icon: '🍗', name: '꿀벅지왕', desc: '하체 볼륨', get: (S) => num(S.p['하체']), fmt: fmtKg },
+    { icon: '🥥', name: '어깨깡패', desc: '어깨 볼륨', get: (S) => num(S.p['어깨']), fmt: fmtKg },
+    { icon: '💪', name: '알통왕', desc: '팔 볼륨 (이두·삼두·전완)', get: (S) => num(S.p['팔']), fmt: fmtKg },
+    { icon: '🏃', name: '마라토너', desc: '러닝 거리', get: (S) => S.km, fmt: (v) => `${+v.toFixed(1)}km` },
+    { icon: '⚽', name: '득점왕', desc: '풋살·축구 골', get: (S) => S.goals, fmt: (v) => `${v}골` },
+    { icon: '📅', name: '출석왕', desc: '운동한 날 수', get: (S) => S.dates.size, fmt: (v) => `${v}일` },
+    { icon: '🏅', name: '개근상', desc: '하루도 안 빠진 사람 전원', all: (S) => S.perfect, sub: (S) => `${S.dates.size}일째 개근`, none: '하루도 안 빠지면 받아요', meWin: '나도 받음 🎉' },
+    { icon: '🛋️', name: '휴식왕', desc: '가장 많이 쉰 사람', get: (S) => S.rest, fmt: (v) => `${v}일 쉼`, ties: true, meWin: '나… 😅' },
   ];
   const FUN_AWARDS = [
     { icon: '🐘', name: '코끼리왕', desc: '가장 무거운 한 세트', get: (S) => S.maxW, fmt: (v) => `${+v.toFixed(1)}kg` },
@@ -1800,52 +1800,81 @@ const social = (() => {
     { icon: '💥', name: '원데이 폭발', desc: '하루 최고 볼륨', get: (S) => S.dayMax, fmt: fmtKg },
     { icon: '🎯', name: '한우물 장인', desc: '한 종목 최고 볼륨', get: (S) => S.top, fmt: fmtKg },
     { icon: '🍱', name: '잡식왕', desc: '해본 종목 수', get: (S) => S.names.size, fmt: (v) => `${v}종목` },
-    { icon: '🔥', name: '연속 출석왕', desc: '최장 연속 운동', get: (S) => S.streak, fmt: (v) => `${v}일 연속` },
-    { icon: '📈', name: '성장왕', desc: '지난 기간보다 볼륨 증가', get: (S) => S.growth, fmt: (v) => `+${v}%` },
-    { icon: '🏖️', name: '주말 전사', desc: '주말 볼륨', get: (S) => S.weekend, fmt: fmtKg },
-    { icon: '⚡', name: '페이스왕', desc: '러닝 평균 페이스 (3km 이상)', get: (S) => S.pace, fmt: pace, low: true },
+    { icon: '🔥', name: '불꽃 출석', desc: '최장 연속 운동', get: (S) => S.streak, fmt: (v) => `${v}일 연속` },
+    { icon: '📈', name: '떡상왕', desc: '지난 기간보다 볼륨 증가율', get: (S) => S.growth, fmt: (v) => `+${v}%` },
+    { icon: '🏖️', name: '주말 전사', desc: '토·일 볼륨', get: (S) => S.weekend, fmt: fmtKg },
+    { icon: '⚡', name: '번개 다리', desc: '러닝 평균 페이스 (3km 이상)', get: (S) => S.pace, fmt: pace, low: true },
     { icon: '🦉', name: '올빼미', desc: '밤 10시 넘어 운동한 날', get: (S) => S.late, fmt: (v) => `${v}번` },
-    { icon: '🌅', name: '아침형 인간', desc: '오전 8시 전에 운동한 날', get: (S) => S.early, fmt: (v) => `${v}번` },
+    { icon: '🐓', name: '새벽닭', desc: '오전 8시 전에 운동한 날', get: (S) => S.early, fmt: (v) => `${v}번` },
     { icon: '📣', name: '응원단장', desc: '댓글·응원 많이 단 사람', get: (S) => S.cmt, fmt: (v) => `${v}개` },
-    { icon: '🐔', name: '하체 도망자', desc: '3일 이상 운동했는데 하체 0', all: (S) => S.legSkip, val: () => '하체 0kg', none: '모두 하체 했어요 👏', meWin: '나… 🐔' },
+    { icon: '🐔', name: '하체 도망자', desc: '3일 이상 운동했는데 하체 0', all: (S) => S.legSkip, sub: (S) => `${S.dates.size}일 운동 · 하체 0kg`, none: '모두 하체 했어요 👏', meWin: '나… 🐔' },
   ];
-  function awardCard(a, people) {
-    let win = [], val = '-', meTxt = '';
-    if (a.all) {
-      win = people.filter((x) => a.all(x.S));
-      if (win.length) val = a.val(win);
-      if (win.some((x) => x.id === myId)) meTxt = `<span class="aw-me win">${a.meWin}</span>`;
-    } else {
-      const rows = people.map((x) => ({ ...x, v: a.get(x.S) })).filter((x) => x.v > 0).sort((p, q) => (a.low ? p.v - q.v : q.v - p.v));
-      if (rows.length) {
-        win = a.ties ? rows.filter((x) => x.v === rows[0].v) : [rows[0]];
-        val = a.fmt(rows[0].v);
-        const myIdx = rows.findIndex((x) => x.id === myId);
-        if (win.some((x) => x.id === myId)) meTxt = `<span class="aw-me win">${a.meWin || '나 🔥'}</span>`;
-        else if (myIdx > 0) meTxt = `<span class="aw-me">나 ${myIdx + 1}위</span>`;
-      }
+  const ALL_AWARDS = [...AWARDS, ...FUN_AWARDS];
+  const periodPrefix = () => (awPeriod === 'week' ? '이주의' : '이달의');
+  // 부문 전체 순위
+  function awardRows(a, people) {
+    if (a.all) return people.filter((x) => a.all(x.S)).map((x) => ({ ...x, label: a.sub(x.S) }));
+    return people.map((x) => ({ ...x, v: a.get(x.S) })).filter((x) => x.v > 0)
+      .sort((p, q) => (a.low ? p.v - q.v : q.v - p.v)).map((x) => ({ ...x, label: a.fmt(x.v) }));
+  }
+  function awardCard(a, people, idx) {
+    const rows = awardRows(a, people);
+    let win = [], meTxt = '';
+    if (rows.length) {
+      win = a.all ? rows : a.ties ? rows.filter((x) => x.v === rows[0].v) : [rows[0]];
+      const myIdx = rows.findIndex((x) => x.id === myId);
+      if (win.some((x) => x.id === myId)) meTxt = `<span class="aw-me win">${a.meWin || '나 🔥'}</span>`;
+      else if (myIdx > 0) meTxt = `<span class="aw-me">나 ${myIdx + 1}위</span>`;
     }
     const names = win.length ? win.map((x) => escapeHtml(x.nick)).join('·') : (a.none || '아직 없음');
-    if (!win.length && a.none) val = '';
-    return `<button type="button" class="aw-row ${a.hero ? 'hero' : ''} ${win.length ? '' : 'empty'}" ${win.length ? `data-id="${escapeHtml(win[0].id)}"` : ''}>
+    const val = win.length ? (a.all ? `${win.length}명` : rows[0].label) : '';
+    const second = !a.all && !a.ties && rows[1] ? `<span class="aw-next">2위 ${escapeHtml(rows[1].nick)}${rows[2] ? ` · 3위 ${escapeHtml(rows[2].nick)}` : ''}</span>` : '';
+    return `<button type="button" class="aw-row ${a.hero ? 'hero' : ''} ${win.length ? '' : 'empty'}" data-aw="${idx}">
       <span class="aw-icon">${a.icon}</span>
-      <span class="aw-main"><small>${a.name}${a.desc ? ` · ${a.desc}` : a.all || a.ties ? '' : ' 1위'}</small><b>${names}</b></span>
+      <span class="aw-main"><small>${periodPrefix()}</small><strong>${a.name}</strong><b>${names}</b>${second}</span>
       <span class="aw-val">${val}${meTxt}</span>
     </button>`;
   }
+  let awPeople = [];
   function renderAwards() {
     const t = todayStr();
-    $('#awards-title').textContent = awPeriod === 'week' ? '이번 주의 왕' : `${+t.slice(5, 7)}월의 왕`;
-    $('#awards-hint').textContent = awPeriod === 'week' ? '매주 월요일 초기화' : '매달 1일 초기화';
+    $('#awards-title').textContent = awPeriod === 'week' ? '이주의 왕' : `${+t.slice(5, 7)}월의 왕`;
+    $('#awards-hint').textContent = awPeriod === 'week' ? '매주 월요일 초기화 · 눌러서 전체 순위' : '매달 1일 초기화 · 눌러서 전체 순위';
     document.querySelectorAll('#aw-period button').forEach((b) => b.classList.toggle('active', b.dataset.p === awPeriod));
     const range = awardRange();
     const start = parse(range.dates[0]).getTime();
     const cmts = allComments().filter((c) => c.kind !== 'share' && c.at >= start);
-    const people = Object.entries(members).map(([id, m]) => ({ id, nick: m.nick, S: statsFor(id, range, cmts) }));
-    $('#awards-list').innerHTML = AWARDS.map((a) => awardCard(a, people)).join('');
-    $('#fun-awards').innerHTML = FUN_AWARDS.map((a) => awardCard(a, people)).join('');
-    document.querySelectorAll('.awards .aw-row[data-id]').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
+    awPeople = Object.entries(members).map(([id, m]) => ({ id, nick: m.nick, S: statsFor(id, range, cmts) }));
+    $('#awards-list').innerHTML = AWARDS.map((a, i) => awardCard(a, awPeople, i)).join('');
+    $('#fun-awards').innerHTML = FUN_AWARDS.map((a, i) => awardCard(a, awPeople, AWARDS.length + i)).join('');
+    document.querySelectorAll('.awards .aw-row').forEach((b) => b.addEventListener('click', () => openAward(+b.dataset.aw)));
   }
+  // 부문 눌렀을 때: 1위 · 2위 · 3위 … 전체 순위 팝업
+  function openAward(i) {
+    const a = ALL_AWARDS[i];
+    if (!a) return;
+    const rows = awardRows(a, awPeople);
+    $('#award-icon').textContent = a.icon;
+    $('#award-title').textContent = `${periodPrefix()} ${a.name}`;
+    $('#award-desc').textContent = a.desc + (a.low ? ' · 낮을수록 빠름' : '');
+    const medal = ['🥇', '🥈', '🥉'];
+    $('#award-list').innerHTML = rows.length ? rows.map((x, k) => {
+      const rank = a.all ? 0 : a.ties ? rows.findIndex((y) => y.v === x.v) : k;
+      return `<button type="button" class="aw-rank ${x.id === myId ? 'me' : ''}" data-id="${escapeHtml(x.id)}">
+        <span class="aw-no">${a.all ? a.icon : rank < 3 ? medal[rank] : rank + 1}</span>
+        <span class="aw-who">${escapeHtml(x.nick)}${x.id === myId ? '<span class="me-tag">나</span>' : ''}</span>
+        <span class="aw-v">${x.label}</span>
+      </button>`;
+    }).join('') : `<p class="empty-text">${a.none || '아직 기록한 사람이 없어요'}</p>`;
+    const rest = a.all ? [] : awPeople.filter((x) => !rows.some((r) => r.id === x.id));
+    $('#award-rest').textContent = rest.length ? `기록 없음: ${rest.map((x) => x.nick).join(', ')}` : '';
+    $('#award-list').querySelectorAll('.aw-rank').forEach((b) => b.addEventListener('click', () => { closeAward(); openProfile(b.dataset.id); }));
+    $('#award-modal').hidden = false;
+    document.body.classList.add('modal-open');
+  }
+  function closeAward() { $('#award-modal').hidden = true; document.body.classList.remove('modal-open'); }
+  $('#award-close').addEventListener('click', closeAward);
+  $('#award-modal .rest-backdrop').addEventListener('click', closeAward);
   document.querySelectorAll('#aw-period button').forEach((b) => b.addEventListener('click', () => { awPeriod = b.dataset.p; renderAwards(); }));
   function render() {
     const unavailable = !store;
