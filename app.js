@@ -225,25 +225,29 @@ function cardioInfo(ex) {
 }
 const DEFAULT_BW = 70;
 /** 유산소 소모 kcal (순수 운동분) */
+/** 유산소 소모 kcal: ① 워치 칼로리 입력 > ② 거리 > ③ 시간 */
 function cardioKcal(set, info, bw) {
-  const km = num(set.km), min = num(set.min);
-  const scale = info.scale ?? 1;
-  if (info.perKm && km > 0) return info.perKm * bw * km * scale;
-  return Math.max(0, info.met - 1) * bw * (min / 60) * (info.timeScale ?? 1) * scale;
+  const wk = num(set.wkcal), km = num(set.km), min = num(set.min);
+  if (wk > 0) return wk;
+  if (info.perKm && km > 0) return info.perKm * bw * km;
+  return Math.max(0, info.met - 1) * bw * (min / 60) * (info.timeScale ?? 1);
 }
+/** kcal → kg 볼륨 (종목 보정 포함) */
+const cardioToVolume = (kcal, info) => kcal * CARDIO_KCAL_TO_VOLUME * (info.scale ?? 1);
 /** 유산소 기록에 칼로리와 kg 볼륨을 함께 남김 (바뀐 경우 true) */
 function stampCardio(set, ex, date) {
   const cinfo = cardioInfo(ex);
   if (!cinfo) return false;
-  const kcal = Math.round(cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW));
-  const vol = kcal ? Math.round(cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW) * CARDIO_KCAL_TO_VOLUME) : 0;
+  const raw = cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW);
+  const kcal = Math.round(raw);
+  const vol = Math.round(cardioToVolume(raw, cinfo));
   if (set.kcal === kcal && set.vol === vol) return false;
   set.kcal = kcal; set.vol = vol;
   return true;
 }
 function setVolume(set, ex, date) {
   const cinfo = cardioInfo(ex);
-  if (cinfo) return cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW) * CARDIO_KCAL_TO_VOLUME;
+  if (cinfo) return cardioToVolume(cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW), cinfo);
   const w = num(set.w), r = num(set.r);
   const type = bwType(ex);
   if (!type) return w * r;
@@ -530,6 +534,8 @@ function renderDay() {
       chip.textContent = bw ? `유산소 볼륨 · ${bw}kg 기준` : `유산소 볼륨 · ${DEFAULT_BW}kg 기준`;
       const th = node.querySelectorAll('thead th');
       th[0].textContent = '회차'; th[1].textContent = 'km'; th[2].textContent = '분';
+      const kth = document.createElement('th'); kth.innerHTML = '⌚kcal'; kth.title = '애플워치 등에 찍힌 활동 칼로리';
+      th[2].after(kth);
       node.querySelector('.rest-btn').hidden = true;
       node.querySelector('.add-set').lastChild.textContent = '기록 추가';
       node.classList.add('cardio');
@@ -570,7 +576,7 @@ function renderDay() {
         if (km && min && cinfo.perKm) { const pace = min / km; parts.push(`페이스 ${Math.floor(pace)}'${String(Math.round((pace % 1) * 60)).padStart(2, '0')}"/km`); }
         const head = parts.length ? parts.join(' · ') : (cinfo.perKm ? '거리(km)와 시간(분)을 입력하세요' : '운동한 시간(분)을 입력하세요');
         cardioMeta.innerHTML = `<div>${escapeHtml(head)}</div>` + (kcal
-          ? `<div class="conv"><span class="conv-pill">${Math.round(kcal).toLocaleString('ko-KR')} kcal</span><span class="conv-op">× ${CARDIO_KCAL_TO_VOLUME}</span><span class="conv-arrow">→</span><span class="conv-pill dark">${fmtKg(kcal * CARDIO_KCAL_TO_VOLUME)}</span></div>`
+          ? `<div class="conv"><span class="conv-pill">${ex.sets.some((x) => num(x.wkcal) > 0) ? '⌚ ' : ''}${Math.round(kcal).toLocaleString('ko-KR')} kcal</span><span class="conv-op">× ${CARDIO_KCAL_TO_VOLUME}${(cinfo.scale ?? 1) !== 1 ? ` × ${Math.round(cinfo.scale * 100)}%` : ''}</span><span class="conv-arrow">→</span><span class="conv-pill dark">${fmtKg(cardioToVolume(kcal, cinfo))}</span></div>`
           : '');
       }
       updateDaySummary();
@@ -580,7 +586,8 @@ function renderDay() {
       const tr = document.createElement('tr');
       const inputs = cinfo
         ? `<td><input type="number" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
-        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>`
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.wkcal ?? ''}" data-k="wkcal" placeholder="워치" class="kcal-in" /></td>`
         : `<td><input type="number" inputmode="decimal" min="0" step="0.5" value="${set.w ?? ''}" data-k="w" /></td>
         <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.r ?? ''}" data-k="r" /></td>`;
       tr.innerHTML = `

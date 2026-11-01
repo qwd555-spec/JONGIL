@@ -521,3 +521,6 @@ body.modal-open { overflow: hidden; }
 .conv-pill.dark { background: var(--ink); color: #fff; }
 .conv-op { color: var(--muted); font-weight: 700; font-size: 12.5px; }
 .conv-arrow { color: var(--muted); }
+.exercise-card.cardio .sets input { font-size: 15px; padding: 0 2px; }
+.exercise-card.cardio .sets td.vol { width: 46px; font-size: 12px; }
+.kcal-in::placeholder { font-size: 12px; color: #b4b4bc; font-weight: 600; }
