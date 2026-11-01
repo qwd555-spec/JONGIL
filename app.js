@@ -315,6 +315,23 @@ function diffText(cur, prev, label) {
   return `${label} 대비 <span class="${cls}">${sign} ${Math.abs(pct).toFixed(1)}%</span> (${fmtKg(prev)})`;
 }
 
+/* ---------- 숫자 입력칸: 누르면 커서를 맨 오른쪽으로 ---------- */
+function caretToEnd(el) {
+  try { const n = el.value.length; el.setSelectionRange(n, n); } catch { /* 지원 안 함 */ }
+}
+document.addEventListener('focusin', (e) => {
+  const el = e.target;
+  if (!(el instanceof HTMLInputElement) || !el.hasAttribute('inputmode')) return;
+  el.dataset.fresh = '1';
+  setTimeout(() => caretToEnd(el), 0);
+  setTimeout(() => caretToEnd(el), 60);   // iOS는 탭한 위치로 커서를 늦게 옮김
+});
+['pointerup', 'mouseup', 'click'].forEach((type) => document.addEventListener(type, (e) => {
+  const el = e.target;
+  if (el instanceof HTMLInputElement && el.dataset.fresh) { caretToEnd(el); if (type === 'click') delete el.dataset.fresh; }
+}, true));
+document.addEventListener('focusout', (e) => { if (e.target instanceof HTMLInputElement) delete e.target.dataset.fresh; });
+
 /* ---------- 탭 ---------- */
 const $ = (sel) => document.querySelector(sel);
 
@@ -622,12 +639,12 @@ function renderDay() {
       const tr = document.createElement('tr');
       const inputs = cinfo
         ? (cardioMode(ex) === 'watch'
-          ? `<td><input type="number" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>
-        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.wkcal ?? ''}" data-k="wkcal" placeholder="워치" class="kcal-in" /></td>`
-          : `<td><input type="number" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
-        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>`)
-        : `<td><input type="number" inputmode="decimal" min="0" step="0.5" value="${set.w ?? ''}" data-k="w" /></td>
-        <td><input type="number" inputmode="numeric" min="0" step="1" value="${set.r ?? ''}" data-k="r" /></td>`;
+          ? `<td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>
+        <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.wkcal ?? ''}" data-k="wkcal" placeholder="워치" class="kcal-in" /></td>`
+          : `<td><input type="text" autocomplete="off" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
+        <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>`)
+        : `<td><input type="text" autocomplete="off" inputmode="decimal" min="0" step="0.5" value="${set.w ?? ''}" data-k="w" /></td>
+        <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.r ?? ''}" data-k="r" /></td>`;
       tr.innerHTML = `
         <td><span class="set-no">${i + 1}</span></td>
         ${inputs}
@@ -636,7 +653,9 @@ function renderDay() {
       const volTd = tr.querySelector('.vol');
       tr.querySelectorAll('input').forEach((inp) =>
         inp.addEventListener('input', () => {
-          set[inp.dataset.k] = inp.value === '' ? '' : +inp.value;
+          const raw = inp.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+          if (raw !== inp.value) inp.value = raw;
+          set[inp.dataset.k] = raw === '' || raw === '.' ? '' : num(parseFloat(raw));
           stampCardio(set, ex, state.day);
           volTd.textContent = fmtShort(setVolume(set, ex, state.day)) || '-';
           save();
