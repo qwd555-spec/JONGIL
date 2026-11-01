@@ -1817,8 +1817,7 @@ const social = (() => {
     { icon: '💬', name: '댓글왕', desc: '댓글·응원 많이 단 사람', get: (S) => S.cmt, fmt: (v) => `${v}개` },
     { icon: '🐔', name: '하체 도망자', desc: '3일 이상 운동했는데 하체 0', all: (S) => S.legSkip, sub: (S) => `${S.dates.size}일 운동 · 하체 0kg`, none: '모두 하체 했어요 👏', meWin: '나… 🐔' },
   ];
-  const DOR = { icon: '🏆', name: '볼륨도르', desc: '총 볼륨 (근력 + 유산소)', get: (S) => S.total, fmt: fmtKg };
-  const ALL_AWARDS = [...AWARDS, ...FUN_AWARDS, DOR];
+  const ALL_AWARDS = [...AWARDS, ...FUN_AWARDS];
   const periodPrefix = () => (awPeriod === 'week' ? '이주의' : '이달의');
   // 부문 전체 순위
   function awardRows(a, people) {
@@ -1854,19 +1853,9 @@ const social = (() => {
     const start = parse(range.dates[0]).getTime();
     const cmts = allComments().filter((c) => c.kind !== 'share' && c.at >= start);
     awPeople = Object.entries(members).map(([id, m]) => ({ id, nick: m.nick, S: statsFor(id, range, cmts) }));
-    // 🏆 볼륨도르: 총 볼륨만 따로, 시상대로
-    const dor = awardRows(DOR, awPeople);
-    const pod = [dor[1], dor[0], dor[2]];
-    $('#dor-title').textContent = `${periodPrefix()} 볼륨도르`;
-    $('#dor-podium').innerHTML = dor.length ? pod.map((x, k) => x ? `<div class="pod p${[2, 1, 3][k]} ${x.id === myId ? 'me' : ''}">
-        <b>${escapeHtml(x.nick)}${x.id === myId ? '<em>나</em>' : ''}</b><small>${x.label}</small><i><span>${[2, 1, 3][k]}</span></i></div>` : '<div class="pod empty"></div>').join('')
-      : '<p class="dor-empty">아직 기록이 없어요. 첫 볼륨도르의 주인공이 되어보세요!</p>';
-    const myI = dor.findIndex((x) => x.id === myId);
-    $('#dor-me').textContent = myI > 2 ? `나는 ${myI + 1}위 · ${dor[myI].label}` : myI === -1 && dor.length ? '나는 아직 기록 없음' : '';
     $('#awards-list').innerHTML = AWARDS.map((a, i) => awardCard(a, awPeople, i)).join('');
     $('#fun-awards').innerHTML = FUN_AWARDS.map((a, i) => awardCard(a, awPeople, AWARDS.length + i)).join('');
     document.querySelectorAll('.awards .aw-row').forEach((b) => b.addEventListener('click', () => openAward(+b.dataset.aw)));
-    $('#dor-card').onclick = () => openAward(ALL_AWARDS.length - 1);
   }
   // 부문 눌렀을 때: 1위 · 2위 · 3위 … 전체 순위 팝업
   function openAward(i) {

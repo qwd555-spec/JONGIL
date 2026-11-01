@@ -798,31 +798,3 @@ body.modal-open { overflow: hidden; }
 .page-dots button.active { background: var(--ink); color: #fff; }
 .aw-desc { font-style: normal; font-size: 10.5px; color: var(--muted); margin: -3px 0 5px; }
 .aw-row.hero .aw-desc { color: rgba(255,255,255,.55); }
-/* 볼륨도르 — 레이어드 모노톤 */
-.dor-card { display: block; width: 100%; text-align: left; margin-bottom: 12px; padding: 16px 16px 14px; border-radius: 24px;
-  background: var(--raised); box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 14px 30px -18px rgba(20,20,30,.28); color: var(--ink); }
-.dor-card:active { transform: scale(.985); }
-.dor-head { display: flex; align-items: center; gap: 12px; }
-.dor-mark { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #fff; flex: none; }
-.dor-mark .i { width: 20px; height: 20px; }
-.dor-tt { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.dor-tt small { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
-.dor-tt b { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
-.dor-more { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 600; color: var(--muted); padding: 6px 8px 6px 12px; border-radius: 999px; background: var(--layer); }
-.dor-more .i { width: 14px; height: 14px; }
-.dor-podium { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: end; gap: 8px; margin-top: 18px; padding: 14px 10px 0; border-radius: 18px; background: var(--layer); }
-.pod { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
-.pod b { font-size: 14px; font-weight: 800; letter-spacing: -0.02em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
-.pod b em { font-style: normal; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--pink); color: #fff; }
-.pod small { font-size: 11px; color: var(--muted); font-weight: 600; }
-.pod i { display: grid; place-items: start center; width: 100%; margin-top: 8px; padding-top: 8px; border-radius: 14px 14px 0 0; background: #e3e3e8; font-style: normal; }
-.pod i span { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: var(--raised); color: var(--ink); box-shadow: 0 1px 2px rgba(20,20,30,.08); }
-.pod.p1 i { height: 78px; background: var(--ink); }
-.pod.p1 i span { background: #fff; }
-.pod.p1 b { font-size: 16px; }
-.pod.p1 b::before { content: '✦'; font-size: 11px; color: var(--pink); }
-.pod.p2 i { height: 54px; }
-.pod.p3 i { height: 38px; }
-.dor-empty { margin: 4px 0 14px; font-size: 13px; color: var(--muted); grid-column: 1 / -1; text-align: center; }
-.dor-me { display: block; margin-top: 10px; text-align: center; font-size: 12px; color: var(--muted); font-weight: 600; }
-.dor-me:empty { display: none; }
