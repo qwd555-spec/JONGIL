@@ -123,6 +123,7 @@ const cloud = (() => {
       // 클라우드 기록 우선, 이 브라우저에만 있던 날짜는 클라우드로 올림
       Object.assign(db, remote);
       col = c;
+      social.init(store, id);
       saveLocal();
       try { localStorage.setItem(BW_KEY, JSON.stringify(bwMap)); } catch { /* 없음 */ }
       render();
@@ -154,6 +155,7 @@ const cloud = (() => {
       }
       const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap });
       if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
+      try { await social.publish(); } catch { /* 순위 참가 권한 없음 → 개인 기록만 저장 */ }
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
     } catch (e) {
       status('클라우드 저장에 실패했어요. 이 브라우저에는 저장돼 있어요. 잠시 후 다시 시도해요.');
@@ -277,7 +279,7 @@ function showView(view) {
   window.scrollTo({ top: 0 });
   render();
 }
-const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', settings: 'Settings' };
+const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', rank: 'Ranking', settings: 'Settings' };
 function updateHeader() {
   const d = new Date();
   $('#header-sub').textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`;
@@ -737,6 +739,7 @@ function render() {
   if (v === 'day') renderDay();
   else if (v === 'week') renderWeek();
   else if (v === 'month') renderMonth();
+  else if (v === 'rank') social.render();
 }
 
 /* ---------- 설정: 백업 ---------- */
@@ -957,4 +960,269 @@ const restTimer = (() => {
 
 renderPartChips();
 render();
+/* =========================================================
+ * 그룹 순위 + 응원 댓글 (공유 링크에서만)
+ * board/<id>               : 각자 자기 요약 (닉네임, 날짜별 볼륨, 최고 중량)
+ * comments/<id>/items/<n>  : 각자 쓴 댓글 { to, text, at }
+ * 모두 읽을 수 있고, 각자 자기 것만 쓸 수 있음
+ * ========================================================= */
+const social = (() => {
+  let store = null, myId = null, ready = false, failed = false;
+  let members = {};            // id → board 문서
+  const comments = {};          // 작성자 id → [{id, to, text, at}]
+  const commentSubs = {};
+  let lastPublished = null;
+  let period = 'week', metric = 'volume', bestEx = '';
+  let openPerson = null;
+  const SEEN_KEY = 'gymlog.feedSeen';
+
+  function init(s, id) {
+    store = s; myId = id;
+    let loaded = false;
+    const t = setTimeout(() => { if (!loaded) { failed = true; render(); } }, 10000);
+    store.collection('board').onSnapshot((snap) => {
+      loaded = true; clearTimeout(t); failed = false; ready = true;
+      const next = {};
+      snap.docs.forEach((d) => { if (d.exists) next[d.id] = d.data(); });
+      members = next;
+      Object.keys(members).forEach(subscribeComments);
+      if (members[myId]) lastPublished = lastPublished || JSON.stringify(members[myId].days || {}) + JSON.stringify(members[myId].best || {}) + members[myId].nick;
+      refresh();
+    }, () => { loaded = true; clearTimeout(t); failed = true; refresh(); });
+  }
+
+  function subscribeComments(uid) {
+    if (commentSubs[uid] || Object.keys(commentSubs).length >= 60) return;
+    commentSubs[uid] = store.collection(`comments/${uid}/items`).orderBy('at', 'desc').limit(100)
+      .onSnapshot((snap) => {
+        comments[uid] = snap.docs.filter((d) => d.exists).map((d) => ({ id: d.id, from: uid, ...d.data() }));
+        refresh();
+      }, () => {});
+  }
+
+  function refresh() {
+    updateDot();
+    if (currentView() === 'rank') render();
+    if (openPerson) renderPerson();
+  }
+
+  const myNick = () => (members[myId] && members[myId].nick) || '';
+  const nickOf = (id) => (members[id] && members[id].nick) || '알 수 없음';
+
+  /* ---- 내 요약 올리기 ---- */
+  function mySummary() {
+    const days = {}, best = {};
+    for (const d of Object.keys(db)) {
+      const v = Math.round(dayVolume(d));
+      if (v > 0) days[d] = v;
+      for (const ex of db[d]) {
+        if (bwType(ex)) continue;
+        for (const st of ex.sets) {
+          if (num(st.r) > 0 && num(st.w) > 0) best[ex.name] = Math.max(best[ex.name] || 0, num(st.w));
+        }
+      }
+    }
+    return { days, best };
+  }
+  async function publish(nickOverride) {
+    if (!store || !myId) return;
+    const nick = nickOverride || myNick();
+    if (!nick) return;                       // 참가 전에는 올리지 않음
+    const { days, best } = mySummary();
+    const key = JSON.stringify(days) + JSON.stringify(best) + nick;
+    if (key === lastPublished) return;
+    await store.doc('board/' + myId).set({ nick, days, best, updatedAt: Date.now() });
+    lastPublished = key;
+  }
+
+  /* ---- 순위 계산 ---- */
+  function periodDates() {
+    if (period === 'week') return new Set(weekDates(todayStr()));
+    if (period === 'month') return new Set(monthDays(todayStr()));
+    return null;
+  }
+  function statsOf(m) {
+    const set = periodDates();
+    let volume = 0, days = 0;
+    for (const [d, v] of Object.entries(m.days || {})) {
+      if (set && !set.has(d)) continue;
+      volume += num(v); if (num(v) > 0) days++;
+    }
+    return { volume, days };
+  }
+  function ranking() {
+    const rows = Object.entries(members).map(([id, m]) => {
+      const st = statsOf(m);
+      const value = metric === 'volume' ? st.volume : metric === 'days' ? st.days : num((m.best || {})[bestEx]);
+      return { id, m, st, value };
+    });
+    rows.sort((a, b) => b.value - a.value || a.m.nick.localeCompare(b.m.nick, 'ko'));
+    return rows;
+  }
+  const fmtMetric = (v) => metric === 'volume' ? fmtKg(v) : metric === 'days' ? `${v}일` : v ? `${v} kg` : '-';
+  const periodLabel = () => ({ week: '이번 주', month: '이번 달', all: '전체 기간' }[period]);
+
+  function allComments() {
+    return Object.values(comments).flat().filter((c) => members[c.from]).sort((a, b) => b.at - a.at);
+  }
+  function relTime(t) {
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 60) return '방금';
+    if (s < 3600) return `${Math.floor(s / 60)}분 전`;
+    if (s < 86400) return `${Math.floor(s / 3600)}시간 전`;
+    if (s < 86400 * 7) return `${Math.floor(s / 86400)}일 전`;
+    const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+  function updateDot() {
+    let seen = 0; try { seen = +localStorage.getItem(SEEN_KEY) || 0; } catch {}
+    const latest = allComments().find((c) => c.to === myId && c.from !== myId);
+    $('#rank-dot').classList.toggle('on', !!latest && latest.at > seen);
+  }
+
+  /* ---- 화면 ---- */
+  function render() {
+    const unavailable = !store;
+    $('#rank-unavailable').hidden = !(unavailable || failed);
+    if (failed) $('#rank-unavailable-msg').textContent = '그룹 순위를 불러오지 못했어요. 잠시 후 다시 열어주세요.';
+    $('#rank-join').hidden = unavailable || failed || !ready || !!myNick();
+    $('#rank-main').hidden = unavailable || failed || !ready || !myNick();
+    if ($('#rank-main').hidden) return;
+    try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch {}
+    updateDot();
+
+    // 운동 선택 (최고 중량)
+    const exNames = [...new Set(Object.values(members).flatMap((m) => Object.keys(m.best || {})))].sort((a, b) => a.localeCompare(b, 'ko'));
+    if (!bestEx || !exNames.includes(bestEx)) bestEx = exNames.includes('바벨 벤치프레스') ? '바벨 벤치프레스' : exNames[0] || '';
+    const sel = $('#rank-exercise');
+    sel.hidden = metric !== 'best';
+    sel.innerHTML = exNames.map((n) => `<option ${n === bestEx ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('') || '<option>기록 없음</option>';
+
+    const rows = ranking();
+    const max = Math.max(...rows.map((r) => r.value), 1);
+    const myIdx = rows.findIndex((r) => r.id === myId);
+    const metricName = { volume: '총볼륨', days: '운동일수', best: bestEx ? `${bestEx} 최고 중량` : '최고 중량' }[metric];
+    $('#rank-my-label').textContent = `${metric === 'best' ? '전체 기간' : periodLabel()} · ${metricName}`;
+    $('#rank-my-rank').textContent = myIdx >= 0 ? `${myIdx + 1}위 / ${rows.length}명` : '-';
+    const me = rows[myIdx];
+    const gap = myIdx > 0 ? rows[myIdx - 1].value - me.value : 0;
+    $('#rank-my-sub').textContent = me ? `내 기록 ${fmtMetric(me.value)}${myIdx > 0 ? ` · ${myIdx}위까지 ${fmtMetric(gap)}` : myIdx === 0 && rows.length > 1 ? ' · 1등이에요! 🔥' : ''}` : '';
+
+    const cmtCount = {};
+    allComments().forEach((c) => { cmtCount[c.to] = (cmtCount[c.to] || 0) + 1; });
+    $('#rank-list').innerHTML = rows.map((r, i) => `
+      <button class="rank-row ${r.id === myId ? 'me' : ''}" data-id="${escapeHtml(r.id)}">
+        <span class="rank-no">${i + 1}</span>
+        <span class="rank-main">
+          <span class="rank-name">${escapeHtml(r.m.nick)}${r.id === myId ? '<span class="me-tag">나</span>' : ''}
+            ${cmtCount[r.id] ? `<span class="rank-cmt"><svg class="i"><use href="#i-chat"/></svg>${cmtCount[r.id]}</span>` : ''}</span>
+          <span class="rank-bar"><div style="width:${(r.value / max) * 100}%"></div></span>
+        </span>
+        <span class="rank-val">${fmtMetric(r.value)}</span>
+      </button>`).join('');
+    $('#rank-list').querySelectorAll('.rank-row').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
+
+    const feed = allComments().slice(0, 30);
+    $('#feed-list').innerHTML = feed.length ? feed.map((c) => `
+      <div class="feed-item">
+        <div class="feed-meta"><b>${escapeHtml(nickOf(c.from))}</b> → <b>${escapeHtml(nickOf(c.to))}</b> · ${relTime(c.at)}</div>
+        <div class="feed-text">${escapeHtml(c.text)}</div>
+      </div>`).join('') : '<p class="empty-text">아직 댓글이 없어요. 친구를 눌러 첫 응원을 남겨보세요!</p>';
+    $('#my-nick').textContent = myNick();
+  }
+
+  function openProfile(id) {
+    openPerson = id;
+    $('#person-modal').hidden = false;
+    document.body.classList.add('modal-open');
+    renderPerson();
+  }
+  function closeProfile() {
+    openPerson = null;
+    $('#person-modal').hidden = true;
+    document.body.classList.remove('modal-open');
+  }
+  function renderPerson() {
+    const m = members[openPerson];
+    if (!m) { closeProfile(); return; }
+    const rows = ranking();
+    const idx = rows.findIndex((r) => r.id === openPerson);
+    $('#person-rank').textContent = `${periodLabel()} ${idx + 1}위`;
+    $('#person-name').textContent = m.nick + (openPerson === myId ? ' (나)' : '');
+    const days = m.days || {};
+    const sum = (dates) => dates.reduce((a, d) => a + num(days[d]), 0);
+    const wk = weekDates(todayStr());
+    const bests = Object.entries(m.best || {}).sort((a, b) => b[1] - a[1]);
+    $('#person-stats').innerHTML = `
+      <div class="stat"><small>이번 주</small><b>${fmtShort(sum(wk)) || 0}</b></div>
+      <div class="stat"><small>이번 달</small><b>${fmtShort(sum(monthDays(todayStr()))) || 0}</b></div>
+      <div class="stat"><small>최고 중량</small><b>${bests[0] ? `${bests[0][1]}kg` : '-'}</b></div>`;
+    const vals = wk.map((d) => num(days[d]));
+    const max = Math.max(...vals, 1);
+    $('#person-week').innerHTML = wk.map((d, i) => `<div class="pw"><i class="${vals[i] ? '' : 'zero'}" style="height:${Math.max(6, (vals[i] / max) * 100)}%"></i>${WEEKDAYS[i]}</div>`).join('');
+
+    const list = allComments().filter((c) => c.to === openPerson).reverse();
+    const box = $('#person-comments');
+    box.innerHTML = list.length ? list.map((c) => `
+      <div class="comment-item">
+        <div class="comment-meta"><b>${escapeHtml(nickOf(c.from))}</b> · ${relTime(c.at)}
+          ${c.from === myId ? `<button class="comment-del" data-id="${escapeHtml(c.id)}">삭제</button>` : ''}</div>
+        <div class="comment-text">${escapeHtml(c.text)}</div>
+      </div>`).join('') : '<p class="empty-text">첫 댓글을 남겨보세요</p>';
+    box.querySelectorAll('.comment-del').forEach((b) => b.addEventListener('click', async () => {
+      try { await store.doc(`comments/${myId}/items/${b.dataset.id}`).delete(); } catch { toast('삭제하지 못했어요'); }
+    }));
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendComment(text) {
+    text = text.trim().slice(0, 200);
+    if (!text || !openPerson || !store) return;
+    try {
+      await store.collection(`comments/${myId}/items`).add({ to: openPerson, text, at: Date.now() });
+      $('#comment-input').value = '';
+    } catch (e) {
+      toast(e && e.code === 'invalid_argument' ? '댓글을 쓸 권한이 없어요 (편집자로 초대받아야 해요)' : '댓글을 보내지 못했어요');
+    }
+  }
+
+  async function join(nick) {
+    nick = nick.trim().slice(0, 12);
+    if (!nick) return;
+    if (Object.entries(members).some(([id, m]) => id !== myId && m.nick === nick)) { toast('이미 있는 닉네임이에요'); return; }
+    try {
+      lastPublished = null;
+      await publish(nick);
+      toast(`${nick}님, 참가 완료! 🏋️`);
+    } catch (e) {
+      toast(e && e.code === 'invalid_argument' ? '참가 권한이 없어요. 링크 주인에게 편집자 초대를 받아주세요' : '참가하지 못했어요. 다시 시도해 주세요');
+    }
+  }
+
+  // 이벤트
+  $('#join-form').addEventListener('submit', (e) => { e.preventDefault(); join($('#join-nick').value); });
+  $('#rank-period').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    period = b.dataset.period;
+    $('#rank-period').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+    render();
+  }));
+  $('#rank-metric').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
+    metric = b.dataset.metric;
+    $('#rank-metric').querySelectorAll('.chip').forEach((x) => x.classList.toggle('active', x === b));
+    render();
+  }));
+  $('#rank-exercise').addEventListener('change', (e) => { bestEx = e.target.value; render(); });
+  $('#person-close').addEventListener('click', closeProfile);
+  $('#person-modal .rest-backdrop').addEventListener('click', closeProfile);
+  $('#comment-form').addEventListener('submit', (e) => { e.preventDefault(); sendComment($('#comment-input').value); });
+  document.querySelectorAll('.cheer').forEach((b) => b.addEventListener('click', () => sendComment(b.dataset.cheer)));
+  $('#nick-change').addEventListener('click', () => {
+    $('#rank-join').hidden = false;
+    $('#join-nick').value = myNick();
+    $('#join-nick').focus();
+  });
+  setInterval(() => { if (currentView() === 'rank') render(); }, 60000);
+
+  return { init, publish, render };
+})();
+
 cloud.init();
