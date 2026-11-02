@@ -220,7 +220,7 @@ window.stage3d = (() => {
       const hand = S(arm * 0.75, mats.skin, s * 0.15, -0.8, 0.04, 1, 1, 1, pv);
       pv.userData.hand = hand;
     });
-    f.userData.rig = rig;
+    f.userData.rig = rig; f.userData.mats = mats;
     // 목 · 머리 (머리는 그대로 → 커질수록 웃긴 비율)
     C(0.07 + U * 0.07, 0.09 + U * 0.09, 0.16, mats.skin, 0, chestY + 0.2, 0);
     S(0.17, mats.skin, 0, chestY + 0.42, 0, 1, 1.1, 1);
@@ -319,10 +319,11 @@ window.stage3d = (() => {
     rest: { label: '🥤 약수 한 사발', station: 'seat' },
     home: { label: '🏠 자기 짐에서 운동', station: 'home' },
     pray: { label: '🙏 기도 (스쿼트)', station: 'pray' },
+    roid: { label: '⚡ 스테로이드 존 다녀오기', station: 'roid' },
     jail: { label: '🔒 수감 중', station: 'jail', hidden: true },
   };
   let gymScene = null, gymCam = null, stations = {}, agents = [], gymYaw = 0.25, onPick = null;
-  let booths = {}, onBooth = null, memoData = {}, onStatue = null;
+  let booths = {}, onBooth = null, memoData = {}, onStatue = null, onPower = null;
   let gymDist = 48, gymH = 26, gymTouched = 0;   // 산스장 카메라: 거리(줌) · 높이
   function buildGymScene() {
     /* ⛰️ 볼류머 산스장 — 산 정상을 평평하게 깎아 올린 헬스장 (구름 위) */
@@ -340,6 +341,7 @@ window.stage3d = (() => {
     const B = (w, h, d, mat, x, y, z, par = gymScene) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; par.add(o); return o; };
     const Cy = (r, h, mat, x, y, z, rx = 0, rz = 0, par = gymScene) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 14), mat); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); o.castShadow = true; par.add(o); return o; };
     // ── 🏟 실내 메가짐: 산 정상에 세운 거대한 실내 헬스장 (유리창 너머 산맥)
+    const roidSlots = [];
     const R = 18.5;   // 가운데 공용 구역 반지름 (각자 짐은 그 둘레)
     const HW = 40, HZ0 = -36, HZ1 = 28, HH = 17;   // 홀 크기: x ±40, z -36 ~ 28, 천장 17
     const FW = HW * 2, FD = HZ1 - HZ0, FZ = (HZ0 + HZ1) / 2;
@@ -415,6 +417,30 @@ window.stage3d = (() => {
     // 앞쪽 입구: 안내데스크 + 개찰구
     B(8, 1.1, 1.4, M(0xe9e4da, 0.5, 0.1), 0, 0.55, 24.5); B(8.2, 0.08, 1.6, M(0x16171b, 0.4, 0.5), 0, 1.14, 24.5);
     [-5.5, -4, 4, 5.5].forEach((x) => { B(0.2, 1.0, 1.2, stl, x, 0.5, 21); });
+    // ⚡ 스테로이드 존 (앞 왼쪽): 초록 네온 캡슐 3개 — 들어갔다 나오면 초사이언
+    (() => {
+      const ZX = 13, ZZ = 19;
+      const neon = new THREE.Mesh(new THREE.PlaneGeometry(12, 7), new THREE.MeshStandardMaterial({ color: 0x0b3d1c, emissive: 0x0f7a35, emissiveIntensity: 0.6, roughness: 0.6 }));
+      neon.rotation.x = -Math.PI / 2; neon.position.set(ZX, 0.02, ZZ); gymScene.add(neon);
+      const edge = M(0x39ff7a, 0.3, 0.2, 0x39ff7a);
+      B(12.2, 0.06, 0.12, edge, ZX, 0.05, ZZ - 3.5); B(12.2, 0.06, 0.12, edge, ZX, 0.05, ZZ + 3.5); B(0.12, 0.06, 7, edge, ZX - 6.05, 0.05, ZZ); B(0.12, 0.06, 7, edge, ZX + 6.05, 0.05, ZZ);
+      const glassG = new THREE.MeshStandardMaterial({ color: 0x8dffb0, emissive: 0x1aff6a, emissiveIntensity: 0.35, transparent: true, opacity: 0.28, roughness: 0.1, depthWrite: false });
+      [-3.6, 0, 3.6].forEach((dx) => {
+        const x = ZX + dx, z = ZZ - 1.2;
+        Cy(0.95, 0.25, stl, x, 0.12, z); Cy(0.95, 0.25, stl, x, 2.95, z);
+        const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 2.7, 24, 1, true), glassG); tube.position.set(x, 1.5, z); gymScene.add(tube);
+        const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture('rgba(120,255,160,.85)', 'rgba(40,255,110,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); gl.scale.set(2.6, 3.4, 1); gl.position.set(x, 1.5, z); gymScene.add(gl);
+        roidSlots.push({ x, z, face: 0, y: 0.25, busy: null });
+      });
+      const c = document.createElement('canvas'); c.width = 1024; c.height = 220; const cx = c.getContext('2d');
+      cx.fillStyle = '#050a07'; cx.fillRect(0, 0, 1024, 220); cx.strokeStyle = '#39ff7a'; cx.lineWidth = 10; cx.strokeRect(10, 10, 1004, 200);
+      cx.shadowColor = '#39ff7a'; cx.shadowBlur = 24; cx.fillStyle = '#b6ffcf'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.font = '900 92px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText('⚡ 스테로이드 존 ⚡', 512, 95);
+      cx.shadowBlur = 0; cx.fillStyle = '#7dffaa'; cx.font = '700 38px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText('들어갔다 나오면 초사이언 (게임 속 이야기)', 512, 175);
+      const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+      const sg = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 1.375), new THREE.MeshBasicMaterial({ map: t, toneMapped: false })); sg.position.set(ZX, 4.2, ZZ - 2.6); gymScene.add(sg);
+      [-2.9, 2.9].forEach((dx) => B(0.12, 4.0, 0.12, blk, ZX + dx, 2.0, ZZ - 2.7));
+    })();
     // 정상석 + 간판
     const stone = document.createElement('canvas'); stone.width = 256; stone.height = 512;
     const tx = stone.getContext('2d'); tx.fillStyle = '#d8d3c8'; tx.fillRect(0, 0, 256, 512);
@@ -512,7 +538,7 @@ window.stage3d = (() => {
     const potM = M(0xd9d3c7, 0.6);
     const pine = (x, z, k) => { Cy(0.55 * k, 0.6, potM, x, 0.3, z); Cy(0.12 * k, 1.2 * k, trunkM, x, 0.6 * k, z); [0, 1, 2].forEach((j) => { const c = new THREE.Mesh(new THREE.ConeGeometry((1.0 - j * 0.25) * k, 1.3 * k, 8), j % 2 ? pineM2 : pineM); c.position.set(x, (1.4 + j * 0.75) * k, z); c.castShadow = true; gymScene.add(c); }); };
     [[-8.6, -3.6, 1.1], [8.4, -4.4, 1.0], [7.9, 4.6, 0.85], [-4.6, -8.6, 0.8], [8.2, 5.4, 0.8]].forEach(([x, z, k]) => pine(x, z, k));
-    stations = { bench: [], rack: [], tread: [], db: [], mat: [], seat: [], jail: [], pray: praySlots };
+    stations = { bench: [], rack: [], tread: [], db: [], mat: [], seat: [], jail: [], pray: praySlots, roid: roidSlots };
     // 벤치프레스 2대 (왼쪽)
     [-1.3, 1.3].forEach((dz) => {
       const x = -5.2, z = -1 + dz;
@@ -685,6 +711,12 @@ window.stage3d = (() => {
         rig.arms.forEach((r) => (r.rotation.x = -0.9));
         f.rotation.x = 0.35;   // 고개 푹
       }
+    } else if (k === 'roid') {   // ⚡ 캡슐 안에서 기 모으기
+      f.position.y = (a.slot.y || 0.25) + 0.15 + Math.sin(t * 3) * 0.06;
+      const shake = Math.sin(t * 40) * 0.02;
+      f.position.x = shake;
+      rig.arms.forEach((r, i) => { r.rotation.z = (i ? -1 : 1) * 0.55; r.rotation.x = 0.2; });
+      rig.legs.forEach((l, i) => (l.rotation.z = (i ? -1 : 1) * 0.18));
     } else if (k === 'pray') {   // 🙏 기도 = 스쿼트 + 합장
       const rep = (Math.sin(t * 1.8) + 1) / 2;
       f.position.y = (a.slot.y || 0) - rep * 0.36;
@@ -813,7 +845,7 @@ window.stage3d = (() => {
       let tag = null;
       let a = null;
       const setTag = (sub) => { if (tag) { g.remove(tag); tag.material.map.dispose(); } tag = nameTag(m.nick, sub, m.me, m.live); tag.position.y = f.userData.top * 0.82 + 0.6; tag.scale.multiplyScalar(2.1); g.add(tag); if (a) a.tag = tag; };
-      a = { order: m.order || null, temp: null, id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, jail: !!m.jail, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
+      a = { power: num0(m.power) > Date.now() ? performance.now() + (num0(m.power) - Date.now()) : 0, order: m.order || null, temp: null, id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, jail: !!m.jail, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
       g.position.set(-1 + (i % 4) * 0.9, 0, 5.2 + Math.floor(i / 4) * 0.8);   // 입구에서 입장
       g.userData.agent = a;
       gymScene.add(g); agents.push(a);
@@ -824,17 +856,59 @@ window.stage3d = (() => {
   function updateAgents(dt, s) {
     agents.forEach((a) => {
       const p = a.g.position, sl = a.slot;
-      if (a.mode === 'photo') { posePhoto(a, s); return; }
+      if (a.mode === 'photo') { posePhoto(a, s); auraTick(a, s); return; }
       if (a.mode === 'walk') {
         const dx = sl.x - p.x, dz = sl.z - p.z, d = Math.hypot(dx, dz);
         if (d < 0.06) { p.x = sl.x; p.z = sl.z; a.mode = 'do'; a.timer = a.temp ? Math.max(2, (a.tempUntil - performance.now()) / 1000) : 20; a.g.rotation.y = sl.face; }
         else { const v = Math.min(d, 1.5 * dt); p.x += (dx / d) * v; p.z += (dz / d) * v; a.g.rotation.y = Math.atan2(dx, dz); }
       } else {
         a.timer -= dt;
+        if (a.timer <= 0 && a.task === 'roid') { a.power = performance.now() + 180000; a.temp = null; if (onPower) try { onPower(a.id); } catch {} }
         if (a.timer <= 0) { const k = pickTask(a); if (k === a.task && a.slot && a.slot.busy === a) { a.timer = 20; a.tagSub((a.order === k ? '👑 ' : '') + TASKS[k].label); } else goTo(a, k); }
       }
       pose(a, s);
+      auraTick(a, s);
     });
+  }
+
+  /* ================= ⚡ 초사이언 오라 ================= */
+  const num0 = (v) => (Number.isFinite(+v) ? +v : 0);
+  let flameTex = null;
+  function flame() {
+    if (flameTex) return flameTex;
+    const c = document.createElement('canvas'); c.width = 128; c.height = 256; const x = c.getContext('2d');
+    const g = x.createRadialGradient(64, 170, 4, 64, 150, 120);
+    g.addColorStop(0, 'rgba(255,255,220,1)'); g.addColorStop(0.25, 'rgba(255,230,90,.95)'); g.addColorStop(0.6, 'rgba(255,170,20,.55)'); g.addColorStop(1, 'rgba(255,140,0,0)');
+    x.fillStyle = g; x.beginPath(); x.moveTo(64, 0); x.bezierCurveTo(120, 90, 128, 200, 64, 256); x.bezierCurveTo(0, 200, 8, 90, 64, 0); x.fill();
+    flameTex = new THREE.CanvasTexture(c); return flameTex;
+  }
+  function auraTick(a, s) {
+    const on = a.power && performance.now() < a.power, mats = a.fig.userData.mats;
+    if (on && !a.aura) {
+      const g = new THREE.Group(), top = (a.fig.userData.top || 1.9) * 0.82;
+      for (let i = 0; i < 5; i++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: flame(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.85 }));
+        sp.userData.k = i; sp.position.set((i - 2) * 0.18, top * 0.55, -0.05 - Math.abs(i - 2) * 0.02); g.add(sp);
+      }
+      const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture('rgba(255,255,200,1)', 'rgba(255,220,80,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      spark.scale.set(2.2, 2.2, 1); spark.position.y = top * 0.55; g.add(spark);
+      a.g.add(g); a.aura = g;
+      if (mats && mats.hair) { a.hairCol = mats.hair.color.getHex(); mats.hair.color.set(0xffd84a); mats.hair.emissive = new THREE.Color(0x7a5200); }
+      a.tagSub('⚡ 초사이언 모드');
+    } else if (!on && a.aura) {
+      a.g.remove(a.aura); a.aura = null;
+      if (mats && mats.hair && a.hairCol !== undefined) { mats.hair.color.setHex(a.hairCol); mats.hair.emissive = new THREE.Color(0x000000); }
+      if (a.mode !== 'photo') a.tagSub((a.order === a.task ? '👑 ' : '') + (TASKS[a.task] ? TASKS[a.task].label : ''));
+    }
+    if (a.aura) {
+      const top = (a.fig.userData.top || 1.9) * 0.82;
+      a.aura.children.forEach((sp) => {
+        if (sp.userData.k === undefined) { sp.material.opacity = 0.5 + Math.sin(s * 9) * 0.2; return; }
+        const k = sp.userData.k, fl = 1 + Math.sin(s * 14 + k * 1.7) * 0.12 + Math.sin(s * 23 + k) * 0.06;
+        sp.scale.set((0.9 + (k === 2 ? 0.5 : 0)) * fl, top * (1.5 + (k === 2 ? 0.4 : 0)) * fl, 1);
+        sp.material.opacity = 0.7 + Math.sin(s * 17 + k) * 0.15;
+      });
+    }
   }
 
   /* ================= 📸 단체사진 (아이레벨, 오늘 한 운동대로 포징) ================= */
@@ -968,7 +1042,8 @@ window.stage3d = (() => {
   function assign(id, k, own) {
     const a = agents.find((x) => x.id === id);
     if (!a || a.jail) return false;
-    if (own) { a.order = k === 'auto' ? null : k; a.temp = null; goTo(a, pickTask(a)); return true; }
+    if (own && k !== 'roid') { a.order = k === 'auto' ? null : k; a.temp = null; goTo(a, pickTask(a)); return true; }
+    if (k === 'roid') { a.temp = k; a.tempUntil = performance.now() + 12000; goTo(a, k); return true; }
     if (!TASKS[k]) return false;
     a.temp = k; a.tempUntil = performance.now() + TEMP_MS;
     goTo(a, k);
@@ -1058,5 +1133,5 @@ window.stage3d = (() => {
     if (!raf) { t0 = performance.now(); raf = requestAnimationFrame(tick); }
     return true;
   }
-  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, photoAngle, setImmersive, viewRoom, roomIds, inRoom: () => room, onStatue: (fn) => { onStatue = fn; }, setMemos, onBooth: (fn) => { onBooth = fn; }, openBooth: (id) => { if (onBooth && booths[id]) onBooth(id); }, inPhoto: () => !!photo, poses: PHOTO_POSES };
+  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, photoAngle, setImmersive, viewRoom, roomIds, inRoom: () => room, onStatue: (fn) => { onStatue = fn; }, onPower: (fn) => { onPower = fn; }, setMemos, onBooth: (fn) => { onBooth = fn; }, openBooth: (id) => { if (onBooth && booths[id]) onBooth(id); }, inPhoto: () => !!photo, poses: PHOTO_POSES };
 })();

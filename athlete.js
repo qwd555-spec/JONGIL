@@ -461,6 +461,12 @@ window.athlete = (() => {
     $('#order-btns').querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
       const k = b.dataset.k, label = k === 'auto' ? '🤖 자동' : T[k].label;
       $('#order-sheet').hidden = true;
+      if (k === 'roid') {   // ⚡ 한 번 다녀오는 곳 (명령으로 남지 않음)
+        window.stage3d.assign(a.id, 'roid', a.me);
+        if (a.me) { toast('⚡ 스테로이드 존 들어가는 중… 나오면 초사이언!'); return; }
+        try { await social.send(a.id, '⚡ 스테로이드 존 다녀와라 (산스장에서 시킴)'); } catch {}
+        toast(`${a.nick} 스테로이드 존 보냄 ⚡`); return;
+      }
       if (a.me) {   // 👑 주인장 명령: 계속 유지 + 친구들 화면에도 반영
         G.order = k === 'auto' ? null : k; persist();
         window.stage3d.assign(a.id, k, true);
@@ -577,6 +583,11 @@ window.athlete = (() => {
     prayN = 0; $('#pray-wish').value = ''; renderPray();
   });
   if (window.stage3d && window.stage3d.onStatue) window.stage3d.onStatue(openPray);
+  // ⚡ 내가 스테로이드 존에서 나오면 3분간 초사이언 (친구 화면에도 보이게 저장)
+  if (window.stage3d && window.stage3d.onPower) window.stage3d.onPower((id) => {
+    try { if (id !== social.id()) return; } catch { return; }
+    G.pw = Date.now() + 180000; persist(); toast('⚡ 초사이언 모드! (3분)');
+  });
 
   /* ⛶ 산스장 들어가기 (전체화면) */
   let gymFull = false;
@@ -652,16 +663,16 @@ window.athlete = (() => {
     const jailed = (id) => { try { return !!social.jailed(id); } catch { return false; } };
     return Object.keys(members).map((id) => {
       const m = members[id];
-      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus(), jail: jailed(id), order: G.order || null }; }
+      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus(), jail: jailed(id), order: G.order || null, power: G.pw || 0 }; }
       const c = m.char || {}, t = TRACKS[c.t] ? c.t : '';
       let fc = null; try { fc = social.focus(id); } catch {}
-      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id), jail: jailed(id), order: typeof c.o === 'string' ? c.o : null };
+      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id), jail: jailed(id), order: typeof c.o === 'string' ? c.o : null, power: num(c.pw) };
     }).slice(0, 12);
   }
   document.querySelectorAll('#ath-view button').forEach((b) => b.addEventListener('click', () => { view3d = b.dataset.v; render(); }));
 
   /** 친구들에게 보일 내 선수 요약 */
-  function summary() { const R = real(); const o = { t: G.track, st: G.stage, s: { u: R.up, l: R.low } }; if (G.order) o.o = G.order; return o; }
+  function summary() { const R = real(); const o = { t: G.track, st: G.stage, s: { u: R.up, l: R.low } }; if (G.order) o.o = G.order; if (G.pw > Date.now()) o.pw = G.pw; return o; }
   const state = () => G;
 
   return { render, summary, state, restore, draw: drawAthlete, memosChanged: () => { pushMemos(); renderMemoSheet(); if (roomId) roomLabel(roomId); if (!$('#pray-sheet').hidden) renderPray(); } };

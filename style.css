@@ -1379,3 +1379,10 @@ body.gym-full .toast { z-index: 95; }
 .dai span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dai b { font-size: 14px; } .dai small { font-size: 11.5px; color: var(--muted); }
 .dai em { font-style: normal; font-weight: 800; font-size: 13px; }
+
+.meal-btns { display: flex; gap: 8px; }
+.meal-btns .meal-add { flex: 1.3; min-width: 0; }
+.diet-btn { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.meal-btns { margin-top: 10px; }
+.meal-btns .meal-add { margin-top: 0; width: auto; }
+.diet-btn { height: 50px; }

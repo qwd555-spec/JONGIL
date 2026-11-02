@@ -317,11 +317,6 @@
           <p class="hint">피드는 닉네임을 등록하고 로그인한 상태에서 볼 수 있어요.</p>
         </div>
         <div id="feed-main" hidden>
-          <button type="button" class="diet-entry" id="diet-open">
-            <span class="de-ic">🥗</span>
-            <span class="de-tx"><b>식단 기록 · 칼로리 탄단지</b><small>제대로 할 사람만 · 나만 보는 기록</small></span>
-            <svg class="i"><use href="#i-right"/></svg>
-          </button>
           <div class="segmented" id="feed-kind">
             <button data-k="meal" class="active">🍱 식단</button>
             <button data-k="body">눈바디</button>
@@ -329,7 +324,10 @@
           <div id="meal-box">
             <div class="panel meal-up">
               <input type="text" id="meal-text" class="rb-name" maxlength="60" placeholder="메뉴 한 줄 (선택) · 닭가슴살 샐러드" />
-              <button type="button" class="meal-add" id="meal-add"><svg class="i"><use href="#i-plus"/></svg><span>식단 사진 올리기</span></button>
+              <div class="meal-btns">
+                <button type="button" class="meal-add" id="meal-add"><svg class="i"><use href="#i-plus"/></svg><span>식단 사진 올리기</span></button>
+                <button type="button" class="diet-btn" id="diet-open">🥗 <span>식단 기록하기</span></button>
+              </div>
               <input type="file" id="meal-file" accept="image/*" hidden />
               <p class="hint">식단 사진은 친구들에게 보여요 · 2주 지나면 자동 정리돼요</p>
             </div>
