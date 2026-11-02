@@ -259,7 +259,7 @@ function preferredCardioMode() { try { return localStorage.getItem(CARDIO_MODE_K
 function cardioKcal(set, info, bw, mode = 'calc') {
   const km = num(set.km), min = num(set.min);
   if (mode === 'watch') return num(set.wkcal);
-  if (info.perKm && km > 0) return info.perKm * bw * km;
+  if (info.perKm && km > 0) return info.perKm * bw * km * paceFactor(info, km, min);
   return Math.max(0, info.met - 1) * bw * (min / 60) * (info.timeScale ?? 1);
 }
 /** kcal → kg 볼륨 (종목 보정 포함) */
@@ -930,6 +930,8 @@ function renderDay() {
         if (min) parts.push(min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60 ? `${min % 60}분` : ''}`.trim() : `${min}분`);
         const pt = paceText(ex.name, km, min);
         if (pt) parts.push(pt.includes('km/h') ? `평균 ${pt}` : `페이스 ${pt}`);
+        const pf = cardioMode(ex) === 'watch' ? 1 : paceFactor(cinfo, km, min);
+        if (pf !== 1) parts.push(`${pf > 1 ? '🔥 페이스 보너스' : '🐢 페이스'} ×${pf.toFixed(2)}`);
         const hr = avgHr(ex.sets);
         if (hr) parts.push(`♥ ${hr}bpm`);
         const goals = ex.sets.reduce((a, x) => a + num(x.goals), 0);

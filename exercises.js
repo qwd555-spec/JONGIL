@@ -341,11 +341,23 @@ EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
 const CARDIO_KCAL_TO_VOLUME = 25;
 /** 유산소·스포츠 전체 볼륨 너프 (50%) */
 const CARDIO_NERF = 0.5;
+/* 🏃 페이스 보너스 (거리+시간 둘 다 적었을 때)
+ * 러닝: 6'00"/km(10km/h) = ×1.00, 1km/h 빠를 때마다 +8% (최대 ×1.4, 최소 ×0.85)
+ *       → 5'00"/km ×1.16 · 4'30"/km ×1.27 · 4'00"/km ×1.40
+ * 걷기: 5km/h = ×1.00, 1km/h 빠를 때마다 +10% (최대 ×1.4, 최소 ×0.8) */
+const PACE_BONUS = { run: { base: 10, step: 0.08, lo: 0.85, hi: 1.4 }, walk: { base: 5, step: 0.1, lo: 0.8, hi: 1.4 } };
+function paceFactor(info, km, min) {
+  const b = info && PACE_BONUS[info.pace];
+  if (!b || !(km > 0) || !(min > 0)) return 1;
+  const speed = km / (min / 60);
+  if (speed > (info.pace === 'run' ? 25 : 12)) return 1;   // 잘못 입력한 값은 보너스 없음
+  return Math.min(b.hi, Math.max(b.lo, 1 + (speed - b.base) * b.step));
+}
 const CARDIO = {
-  '러닝': { met: 9.8, perKm: 1.0, scale: 0.7 },
-  '트레드밀': { met: 9.0, perKm: 1.0, scale: 0.7 },
-  '인터벌 러닝': { met: 11.0, perKm: 1.05, scale: 0.7 },
-  '걷기': { met: 3.5, perKm: 0.5 },
+  '러닝': { met: 9.8, perKm: 1.0, scale: 0.7, pace: 'run' },
+  '트레드밀': { met: 9.0, perKm: 1.0, scale: 0.7, pace: 'run' },
+  '인터벌 러닝': { met: 11.0, perKm: 1.05, scale: 0.7, pace: 'run' },
+  '걷기': { met: 3.5, perKm: 0.5, pace: 'walk' },
   '인클라인 워킹': { met: 6.0, perKm: 0.8 },
   '등산': { met: 6.5, perKm: 0.9 },
   '실내 사이클': { met: 7.0, perKm: 0.3 },
