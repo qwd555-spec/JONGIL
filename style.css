@@ -1149,3 +1149,44 @@ body.event-bg .past-banner b { color: #7a4a00; }
 .congrats-form input { flex: 1; min-width: 0; height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line, rgba(0,0,0,.12)); background: var(--raised); font-size: 14px; color: inherit; }
 .congrats-form button { padding: 0 14px; border-radius: 12px; background: var(--raised); box-shadow: var(--shadow-raised); font-weight: 700; font-size: 13.5px; }
 .congrats button:disabled { opacity: .5; }
+
+/* 📸 산스장 단체사진 */
+.ath-photo { position: absolute; right: 16px; top: 64px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 800; color: #111; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.25); z-index: 2; }
+.ath-photo[hidden] { display: none; }
+.photo-bar { position: absolute; left: 0; right: 0; bottom: 92px; display: flex; align-items: center; justify-content: center; gap: 28px; z-index: 3; }
+.photo-bar[hidden] { display: none; }
+.photo-bar #photo-cancel { height: 34px; padding: 0 14px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; font-size: 13px; font-weight: 700; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.photo-shoot { width: 64px; height: 64px; border-radius: 50%; background: #fff; border: 5px solid rgba(255,255,255,.45); background-clip: padding-box; box-shadow: 0 0 0 3px #fff, 0 6px 18px rgba(0,0,0,.35); }
+.photo-shoot:active { transform: scale(.92); }
+.photo-tip { font-size: 11.5px; font-weight: 700; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); width: 88px; }
+.photo-flash { position: absolute; inset: 0; background: #fff; z-index: 5; pointer-events: none; animation: photoFlash .5s ease-out forwards; border-radius: inherit; }
+@keyframes photoFlash { from { opacity: .95; } to { opacity: 0; } }
+.gphoto { z-index: 60; }
+.gphoto-sheet { width: min(420px, 100%); padding: 14px; text-align: center; }
+.gphoto-sheet img { width: 100%; border-radius: 10px; display: block; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.gphoto-tip { margin: 10px 0 12px; font-size: 12px; color: var(--muted); }
+.gphoto-btns { display: flex; gap: 8px; }
+.gphoto-btns button { flex: 1; height: 46px; border-radius: 12px; background: var(--raised); box-shadow: var(--shadow-raised); font-weight: 800; font-size: 14.5px; }
+.gphoto-btns .primary { background: var(--ink); color: #fff; }
+
+/* 💬 피드 댓글 */
+.post-cmts { margin: 10px 4px 4px; border-radius: 14px; background: var(--raised); box-shadow: var(--shadow-raised); overflow: hidden; }
+.post-cmts[hidden] { display: none; }
+.post-cmts summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 12px; cursor: pointer; font-size: 13.5px; }
+.post-cmts summary::-webkit-details-marker { display: none; }
+.post-cmts summary small { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.post-cmts summary .i { width: 14px; height: 14px; transition: transform .2s; flex: none; }
+.post-cmts[open] summary .i { transform: rotate(90deg); }
+.post-cmts[open] summary small { visibility: hidden; }
+.pc-list { max-height: 180px; overflow-y: auto; padding: 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.pc-item { display: flex; align-items: baseline; gap: 6px; font-size: 13px; text-align: left; }
+.pc-item b { flex: none; }
+.pc-item span { flex: 1; min-width: 0; word-break: break-all; }
+.pc-item small { flex: none; color: var(--muted); font-size: 11px; }
+.pc-item button { flex: none; font-size: 11px; color: var(--muted); padding: 0 2px; }
+.pc-empty { margin: 0; font-size: 12.5px; color: var(--muted); }
+.pc-form { display: flex; gap: 6px; padding: 10px 12px 12px; }
+.pc-form input { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: inherit; font-size: 14px; }
+.pc-form button { padding: 0 14px; border-radius: 10px; background: var(--ink); color: #fff; font-weight: 700; font-size: 13px; }
+.cmt-badge { position: absolute; top: 6px; right: 6px; font-style: normal; font-size: 11px; font-weight: 700; color: #fff; background: rgba(0,0,0,.55); padding: 2px 7px; border-radius: 999px; pointer-events: none; }
+.meal-cell, .pf-cell { position: relative; }

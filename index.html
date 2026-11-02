@@ -361,6 +361,12 @@
             <b id="ath-name"></b>
             <span id="ath-stage"></span>
           </div>
+          <button type="button" class="ath-photo" id="ath-photo" hidden>📸 단체사진</button>
+          <div class="photo-bar" id="photo-bar" hidden>
+            <button type="button" id="photo-cancel">취소</button>
+            <button type="button" class="photo-shoot" id="photo-shoot" aria-label="찰칵"></button>
+            <span class="photo-tip">오늘 한 운동대로 포즈 중</span>
+          </div>
           <span class="cine-hint" id="cine-hint">드래그해서 돌려보기</span>
           <div class="order-sheet" id="order-sheet" hidden>
             <div class="order-head"><b id="order-title"></b><button type="button" id="order-close" aria-label="닫기">✕</button></div>
@@ -539,6 +545,14 @@
       <div class="post-sum" id="post-sum"></div>
       <div class="post-text" id="post-text"></div>
       <div class="share-items" id="post-items"></div>
+      <details class="post-cmts" id="post-cmts">
+        <summary><span>💬 <b id="post-cmt-n">댓글 달기</b></span><small id="post-cmt-peek"></small><svg class="i"><use href="#i-right"/></svg></summary>
+        <div class="pc-list" id="post-cmt-list"></div>
+        <form class="pc-form" id="post-cmt-form" autocomplete="off">
+          <input type="text" id="post-cmt-text" maxlength="200" placeholder="댓글 달기…" enterkeyhint="send" />
+          <button type="submit">등록</button>
+        </form>
+      </details>
       <div class="post-nav">
         <button id="post-prev" type="button" aria-label="이전"><svg class="i"><use href="#i-left"/></svg></button>
         <div class="cheer-row" id="post-cheers">
@@ -618,6 +632,19 @@
         <input type="text" id="congrats-text" maxlength="80" placeholder="직접 한마디 남기기" enterkeyhint="send" />
         <button type="submit">보내기</button>
       </form>
+    </div>
+  </div>
+
+  <!-- 📸 산스장 단체사진 결과 -->
+  <div id="gphoto-modal" class="rest-modal gphoto" hidden role="dialog" aria-modal="true" aria-label="단체사진">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet gphoto-sheet">
+      <img id="gphoto-img" alt="산스장 단체사진" />
+      <p class="gphoto-tip">사진을 길게 누르면 휴대폰에 바로 저장할 수도 있어요</p>
+      <div class="gphoto-btns">
+        <button type="button" id="gphoto-close">닫기</button>
+        <button type="button" id="gphoto-save" class="primary">저장하기</button>
+      </div>
     </div>
   </div>
 

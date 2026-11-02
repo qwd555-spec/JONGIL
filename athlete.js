@@ -324,6 +324,8 @@ window.athlete = (() => {
     $('.ath-hero.cine').classList.toggle('team', view3d === 'team' && team.length >= 2);
     $('#cine-hint').textContent = view3d === 'team' && team.length >= 2 ? '사람을 누르면 운동을 시킬 수 있어요' : '드래그해서 돌려보기';
     if (view3d !== 'team') $('#order-sheet').hidden = true;
+    $('#ath-photo').hidden = !(view3d === 'team' && team.length >= 2) || (window.stage3d && window.stage3d.inPhoto());
+    if (view3d !== 'team' && window.stage3d && window.stage3d.inPhoto()) { window.stage3d.endPhoto(); $('#photo-bar').hidden = true; }
     if (view3d === 'team' && team.length >= 2) scene3d = { team };
     if (window.stage3d) window.stage3d.show($('#ath-3d'), scene3d).then((ok) => { if (!ok) fallback(); }).catch(fallback);
     else fallback();
@@ -456,6 +458,52 @@ window.athlete = (() => {
   }
   $('#order-close').addEventListener('click', () => { $('#order-sheet').hidden = true; });
   if (window.stage3d) window.stage3d.onPick(openOrder);
+
+  /* 📸 산스장 단체사진 */
+  function photoMode(on) {
+    const S = window.stage3d; if (!S) return;
+    if (on) { if (!S.startPhoto()) { toast('산스장이 아직 준비 중이에요'); return; } }
+    else S.endPhoto();
+    $('#photo-bar').hidden = !on; $('#ath-photo').hidden = on; $('#ath-view').hidden = on;
+    $('#order-sheet').hidden = true;
+    $('#cine-hint').hidden = on;
+  }
+  $('#ath-photo').addEventListener('click', () => photoMode(true));
+  $('#photo-cancel').addEventListener('click', () => photoMode(false));
+  let lastPhoto = null;
+  $('#photo-shoot').addEventListener('click', () => {
+    const url = window.stage3d.snap();
+    if (!url) return;
+    const flash = document.createElement('div'); flash.className = 'photo-flash'; $('.ath-hero.cine').appendChild(flash); setTimeout(() => flash.remove(), 500);
+    const img = new Image();
+    img.onload = () => {
+      const W = img.width, H = img.height, pad = 36, foot = 150;
+      const c = document.createElement('canvas'); c.width = W + pad * 2; c.height = H + pad + foot;
+      const x = c.getContext('2d');
+      x.fillStyle = '#fbfaf7'; x.fillRect(0, 0, c.width, c.height);
+      x.drawImage(img, pad, pad);
+      const team = teamList(), inJail = team.filter((m) => m.jail).length, here = team.length - inJail;
+      x.fillStyle = '#16171b'; x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+      x.font = '900 52px -apple-system, "Apple SD Gothic Neo", sans-serif';
+      x.fillText('⛰ 볼류머 산스장 단체사진', pad + 6, H + pad + 74);
+      x.fillStyle = '#6b6b75'; x.font = '600 32px -apple-system, "Apple SD Gothic Neo", sans-serif';
+      const d = todayStr().replace(/-/g, '.');
+      x.fillText(`${d} · ${here}명 출석${inJail ? ` · 🔒 수감 ${inJail}명 불참` : ''}`, pad + 8, H + pad + 122);
+      lastPhoto = c.toDataURL('image/jpeg', 0.9);
+      $('#gphoto-img').src = lastPhoto;
+      $('#gphoto-modal').hidden = false; document.body.classList.add('modal-open');
+    };
+    img.src = url;
+  });
+  const closeG = () => { $('#gphoto-modal').hidden = true; document.body.classList.remove('modal-open'); };
+  $('#gphoto-close').addEventListener('click', closeG);
+  $('#gphoto-modal .rest-backdrop').addEventListener('click', closeG);
+  $('#gphoto-save').addEventListener('click', async () => {
+    if (!lastPhoto) return;
+    const bin = atob(lastPhoto.split(',')[1]), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    await download(`volumer-group-${todayStr()}.jpg`, new Blob([u8], { type: 'image/jpeg' }), 'image/jpeg');
+  });
 
   /* 다같이 한 무대에 */
   let view3d = 'me';

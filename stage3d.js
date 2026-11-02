@@ -103,7 +103,7 @@ window.stage3d = (() => {
       if (want && want.team) gymYaw = drag.gy - (e.clientX - drag.x) * 0.008; else { yaw = drag.yaw - (e.clientX - drag.x) * 0.012; yawV = 0; }
     });
     const up = (e) => {
-      if (drag && !drag.moved && want && want.team && gymScene && onPick && e && e.clientX !== undefined) {
+      if (drag && !drag.moved && want && want.team && gymScene && !photo && onPick && e && e.clientX !== undefined) {
         const r = dom.getBoundingClientRect();
         const ray = new THREE.Raycaster();
         ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), gymCam);
@@ -597,15 +597,17 @@ window.stage3d = (() => {
   }
   function buildGym(team) {
     if (!gymScene) buildGymScene();
+    photo = null; if (gymScene.userData.riser) gymScene.userData.riser.visible = false;
     agents.forEach((a) => { gymScene.remove(a.g); if (a.slot) a.slot.busy = null; });
     agents = [];
     team.forEach((m, i) => {
       const g = new THREE.Group();
       const f = makeFigure(m); g.add(f);
-      f.scale.multiplyScalar(0.82); f.userData.sy = f.scale.y;
+      f.scale.multiplyScalar(0.82); f.userData.sy = f.scale.y; f.userData.sx = f.scale.x;
       let tag = null;
-      const setTag = (sub) => { if (tag) { g.remove(tag); tag.material.map.dispose(); } tag = nameTag(m.nick, sub, m.me, m.live); tag.position.y = f.userData.top * 0.82 + 0.6; tag.scale.multiplyScalar(2.1); g.add(tag); };
-      const a = { id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, jail: !!m.jail, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
+      let a = null;
+      const setTag = (sub) => { if (tag) { g.remove(tag); tag.material.map.dispose(); } tag = nameTag(m.nick, sub, m.me, m.live); tag.position.y = f.userData.top * 0.82 + 0.6; tag.scale.multiplyScalar(2.1); g.add(tag); if (a) a.tag = tag; };
+      a = { id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, jail: !!m.jail, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
       g.position.set(-1 + (i % 4) * 0.9, 0, 5.2 + Math.floor(i / 4) * 0.8);   // 입구에서 입장
       g.userData.agent = a;
       gymScene.add(g); agents.push(a);
@@ -616,6 +618,7 @@ window.stage3d = (() => {
   function updateAgents(dt, s) {
     agents.forEach((a) => {
       const p = a.g.position, sl = a.slot;
+      if (a.mode === 'photo') { posePhoto(a, s); return; }
       if (a.mode === 'walk') {
         const dx = sl.x - p.x, dz = sl.z - p.z, d = Math.hypot(dx, dz);
         if (d < 0.06) { p.x = sl.x; p.z = sl.z; a.mode = 'do'; a.timer = 14 + Math.random() * 16; a.g.rotation.y = sl.face; }
@@ -626,6 +629,105 @@ window.stage3d = (() => {
       }
       pose(a, s);
     });
+  }
+
+  /* ================= 📸 단체사진 (아이레벨, 오늘 한 운동대로 포징) ================= */
+  let photo = null;
+  const PHOTO_POSES = {
+    '가슴': '💪 갑빠 자랑', '등': '🦅 광배 펼치기', '하체': '🦵 허벅지 자랑', '어깨': '🙌 어깨 만세',
+    '팔': '💪 더블 바이셉스', '유산소': '🏃 질주 포즈', '축구': '⚽ 슈팅 포즈', '': '✌️ 브이',
+  };
+  function release(a) {
+    if (!a.slot) return;
+    a.slot.busy = null; const br = a.slot.bar; if (br && br.position) br.position.y = a.slot.barX !== undefined ? 1.3 : 1.55;
+    a.slot = null;
+  }
+  function startPhoto() {
+    if (!gymScene || !agents.length) return false;
+    const cam = new THREE.PerspectiveCamera(34, 4 / 3, 0.1, 260);
+    cam.position.set(0, 1.55, 10.6); cam.lookAt(0, 1.5, 2.2);
+    photo = { cam };
+    const crew = agents.filter((a) => !a.jail).sort((a, b) => (b.me - a.me) || (b.today - a.today));
+    const n = crew.length, frontN = n > 5 ? Math.ceil(n / 2) : n, backN = n - frontN, gap = 1.2;
+    // 가운데부터 좌우로 채우기 (나는 맨 앞 가운데)
+    const row = (cnt) => { const xs = []; for (let i = 0; i < cnt; i++) xs.push((i - (cnt - 1) / 2) * gap); return xs.sort((a, b) => Math.abs(a) - Math.abs(b)); };
+    const fx = row(frontN), bx = row(backN).map((x) => x + (backN === frontN ? gap / 2 : 0));
+    if (!gymScene.userData.riser) {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(7, 0.6, 1.0), new THREE.MeshStandardMaterial({ color: 0x8a5a34, roughness: 0.85 }));
+      r.position.set(0, 0.3, 1.45); r.castShadow = true; r.receiveShadow = true; gymScene.add(r); gymScene.userData.riser = r;
+    }
+    gymScene.userData.riser.visible = backN > 0;
+    if (backN > 0) { gymScene.userData.riser.scale.x = Math.max(0.4, (backN * gap + 0.8) / 7); gymScene.userData.riser.position.x = backN === frontN ? gap / 2 : 0; }
+    crew.forEach((a, i) => {
+      release(a);
+      const back = i >= frontN;
+      a.g.position.set(back ? bx[i - frontN] : fx[i], back ? 0.6 : 0, back ? 1.45 : 2.95);
+      a.g.rotation.y = 0;
+      a.mode = 'photo';
+      a.pk = PHOTO_POSES[a.focus] && a.today ? a.focus : '';
+      a.tagSub(PHOTO_POSES[a.pk]);
+      if (a.tag) { a.tag.scale.multiplyScalar(0.5); a.tag.position.y = a.fig.userData.top * 0.82 + 0.32; }
+    });
+    return true;
+  }
+  function endPhoto() {
+    if (!photo) return;
+    photo = null;
+    if (gymScene && gymScene.userData.riser) gymScene.userData.riser.visible = false;
+    agents.forEach((a) => { if (a.mode === 'photo') { a.g.position.set(a.g.position.x, 0, a.g.position.z + 0.6); goTo(a, pickTask(a)); } });
+  }
+  function posePhoto(a, s) {
+    const f = a.fig, rig = f.userData.rig, t = s + a.phase;
+    f.rotation.set(0, 0, 0); f.position.set(0, 0, 0);
+    rig.legs.forEach((l) => l.rotation.set(0, 0, 0)); rig.arms.forEach((r) => r.rotation.set(0, 0, 0));
+    if (f.userData.cape) f.userData.cape.rotation.x = 0.15 + Math.sin(s * 2 + a.phase) * 0.06;
+    if (f.userData.aura) f.userData.aura.rotation.y = s * 0.6;
+    const L = rig.arms[0], Rr = rig.arms[1], side = (r) => (r === L ? -1 : 1);
+    const flex = 0.04 * Math.sin(t * 3);
+    switch (a.pk) {
+      case '팔':   // 더블 바이셉스: 양팔 옆으로 들어 올리기
+        rig.arms.forEach((r) => { r.rotation.z = side(r) * (2.35 + flex); r.rotation.x = -0.25; });
+        break;
+      case '가슴':  // 모스트 머스큘러: 팔을 앞으로 모아 가슴 쥐어짜기
+        rig.arms.forEach((r) => { r.rotation.x = -0.75; r.rotation.z = -side(r) * (0.55 + flex); });
+        f.rotation.x = 0.08;
+        break;
+      case '등':   // 랫 스프레드: 손은 허리, 팔꿈치 활짝
+        rig.arms.forEach((r) => { r.rotation.z = side(r) * (0.75 + flex); r.rotation.x = 0.15; });
+        f.scale.x = f.userData.sx * 1.1;
+        break;
+      case '어깨':  // 만세
+        rig.arms.forEach((r) => { r.rotation.x = Math.PI; r.rotation.z = -side(r) * (0.35 + flex); });
+        break;
+      case '하체':  // 한쪽 다리 앞으로 내밀고 허리에 손
+        rig.legs[0].rotation.x = -0.45; rig.legs[0].rotation.z = -0.12;
+        rig.arms.forEach((r) => { r.rotation.z = side(r) * 0.6; });
+        f.position.y = -0.03;
+        break;
+      case '유산소': // 질주 정지 화면
+        rig.legs[0].rotation.x = -0.75; rig.legs[1].rotation.x = 0.6;
+        rig.arms[0].rotation.x = 0.7; rig.arms[1].rotation.x = -0.8;
+        f.rotation.x = 0.1; f.position.y = 0.04;
+        break;
+      case '축구':  // 슈팅
+        rig.legs[0].rotation.x = -1.15 - flex * 2; rig.arms.forEach((r) => { r.rotation.z = side(r) * 1.1; });
+        f.rotation.x = -0.12;
+        break;
+      default:     // ✌️ 한 손 브이 흔들기
+        Rr.rotation.x = Math.PI - 0.25; Rr.rotation.z = -side(Rr) * (0.3 + Math.sin(t * 4) * 0.15);
+    }
+    if (a.pk !== '등') f.scale.x = f.userData.sx;
+  }
+  /** 지금 화면 그대로 고해상도 단체사진 찍기 */
+  function snap(W = 1440, H = 1080) {
+    if (!photo || !renderer) return null;
+    const pr = renderer.getPixelRatio();
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+    photo.cam.aspect = W / H; photo.cam.updateProjectionMatrix();
+    renderer.render(gymScene, photo.cam);
+    const url = renderer.domElement.toDataURL('image/jpeg', 0.92);
+    renderer.setPixelRatio(pr); resize();
+    return url;
   }
   /** 사람 눌러서 시키기 */
   function assign(id, k) {
@@ -645,6 +747,12 @@ window.stage3d = (() => {
       gymCam.position.set(Math.sin(gymYaw) * 21, 12.5, Math.cos(gymYaw) * 21 + 1.5);
       gymCam.lookAt(0, -0.6, 0);
       updateAgents(dt, s);
+      if (photo) {
+        const w = box.clientWidth || 300, h = box.clientHeight || 360;
+        photo.cam.aspect = w / h; photo.cam.updateProjectionMatrix();
+        renderer.render(gymScene, photo.cam);
+        return;
+      }
       renderer.render(gymScene, gymCam);
       return;
     }
@@ -686,5 +794,5 @@ window.stage3d = (() => {
     if (!raf) { t0 = performance.now(); raf = requestAnimationFrame(tick); }
     return true;
   }
-  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed };
+  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, inPhoto: () => !!photo, poses: PHOTO_POSES };
 })();

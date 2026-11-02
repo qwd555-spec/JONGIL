@@ -1651,6 +1651,7 @@ const social = (() => {
     if (currentView() === 'feed') renderFeed();
     if (currentView() === 'rank') render();
     if (openPerson) renderPerson();
+    if (!$('#post-modal').hidden) renderPostCmts();
   }
 
   const myNick = () => (members[myId] && members[myId].nick) || '';
@@ -1820,7 +1821,7 @@ const social = (() => {
   const periodLabel = () => ({ week: '이번 주', month: '이번 달', all: '전체 기간' }[period]);
 
   function allComments() {
-    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal').sort((a, b) => b.at - a.at);
+    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal' && c.kind !== 'fcmt').sort((a, b) => b.at - a.at);
   }
   function relTime(t) {
     const s = Math.max(0, (Date.now() - t) / 1000);
@@ -2392,7 +2393,7 @@ const social = (() => {
     const grid = $('#photo-feed-grid'), hint = $('#photo-feed-hint');
     if (feedSrc === 'friends') {
       feedList = allComments().filter((c) => c.kind === 'share' && typeof c.img === 'string' && c.img.startsWith('data:image/'))
-        .map((c) => ({ img: c.img, who: nickOf(c.from), from: c.from, date: c.date, summary: c.summary, text: c.text, items: c.items, at: c.at, mine: c.from === myId }));
+        .map((c) => ({ img: c.img, who: nickOf(c.from), from: c.from, date: c.date, summary: c.summary, text: c.text, items: c.items, at: c.at, mine: c.from === myId, pid: `${c.from}/${c.id}` }));
       hint.textContent = feedList.length ? '공유할 때 눈바디 사진을 켜면 여기에 모여요' : '아직 공유된 눈바디가 없어요. 운동 마감 → 친구에게 공유 → 눈바디 사진 켜기';
     } else {
       const ds = photos.dates().slice().reverse();
@@ -2405,7 +2406,7 @@ const social = (() => {
     grid.innerHTML = feedList.map((x, i) => `
       <button type="button" class="pf-cell" data-i="${i}">
         <img src="${x.img}" alt="" loading="lazy" />
-        <span class="pf-tag">${x.own ? escapeHtml(fmtDate(x.date)) : escapeHtml(x.who)}</span>
+        <span class="pf-tag">${x.own ? escapeHtml(fmtDate(x.date)) : escapeHtml(x.who)}</span>${cmtBadge(x.pid)}
       </button>`).join('');
     grid.querySelectorAll('.pf-cell[data-i]').forEach((el) => el.addEventListener('click', () => openPost(+el.dataset.i)));
   }
@@ -2421,9 +2422,42 @@ const social = (() => {
     $('#post-text').textContent = String(x.text || '');
     $('#post-items').innerHTML = Array.isArray(x.items) ? x.items.slice(0, 15).map((it) => `<div><b>${escapeHtml(String(it.n || ''))}</b> <span>${escapeHtml(String(it.d || ''))}</span></div>`).join('') : '';
     $('#post-cheers').hidden = !!x.mine;
+    $('#post-cmts').open = false;
+    renderPostCmts();
     $('#post-modal').hidden = false;
     document.body.classList.add('modal-open');
   }
+  /* ---- 💬 피드 댓글 (날개 펼쳐서 보기) ---- */
+  const feedCmts = (pid) => pid ? Object.values(comments).flat().filter((c) => c.kind === 'fcmt' && c.ref === pid && members[c.from]).sort((a, b) => a.at - b.at) : [];
+  const cmtBadge = (pid) => { const n = feedCmts(pid).length; return n ? `<i class="cmt-badge">💬 ${n}</i>` : ''; };
+  function renderPostCmts() {
+    const x = feedList[feedIdx];
+    const box = $('#post-cmts');
+    box.hidden = !x || !x.pid || !store;
+    if (box.hidden) return;
+    const list = feedCmts(x.pid);
+    $('#post-cmt-n').textContent = list.length ? `댓글 ${list.length}개` : '댓글 달기';
+    $('#post-cmt-peek').textContent = list.length ? `${nickOf(list[list.length - 1].from)}: ${String(list[list.length - 1].text).slice(0, 24)}` : '';
+    $('#post-cmt-list').innerHTML = list.length ? list.map((c) => `<div class="pc-item">
+        <b>${escapeHtml(c.from === myId ? '나' : nickOf(c.from))}</b><span>${escapeHtml(String(c.text))}</span>
+        <small>${relTime(c.at)}</small>${c.from === myId ? `<button type="button" data-del="${escapeHtml(c.id)}" aria-label="댓글 삭제">✕</button>` : ''}
+      </div>`).join('') : '<p class="pc-empty">첫 댓글을 남겨보세요</p>';
+    $('#post-cmt-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+      try { await store.doc(`comments/${myId}/items/${b.dataset.del}`).delete(); } catch { toast('삭제하지 못했어요'); }
+    }));
+  }
+  $('#post-cmt-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const x = feedList[feedIdx], inp = $('#post-cmt-text'), text = inp.value.trim();
+    if (!x || !x.pid || !text || !store) return;
+    const btn = $('#post-cmt-form button'); btn.disabled = true;
+    try {
+      await store.collection(`comments/${myId}/items`).add({ to: x.from, kind: 'fcmt', ref: x.pid, text: text.slice(0, 200), at: Date.now() });
+      inp.value = '';
+      $('#post-cmts').open = true;
+    } catch (err) { toast(err && err.code === 'invalid_argument' ? '댓글 쓸 권한이 없어요' : '댓글을 올리지 못했어요'); }
+    btn.disabled = false;
+  });
   function closePost() { $('#post-modal').hidden = true; document.body.classList.remove('modal-open'); }
   $('#post-del').addEventListener('click', async () => {
     const x = feedList[feedIdx];
@@ -2472,12 +2506,12 @@ const social = (() => {
     const byWho = new Map();
     for (const c of allMeals()) { if (!byWho.has(c.from)) byWho.set(c.from, []); byWho.get(c.from).push(c); }
     const people = [...byWho.entries()];   // allMeals가 최신순이라 첫 등장 순서 = 최근 업데이트 순
-    mealRows = people.map(([from, list]) => list.map((c) => ({ img: c.img, who: nickOf(from), from, date: c.date, summary: fmtDate(c.date), text: c.text, at: c.at, mine: from === myId, meal: c.id })));
+    mealRows = people.map(([from, list]) => list.map((c) => ({ img: c.img, who: nickOf(from), from, date: c.date, summary: fmtDate(c.date), text: c.text, at: c.at, mine: from === myId, meal: c.id, pid: `${from}/${c.id}` })));
     $('#meal-grid').innerHTML = people.length ? people.map(([from, list], r) => `
       <div class="meal-row">
         <div class="meal-who"><b>${escapeHtml(from === myId ? '나' : nickOf(from))}</b><small>${relTime(list[0].at)} · ${list.length}장</small></div>
         <div class="meal-strip">${list.map((c, i) => `<button type="button" class="meal-cell" data-r="${r}" data-i="${i}">
-          <img src="${c.img}" alt="" loading="lazy" />
+          <img src="${c.img}" alt="" loading="lazy" />${cmtBadge(`${from}/${c.id}`)}
           <span>${escapeHtml(c.text || fmtDate(c.date))}</span>
         </button>`).join('')}</div>
       </div>`).join('') : '<p class="hint center">아직 올라온 식단이 없어요. 첫 식단을 올려보세요 🍱</p>';
