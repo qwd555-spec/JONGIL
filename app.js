@@ -2490,7 +2490,9 @@ const social = (() => {
   }
 
   return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
-    members: () => members, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id) };
+    members: () => members, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id),
+    focus: (id) => { try { return todayFocus(id); } catch { return null; } },
+    send: async (to, text) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to, text, at: Date.now() }); } };
 })();
 
 /* =========================================================

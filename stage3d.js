@@ -96,9 +96,22 @@ window.stage3d = (() => {
     // 손가락으로 돌리기
     const dom = renderer.domElement;
     dom.style.touchAction = 'pan-y';
-    dom.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, yaw }; dom.setPointerCapture(e.pointerId); });
-    dom.addEventListener('pointermove', (e) => { if (drag) { yaw = drag.yaw - (e.clientX - drag.x) * 0.012; yawV = 0; } });
-    const up = () => { drag = null; };
+    dom.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw, gy: gymYaw, moved: false }; dom.setPointerCapture(e.pointerId); });
+    dom.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      if (Math.abs(e.clientX - drag.x) > 6) drag.moved = true;
+      if (want && want.team) gymYaw = drag.gy - (e.clientX - drag.x) * 0.008; else { yaw = drag.yaw - (e.clientX - drag.x) * 0.012; yawV = 0; }
+    });
+    const up = (e) => {
+      if (drag && !drag.moved && want && want.team && gymScene && onPick && e && e.clientX !== undefined) {
+        const r = dom.getBoundingClientRect();
+        const ray = new THREE.Raycaster();
+        ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), gymCam);
+        const hit = ray.intersectObjects(agents.map((a) => a.g), true)[0];
+        if (hit) { let o = hit.object; while (o && !o.userData.agent) o = o.parent; if (o) onPick(o.userData.agent); }
+      }
+      drag = null;
+    };
     dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
     new ResizeObserver(resize).observe(el);
     resize();
@@ -117,6 +130,7 @@ window.stage3d = (() => {
     renderer.setSize(w, h, false);
     renderer.domElement.style.width = '100%'; renderer.domElement.style.height = '100%';
     camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (gymCam) { gymCam.aspect = w / h; gymCam.updateProjectionMatrix(); }
   }
 
   /* ---- 선수 만들기 (근육량 = 진짜 운동 레벨) ---- */
@@ -130,39 +144,42 @@ window.stage3d = (() => {
     mats.hair = new THREE.MeshStandardMaterial({ color: 0x1c140e, roughness: 0.9 });
     mats.shoe = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.6 });
     const f = new THREE.Group();
-    const S = (r, m, x, y, z, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; f.add(o); return o; };
-    const C = (r1, r2, h, m, x, y, z, rz = 0) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 24), m); o.position.set(x, y, z); o.rotation.z = rz; o.castShadow = true; f.add(o); return o; };
+    const S = (r, m, x, y, z, sx = 1, sy = 1, sz = 1, par = f) => { const o = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; par.add(o); return o; };
+    const C = (r1, r2, h, m, x, y, z, rz = 0, par = f) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 20), m); o.position.set(x, y, z); o.rotation.z = rz; o.castShadow = true; par.add(o); return o; };
 
     const sh = 0.36 + U * 0.42;          // 어깨 반폭
     const waist = 0.22 + U * 0.08 + L * 0.06;
     const arm = 0.075 + U * 0.11;
     const leg = 0.11 + L * 0.13;
     const hipY = 0.95, chestY = 1.5;
-    // 다리
+    const rig = { legs: [], arms: [] };
+    // 다리 (엉덩이 관절에서 회전)
     [-1, 1].forEach((s) => {
       const x = s * (waist * 0.55);
-      C(leg, leg * 0.75, 0.5, mats.skin, x, hipY - 0.27, 0);           // 허벅지
-      S(leg * 1.08, mats.skin, x, hipY - 0.2, 0.01, 1, 1.5, 1);           // 대퇴 볼륨
-      C(leg * 0.7, leg * 0.5, 0.45, mats.skin, x, hipY - 0.72, 0);      // 종아리
-      S(leg * 0.62, mats.skin, x, hipY - 0.62, -0.03, 1, 1.3, 1);
-      const shoe = S(0.09 + leg * 0.2, mats.shoe, x, 0.05, 0.05, 1, 0.55, 1.6);
-      shoe.position.y = 0.06;
+      const pv = new THREE.Group(); pv.position.set(x, hipY, 0); f.add(pv); rig.legs.push(pv);
+      C(leg, leg * 0.75, 0.5, mats.skin, 0, -0.27, 0, 0, pv);
+      S(leg * 1.08, mats.skin, 0, -0.2, 0.01, 1, 1.5, 1, pv);
+      C(leg * 0.7, leg * 0.5, 0.45, mats.skin, 0, -0.72, 0, 0, pv);
+      S(leg * 0.62, mats.skin, 0, -0.62, -0.03, 1, 1.3, 1, pv);
+      S(0.09 + leg * 0.2, mats.shoe, 0, 0.06 - hipY, 0.05, 1, 0.55, 1.6, pv);
+      C(leg * 1.15, leg * 1.2, 0.26, mats.shorts, 0, -0.1, 0, 0, pv);
     });
-    // 반바지 (골반 + 양쪽 다리)
     C(waist + 0.03, waist + 0.06, 0.16, mats.shorts, 0, hipY + 0.05, 0);
-    [-1, 1].forEach((s2) => C(leg * 1.15, leg * 1.2, 0.26, mats.shorts, s2 * (waist * 0.55), hipY - 0.1, 0));
     // 몸통 (역삼각형)
     const torso = C(sh * 0.92, waist, 0.62, track === 'olympia' ? mats.skin : mats.shirt, 0, chestY - 0.22, 0);
     torso.scale.z = 0.62 + U * 0.25;
     S(sh * 0.62, track === 'olympia' ? mats.skin : mats.shirt, 0, chestY - 0.02, 0.04, 1.45, 0.62, 0.75 + U * 0.3); // 가슴
-    // 어깨 · 팔
+    // 어깨 · 팔 (어깨 관절에서 회전)
     [-1, 1].forEach((s) => {
-      S(arm * 1.45, mats.skin, s * sh, chestY + 0.02, 0);                // 삼각근
-      C(arm, arm * 0.85, 0.38, mats.skin, s * (sh + 0.05), chestY - 0.22, 0, s * 0.18);   // 상완
-      S(arm * (1.15 + U * 0.5), mats.skin, s * (sh + 0.06), chestY - 0.17, 0.05, 1, 1.2, 1.05); // 이두
-      C(arm * 0.82, arm * 0.62, 0.36, mats.skin, s * (sh + 0.12), chestY - 0.55, 0.03, s * 0.12); // 전완
-      S(arm * 0.75, mats.skin, s * (sh + 0.15), chestY - 0.78, 0.04);    // 손
+      S(arm * 1.45, mats.skin, s * sh, chestY + 0.02, 0);
+      const pv = new THREE.Group(); pv.position.set(s * sh, chestY + 0.02, 0); f.add(pv); rig.arms.push(pv);
+      C(arm, arm * 0.85, 0.38, mats.skin, s * 0.05, -0.24, 0, s * 0.18, pv);
+      S(arm * (1.15 + U * 0.5), mats.skin, s * 0.06, -0.19, 0.05, 1, 1.2, 1.05, pv);
+      C(arm * 0.82, arm * 0.62, 0.36, mats.skin, s * 0.12, -0.57, 0.03, s * 0.12, pv);
+      const hand = S(arm * 0.75, mats.skin, s * 0.15, -0.8, 0.04, 1, 1, 1, pv);
+      pv.userData.hand = hand;
     });
+    f.userData.rig = rig;
     // 목 · 머리 (머리는 그대로 → 커질수록 웃긴 비율)
     C(0.07 + U * 0.07, 0.09 + U * 0.09, 0.16, mats.skin, 0, chestY + 0.2, 0);
     S(0.17, mats.skin, 0, chestY + 0.42, 0, 1, 1.1, 1);
@@ -211,37 +228,205 @@ window.stage3d = (() => {
       camDist = 7.2; camLook = 1.35; camLift = 0;
       return;
     }
-    // 다같이: 단체사진처럼 한 줄 5명, 나는 앞줄 가운데 · 넘치면 뒷줄 (계단처럼 뒤로)
-    ring.material.color = hex('#e98ce6');
-    const others = team.filter((m) => !m.me), me = team.find((m) => m.me);
-    const ordered = [];
-    const firstRow = others.slice(0, me ? 4 : 5);
-    firstRow.forEach((m, i) => (i % 2 ? ordered.push(m) : ordered.unshift(m)));
-    if (me) ordered.splice(Math.floor(ordered.length / 2), 0, me);
-    const rows = [ordered];
-    for (let i = firstRow.length; i < others.length; i += 5) rows.push(others.slice(i, i + 5));
-    const spots = [];
-    rows.forEach((row, r) => {
-      const n = row.length, gap = 1.12;
-      row.forEach((m, i) => { const x = (i - (n - 1) / 2) * gap + (r % 2 ? gap / 2 : 0) * (n === 5 ? 0 : 1); spots.push([m, x, 0.5 - r * 1.5 - x * x * 0.05, r]); });
-    });
-    spots.forEach(([m, x, z, r]) => {
-      const g = new THREE.Group();
-      const f = makeFigure(m); g.add(f);
-      const tag = nameTag(m.nick, m.sub, m.me, m.live); tag.position.y = f.userData.top + 0.32; g.add(tag);
-      g.position.set(x, r * 0.35, z); g.lookAt(x * 0.3, r * 0.35, 8);
-      g.userData.fig = f;
-      root.add(g); figs.push(g);
-    });
-    camDist = 11.5 + (rows.length - 1) * 1.2; camLook = 1.0 + (rows.length - 1) * 0.3; camLift = 1.6 + (rows.length - 1) * 0.6;
+    buildGym(team);
   }
   let camDist = 7.2, camLook = 1.35, camLift = 0;
+
+
+  /* ================= 🏋️ 볼류머 체육관 (다같이) ================= */
+  const TASKS = {
+    bench: { label: '🏋️ 벤치프레스', station: 'bench' },
+    squat: { label: '🦵 스쿼트', station: 'rack' },
+    run: { label: '🏃 러닝머신', station: 'tread' },
+    curl: { label: '💪 덤벨 컬', station: 'db' },
+    stretch: { label: '🧘 스트레칭', station: 'mat' },
+    rest: { label: '🥤 휴식', station: 'seat' },
+  };
+  let gymScene = null, gymCam = null, stations = {}, agents = [], gymYaw = 0.25, onPick = null;
+  function buildGymScene() {
+    gymScene = new THREE.Scene();
+    gymScene.background = hex('#0d0d14');
+    gymScene.fog = new THREE.Fog(0x0d0d14, 24, 42);
+    gymCam = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
+    const M = (c, r = 0.8, m = 0.1, e) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m, emissive: e || 0x000000 });
+    const B = (w, h, d, mat, x, y, z, par = gymScene) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; par.add(o); return o; };
+    const Cy = (r, h, mat, x, y, z, rx = 0, rz = 0, par = gymScene) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 16), mat); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); o.castShadow = true; par.add(o); return o; };
+    // 바닥 · 벽
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(18, 13), M(0x26262e, 0.9)); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; gymScene.add(floor);
+    const wood = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), M(0x8a5a34, 0.6)); wood.rotation.x = -Math.PI / 2; wood.position.set(0, 0.005, 3.2); wood.receiveShadow = true; gymScene.add(wood);
+    B(18, 5, 0.2, M(0x1a1a22, 0.95), 0, 2.5, -6.5);
+    B(0.2, 5, 13, M(0x16161d, 0.95), -9, 2.5, 0);
+    B(0.2, 5, 13, M(0x16161d, 0.95), 9, 2.5, 0);
+    // 창문 빛 · 거울 · 간판
+    for (let i = -3; i <= 3; i++) B(1.6, 1.1, 0.05, M(0x223, 0.2, 0, 0x2a3a66), i * 2.3, 3.4, -6.38);
+    B(0.05, 2.2, 5, M(0x9fb3c8, 0.05, 0.9), 8.88, 1.5, 0);   // 거울
+    const sign = document.createElement('canvas'); sign.width = 1024; sign.height = 160;
+    const sx = sign.getContext('2d'); sx.fillStyle = '#e98ce6'; sx.font = '900 120px -apple-system, sans-serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.fillText('✦ VOLUMER GYM', 512, 84);
+    const st = new THREE.CanvasTexture(sign); st.encoding = THREE.sRGBEncoding;
+    const signM = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.95), new THREE.MeshBasicMaterial({ map: st, transparent: true }));
+    signM.position.set(0, 4.45, -6.38); gymScene.add(signM);
+    // 조명
+    gymScene.add(new THREE.HemisphereLight(0x9aa4d6, 0x18181f, 0.55));
+    const sun = new THREE.DirectionalLight(0xfff1dc, 0.9); sun.position.set(4, 10, 6); sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 }); gymScene.add(sun);
+    [[-4, -2], [2, -3], [4, 2], [-3, 3]].forEach(([x, z]) => { const l = new THREE.PointLight(0xffe2c4, 0.5, 9); l.position.set(x, 4.2, z); gymScene.add(l); B(1.4, 0.06, 0.4, M(0xffffff, 0.3, 0, 0xffe6c8), x, 4.6, z); });
+    const steel = M(0x9aa0aa, 0.35, 0.8), black = M(0x111116, 0.6, 0.3), pad = M(0x2d2d38, 0.7), red = M(0xd14b3c, 0.5);
+    stations = { bench: [], rack: [], tread: [], db: [], mat: [], seat: [] };
+    // 벤치프레스 2대 (왼쪽)
+    [-1.2, 1.2].forEach((dz) => {
+      const x = -5.6, z = -1 + dz;
+      B(1.5, 0.12, 0.42, pad, x, 0.48, z); B(0.12, 0.45, 0.12, steel, x - 0.5, 0.22, z); B(0.12, 0.45, 0.12, steel, x + 0.5, 0.22, z);
+      Cy(0.03, 0.95, steel, x - 0.55, 0.95, z - 0.45, 0, 0); Cy(0.03, 0.95, steel, x - 0.55, 0.95, z + 0.45, 0, 0);
+      const bar = Cy(0.025, 1.9, steel, x - 0.55, 1.3, z, Math.PI / 2); Cy(0.2, 0.08, black, x - 0.55, 1.3, z - 0.8, Math.PI / 2); Cy(0.2, 0.08, black, x - 0.55, 1.3, z + 0.8, Math.PI / 2);
+      stations.bench.push({ x: x + 0.15, z, face: Math.PI / 2, bar, barX: x - 0.55, busy: null });
+    });
+    // 스쿼트 랙 2대 (뒤)
+    [-2.2, 0.4].forEach((x) => {
+      const z = -4.6;
+      [[-0.65, -0.35], [0.65, -0.35], [-0.65, 0.35], [0.65, 0.35]].forEach(([dx, dz]) => B(0.08, 2.4, 0.08, steel, x + dx, 1.2, z + dz));
+      B(1.4, 0.06, 0.06, steel, x, 2.4, z - 0.35); B(1.4, 0.06, 0.06, steel, x, 2.4, z + 0.35);
+      const bar = Cy(0.025, 2.1, steel, x, 1.55, z + 0.05, 0, Math.PI / 2); Cy(0.24, 0.1, red, x - 0.9, 1.55, z + 0.05, 0, Math.PI / 2); Cy(0.24, 0.1, red, x + 0.9, 1.55, z + 0.05, 0, Math.PI / 2);
+      stations.rack.push({ x, z: z + 0.05, face: 0, bar, busy: null });
+    });
+    // 러닝머신 3대 (오른쪽 뒤)
+    [3, 4.5, 6].forEach((x) => {
+      const z = -4.4;
+      B(0.9, 0.2, 2.0, black, x, 0.1, z); B(0.75, 0.03, 1.8, M(0x33333d, 0.9), x, 0.215, z);
+      B(0.06, 1.2, 0.06, steel, x - 0.4, 0.8, z + 0.85); B(0.06, 1.2, 0.06, steel, x + 0.4, 0.8, z + 0.85);
+      B(0.9, 0.35, 0.15, M(0x111118, 0.4, 0.2, 0x10204a), x, 1.45, z + 0.9);
+      stations.tread.push({ x, z: z - 0.1, y: 0.23, face: 0, busy: null });
+    });
+    // 덤벨 존 (오른쪽, 거울 앞)
+    B(0.6, 0.8, 3, black, 6.9, 0.4, 0.8);
+    for (let i = 0; i < 6; i++) { const z = -0.4 + i * 0.48; Cy(0.06, 0.35, steel, 6.9, 0.85, z, 0, Math.PI / 2); Cy(0.1, 0.07, black, 6.7, 0.85, z, 0, Math.PI / 2); Cy(0.1, 0.07, black, 7.1, 0.85, z, 0, Math.PI / 2); }
+    [-0.4, 0.8, 2.0].forEach((z) => stations.db.push({ x: 5.8, z, face: Math.PI / 2, busy: null }));
+    // 매트 (가운데 앞, 나무 바닥 위)
+    [[-1.6, 2.6], [0, 2.6], [1.6, 2.6], [-0.8, 3.9], [0.8, 3.9]].forEach(([x, z]) => {
+      B(1.0, 0.03, 1.8, M(0x5b3fa0, 0.85), x, 0.02, z);
+      stations.mat.push({ x, z, face: 0, busy: null });
+    });
+    // 휴식 벤치 · 정수기 (왼쪽 앞)
+    B(3.2, 0.1, 0.5, M(0x6b4a2e, 0.6), -5.6, 0.48, 4.2); B(0.1, 0.45, 0.4, steel, -6.9, 0.23, 4.2); B(0.1, 0.45, 0.4, steel, -4.3, 0.23, 4.2);
+    B(0.5, 1.3, 0.5, M(0xdfe6ee, 0.4), -8.2, 0.65, 4.4); Cy(0.2, 0.5, M(0x7cc4ff, 0.2, 0, 0x0a2440), -8.2, 1.55, 4.4);
+    [-6.6, -5.6, -4.6].forEach((x) => stations.seat.push({ x, z: 4.0, face: 0, sit: 0.52, busy: null }));
+  }
+
+  // 각 동작 포즈 (매 프레임)
+  function pose(a, s) {
+    const f = a.fig, rig = f.userData.rig, t = s * (a.speed || 1) + a.phase;
+    f.rotation.set(0, 0, 0); f.position.set(0, 0, 0);
+    rig.legs.forEach((l) => l.rotation.set(0, 0, 0)); rig.arms.forEach((r) => r.rotation.set(0, 0, 0));
+    if (a.db) a.db.forEach((d) => (d.visible = false));
+    if (a.mode === 'walk') {
+      const w = Math.sin(t * 7) * 0.55;
+      rig.legs[0].rotation.x = w; rig.legs[1].rotation.x = -w; rig.arms[0].rotation.x = -w * 0.8; rig.arms[1].rotation.x = w * 0.8;
+      f.position.y = Math.abs(Math.cos(t * 7)) * 0.04;
+      return;
+    }
+    const k = a.task;
+    if (k === 'run') {
+      const w = Math.sin(t * 11) * 0.9;
+      rig.legs[0].rotation.x = w; rig.legs[1].rotation.x = -w; rig.arms[0].rotation.x = -w; rig.arms[1].rotation.x = w;
+      f.position.y = a.slot.y + Math.abs(Math.cos(t * 11)) * 0.08;
+    } else if (k === 'bench') {
+      const rep = (Math.sin(t * 2.4) + 1) / 2;
+      f.rotation.x = -Math.PI / 2; f.position.set(0, 0.6, 0);
+      rig.legs.forEach((l) => (l.rotation.x = 1.3));
+      rig.arms.forEach((r) => (r.rotation.x = -Math.PI / 2 - 0.2 * 0 + 0));
+      rig.arms.forEach((r) => { r.rotation.x = Math.PI; r.rotation.z = (r === rig.arms[0] ? -1 : 1) * (0.6 - rep * 0.5); });
+      if (a.slot.bar) a.slot.bar.position.y = 1.0 + rep * 0.45;
+    } else if (k === 'squat') {
+      const rep = (Math.sin(t * 2) + 1) / 2;
+      f.position.y = -rep * 0.38;
+      rig.legs.forEach((l) => (l.rotation.x = -rep * 1.1));
+      f.rotation.x = rep * 0.25;
+      rig.arms.forEach((r, i) => { r.rotation.x = -2.6; r.rotation.z = (i ? 1 : -1) * 0.5; });
+      if (a.slot.bar) a.slot.bar.position.y = 1.55 + (1 - rep) * 0 - rep * 0.38 + 0.05;
+    } else if (k === 'curl') {
+      const r1 = (Math.sin(t * 3) + 1) / 2, r2 = (Math.sin(t * 3 + Math.PI) + 1) / 2;
+      rig.arms[0].rotation.x = -r1 * 2.2; rig.arms[1].rotation.x = -r2 * 2.2;
+      if (!a.db) a.db = rig.arms.map((r) => { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.3, 12), new THREE.MeshStandardMaterial({ color: 0x15151a, roughness: 0.5 })); d.rotation.z = Math.PI / 2; d.position.copy(r.userData.hand.position); r.add(d); return d; });
+      a.db.forEach((d) => (d.visible = true));
+    } else if (k === 'stretch') {
+      const sw = Math.sin(t * 1.2);
+      rig.arms.forEach((r, i) => { r.rotation.z = (i ? 1 : -1) * -2.9; });
+      f.rotation.z = sw * 0.25;
+    } else if (k === 'rest') {
+      f.position.y = (a.slot.sit || 0.5) - 0.95 + 0.05;
+      rig.legs.forEach((l) => (l.rotation.x = -1.45));
+      rig.arms[1].rotation.x = -1.4 - Math.max(0, Math.sin(t * 0.7)) * 0.5;   // 물 마시기
+    }
+  }
+
+  function freeSlot(station) { const list = stations[station] || []; return list.find((x) => !x.busy) || null; }
+  function pickTask(a) {
+    if (a.forced) { const k = a.forced; a.forced = null; return k; }
+    const pool = a.live
+      ? { '가슴': 'bench', '하체': 'squat', '유산소': 'run', '팔': 'curl', '등': 'curl', '어깨': 'curl' }[a.focus] || ['bench', 'squat', 'run', 'curl'][Math.floor(Math.random() * 4)]
+      : (a.today ? ['stretch', 'rest', 'curl', 'run'] : ['rest', 'rest', 'stretch', 'run'])[Math.floor(Math.random() * 4)];
+    return pool;
+  }
+  function goTo(a, k) {
+    if (a.slot) { a.slot.busy = null; if (a.slot.bar && a.slot.barX !== undefined) a.slot.bar.position.y = 1.3; if (a.slot.bar && a.slot.barX === undefined) a.slot.bar.position.y = 1.55; }
+    let slot = freeSlot(TASKS[k].station);
+    if (!slot) { k = 'stretch'; slot = freeSlot('mat') || freeSlot('seat'); }
+    if (!slot) { slot = { x: (Math.random() - 0.5) * 6, z: 1 + Math.random() * 2, face: 0 }; k = 'stretch'; }
+    slot.busy = a; a.slot = slot; a.task = k; a.mode = 'walk';
+    a.tagSub(TASKS[k].label);
+  }
+  function buildGym(team) {
+    if (!gymScene) buildGymScene();
+    agents.forEach((a) => { gymScene.remove(a.g); if (a.slot) a.slot.busy = null; });
+    agents = [];
+    team.forEach((m, i) => {
+      const g = new THREE.Group();
+      const f = makeFigure(m); g.add(f);
+      f.scale.multiplyScalar(0.82); f.userData.sy = f.scale.y;
+      let tag = null;
+      const setTag = (sub) => { if (tag) { g.remove(tag); tag.material.map.dispose(); } tag = nameTag(m.nick, sub, m.me, m.live); tag.position.y = f.userData.top * 0.82 + 0.6; tag.scale.multiplyScalar(2.1); g.add(tag); };
+      const a = { id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
+      g.position.set(-1 + (i % 4) * 0.9, 0, 5.2 + Math.floor(i / 4) * 0.8);   // 입구에서 입장
+      g.userData.agent = a;
+      gymScene.add(g); agents.push(a);
+      goTo(a, pickTask(a));
+    });
+  }
+  function updateAgents(dt, s) {
+    agents.forEach((a) => {
+      const p = a.g.position, sl = a.slot;
+      if (a.mode === 'walk') {
+        const dx = sl.x - p.x, dz = sl.z - p.z, d = Math.hypot(dx, dz);
+        if (d < 0.06) { p.x = sl.x; p.z = sl.z; a.mode = 'do'; a.timer = 14 + Math.random() * 16; a.g.rotation.y = sl.face; }
+        else { const v = Math.min(d, 1.5 * dt); p.x += (dx / d) * v; p.z += (dz / d) * v; a.g.rotation.y = Math.atan2(dx, dz); }
+      } else {
+        a.timer -= dt;
+        if (a.timer <= 0) goTo(a, pickTask(a));
+      }
+      pose(a, s);
+    });
+  }
+  /** 사람 눌러서 시키기 */
+  function assign(id, k) {
+    const a = agents.find((x) => x.id === id);
+    if (!a || !TASKS[k]) return false;
+    goTo(a, k);
+    return true;
+  }
 
   function tick(t) {
     raf = requestAnimationFrame(tick);
     if (!box || !box.isConnected || box.offsetParent === null || document.hidden) return;   // 안 보일 땐 쉼
     const s = (t - t0) / 1000;
-    if (!drag && !reduce) { if (want && want.team) yaw += (Math.sin(s * 0.15) * 0.35 - yaw) * 0.01; else yaw += 0.0025; }
+    const dt = Math.min(0.05, s - (tick.last || s)); tick.last = s;
+    if (want && want.team && gymScene) {
+      if (!drag && !reduce) gymYaw += (Math.sin(s * 0.08) * 0.35 + 0.15 - gymYaw) * 0.005;
+      gymCam.position.set(Math.sin(gymYaw) * 15.5, 12.5, Math.cos(gymYaw) * 15.5 + 1.5);
+      gymCam.lookAt(0, 0, 0.2);
+      updateAgents(dt, s);
+      renderer.render(gymScene, gymCam);
+      return;
+    }
+    if (!drag && !reduce) yaw += 0.0025;
     camera.position.set(Math.sin(yaw) * camDist, 2.0 + camLift + Math.sin(s * 0.25) * 0.08, Math.cos(yaw) * camDist);
     camera.lookAt(0, camLook, 0);
     // 달은 항상 화면 왼쪽 위 먼 곳에
@@ -273,9 +458,9 @@ window.stage3d = (() => {
     if (failed) return false;
     if (box !== el) { box = el; el.appendChild(renderer.domElement); resize(); }
     const key = JSON.stringify(want);
-    if (key !== lastKey) { lastKey = key; build(want); }
+    if (key !== lastKey) { lastKey = key; build(want); resize(); }
     if (!raf) { t0 = performance.now(); raf = requestAnimationFrame(tick); }
     return true;
   }
-  return { show, supported: () => !failed };
+  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed };
 })();

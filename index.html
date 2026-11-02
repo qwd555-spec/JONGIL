@@ -354,14 +354,19 @@
           <span class="ath-hulk" id="ath-hulk" hidden>💚 HULK MODE</span>
           <div class="ath-view" id="ath-view" hidden>
             <button type="button" data-v="me" class="active">나</button>
-            <button type="button" data-v="team">다같이</button>
+            <button type="button" data-v="team">체육관</button>
           </div>
           <div class="cine-bottom">
             <small>VOLUMER ATHLETE</small>
             <b id="ath-name"></b>
             <span id="ath-stage"></span>
           </div>
-          <span class="cine-hint">드래그해서 돌려보기</span>
+          <span class="cine-hint" id="cine-hint">드래그해서 돌려보기</span>
+          <div class="order-sheet" id="order-sheet" hidden>
+            <div class="order-head"><b id="order-title"></b><button type="button" id="order-close" aria-label="닫기">✕</button></div>
+            <small id="order-now"></small>
+            <div class="order-btns" id="order-btns"></div>
+          </div>
         </div>
 
         <div class="ath-vp" id="ath-vp"></div>
