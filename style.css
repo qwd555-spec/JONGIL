@@ -798,3 +798,16 @@ body.modal-open { overflow: hidden; }
 .page-dots button.active { background: var(--ink); color: #fff; }
 .aw-desc { font-style: normal; font-size: 10.5px; color: var(--muted); margin: -3px 0 5px; }
 .aw-row.hero .aw-desc { color: rgba(255,255,255,.55); }
+/* 처음 입장: 닉네임 등록 */
+.welcome .rest-backdrop { background: rgba(239,239,242,.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.welcome-sheet { text-align: center; padding: 30px 22px 22px; }
+.welcome-mark { width: 34px; height: 34px; color: var(--ink); }
+.welcome-app { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.welcome-sheet h3 { margin: 10px 0 4px; font-size: 23px; font-weight: 800; letter-spacing: -0.03em; }
+.welcome-sub { margin: 0 0 18px; font-size: 13.5px; color: var(--muted); }
+.welcome-form { display: flex; flex-direction: column; gap: 10px; }
+.welcome-form input { height: 52px; border-radius: 16px; border: 0; background: var(--layer); box-shadow: inset 0 0 0 1px var(--line); padding: 0 16px; font-size: 17px; font-weight: 600; text-align: center; color: var(--ink); }
+.welcome-form input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--ink); background: var(--raised); }
+.welcome-form button { height: 52px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 16px; font-weight: 700; }
+.welcome-form button:disabled { opacity: .5; }
+.welcome-who { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); }

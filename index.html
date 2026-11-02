@@ -482,6 +482,21 @@
   </div>
 
   <!-- 친구 프로필 / 댓글 팝업 -->
+  <div id="welcome-modal" class="rest-modal welcome" hidden role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet welcome-sheet">
+      <svg class="i welcome-mark"><use href="#i-spark"/></svg>
+      <small class="welcome-app">볼류머</small>
+      <h3 id="welcome-title">닉네임을 정해주세요</h3>
+      <p class="welcome-sub">친구들 순위에 이 이름으로 보여요</p>
+      <form id="welcome-form" class="welcome-form" autocomplete="off">
+        <input type="text" id="welcome-nick" maxlength="12" placeholder="닉네임 (최대 12자)" required enterkeyhint="go" />
+        <button type="submit">시작하기</button>
+      </form>
+      <p class="welcome-who" id="welcome-who"></p>
+    </div>
+  </div>
+
   <div id="award-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="award-title">
     <div class="rest-backdrop"></div>
     <div class="rest-sheet award-sheet">

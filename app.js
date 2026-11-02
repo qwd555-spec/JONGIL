@@ -1576,11 +1576,29 @@ const social = (() => {
 
   function refresh() {
     updateDot();
+    checkWelcome();
     if (currentView() === 'rank') render();
     if (openPerson) renderPerson();
   }
 
   const myNick = () => (members[myId] && members[myId].nick) || '';
+  /* ---- 처음 들어온 사람: 닉네임부터 등록 ---- */
+  function checkWelcome() {
+    const need = !!store && ready && !failed && !myNick();
+    const el = $('#welcome-modal');
+    if (need && el.hidden) {
+      const names = Object.values(members).map((m) => m.nick).filter(Boolean);
+      $('#welcome-who').textContent = names.length
+        ? `${names.slice(0, 5).join(', ')}${names.length > 5 ? ` 외 ${names.length - 5}명` : ''} 님이 이미 함께하고 있어요`
+        : '첫 번째 멤버가 되어보세요!';
+      el.hidden = false;
+      document.body.classList.add('modal-open');
+      setTimeout(() => $('#welcome-nick').focus(), 300);
+    } else if (!need && !el.hidden) {
+      el.hidden = true;
+      document.body.classList.remove('modal-open');
+    }
+  }
   const nickOf = (id) => (members[id] && members[id].nick) || '알 수 없음';
 
   /* ---- 내 요약 올리기 ---- */
@@ -2050,6 +2068,14 @@ const social = (() => {
 
   // 이벤트
   $('#join-form').addEventListener('submit', (e) => { e.preventDefault(); join($('#join-nick').value); });
+  $('#welcome-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('#welcome-form button');
+    btn.disabled = true;
+    await join($('#welcome-nick').value);
+    btn.disabled = false;
+    checkWelcome();
+  });
   $('#rank-period').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
     period = b.dataset.period;
     $('#rank-period').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
