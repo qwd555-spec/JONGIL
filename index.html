@@ -553,6 +553,8 @@
         <input type="text" id="welcome-nick" maxlength="12" placeholder="닉네임 (최대 12자)" required enterkeyhint="go" />
         <button type="submit">시작하기</button>
       </form>
+      <p class="welcome-err" id="welcome-err" hidden>등록 권한이 없어요.<br />① 초대 메일(또는 초대 링크)을 <b>수락</b>했는지<br />② <b>초대받은 이메일 계정</b>으로 claude.ai에 로그인했는지 확인해 주세요.<br />수락 후 이 페이지를 새로고침하면 등록돼요.</p>
+      <button type="button" class="welcome-skip" id="welcome-skip" hidden>일단 둘러보기 (기록은 이 기기에 저장)</button>
       <p class="welcome-who" id="welcome-who"></p>
     </div>
   </div>

@@ -1589,8 +1589,9 @@ const social = (() => {
 
   const myNick = () => (members[myId] && members[myId].nick) || '';
   /* ---- 처음 들어온 사람: 닉네임부터 등록 ---- */
+  let welcomeSkipped = false;
   function checkWelcome() {
-    const need = !!store && ready && !failed && !myNick();
+    const need = !!store && ready && !failed && !myNick() && !welcomeSkipped;
     const el = $('#welcome-modal');
     if (need && el.hidden) {
       const names = Object.values(members).map((m) => m.nick).filter(Boolean);
@@ -2164,8 +2165,11 @@ const social = (() => {
       lastPublished = null;
       await publish(nick);
       toast(`${nick}님, 참가 완료! 🏋️`);
+      return true;
     } catch (e) {
-      toast(e && e.code === 'invalid_argument' ? '참가 권한이 없어요. 링크 주인에게 편집자 초대를 받아주세요' : '참가하지 못했어요. 다시 시도해 주세요');
+      const denied = !e || e.code !== 'unavailable';
+      toast(denied ? '참가 권한이 없어요. 초대 메일을 수락했는지 확인해 주세요' : '참가하지 못했어요. 다시 시도해 주세요');
+      return denied ? 'denied' : false;
     }
   }
 
@@ -2175,10 +2179,16 @@ const social = (() => {
     e.preventDefault();
     const btn = $('#welcome-form button');
     btn.disabled = true;
-    await join($('#welcome-nick').value);
+    const r = await join($('#welcome-nick').value);
     btn.disabled = false;
+    if (r === 'denied' || r === false) {
+      $('#welcome-err').hidden = false;
+      $('#welcome-skip').hidden = false;
+    }
     checkWelcome();
   });
+  // 등록이 막혔을 때도 앱은 쓸 수 있게
+  $('#welcome-skip').addEventListener('click', () => { welcomeSkipped = true; checkWelcome(); });
   $('#rank-period').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
     period = b.dataset.period;
     $('#rank-period').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
