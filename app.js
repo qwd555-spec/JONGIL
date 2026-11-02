@@ -361,7 +361,7 @@ document.querySelectorAll('.tab').forEach((btn) =>
   btn.addEventListener('click', () => showView(btn.dataset.view === 'workout' ? lastPeriod : btn.dataset.view))
 );
 // Today ‹ › Weekly ‹ › Monthly 순환
-const RANK_PAGES = ['board', 'kings', 'photos'];
+const RANK_PAGES = ['board', 'kings'];
 const RANK_TITLES = { board: 'Ranking', kings: 'Kings', photos: 'Body Feed' };
 function shiftPeriod(step) {
   if (curView === 'rank') {
@@ -387,7 +387,7 @@ function showView(view) {
   window.scrollTo({ top: 0 });
   render();
 }
-const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', rank: 'Ranking', settings: 'Settings', career: 'Athlete' };
+const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', rank: 'Ranking', settings: 'Settings', career: 'Athlete', feed: 'Feed' };
 function updateHeader() {
   const d = new Date();
   $('#header-sub').textContent = `${d.getMonth() + 1}.${d.getDate()} ${'일월화수목금토'[d.getDay()]}`;
@@ -636,18 +636,18 @@ const photos = (() => {
     cache[date] = null; dateSet.delete(date); saveDates();
   }
 
-  function shrink(file) {
+  function shrink(file, max = 900, limit = 220000) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
-        const max = 900, r = Math.min(1, max / Math.max(img.width, img.height));
+        const r = Math.min(1, max / Math.max(img.width, img.height));
         const cv = document.createElement('canvas');
         cv.width = Math.round(img.width * r); cv.height = Math.round(img.height * r);
         cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
         URL.revokeObjectURL(url);
         let q = 0.78, out = cv.toDataURL('image/jpeg', q);
-        while (out.length > 220000 && q > 0.4) { q -= 0.1; out = cv.toDataURL('image/jpeg', q); }
+        while (out.length > limit && q > 0.35) { q -= 0.1; out = cv.toDataURL('image/jpeg', q); }
         resolve(out);
       };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('사진을 읽을 수 없어요')); };
@@ -716,7 +716,7 @@ const photos = (() => {
   $('#photo-viewer-close').addEventListener('click', closeViewer);
   $('#photo-viewer').addEventListener('click', (e) => { if (e.target.id === 'photo-viewer') closeViewer(); });
 
-  return { attach, mergeDates, dates, render, get, has: (d) => dateSet.has(d) };
+  return { attach, mergeDates, dates, render, get, shrink, has: (d) => dateSet.has(d) };
 })();
 
 function renderDay() {
@@ -1293,6 +1293,7 @@ function render() {
   else if (v === 'month') renderMonth();
   else if (v === 'rank') social.render();
   else if (v === 'career' && window.athlete) window.athlete.render();
+  else if (v === 'feed') social.renderFeed();
   else if (v === 'settings') updateGoalNote();
 }
 
@@ -1590,6 +1591,9 @@ const social = (() => {
     updateDot();
     checkWelcome();
     checkIncoming();
+    cleanOldMeals();
+    if (store && myId) { const lb = document.getElementById('login-banner'); if (lb) lb.hidden = true; }
+    if (currentView() === 'feed') renderFeed();
     if (currentView() === 'rank') render();
     if (openPerson) renderPerson();
   }
@@ -1755,7 +1759,7 @@ const social = (() => {
   const periodLabel = () => ({ week: '이번 주', month: '이번 달', all: '전체 기간' }[period]);
 
   function allComments() {
-    return Object.values(comments).flat().filter((c) => members[c.from]).sort((a, b) => b.at - a.at);
+    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal').sort((a, b) => b.at - a.at);
   }
   function relTime(t) {
     const s = Math.max(0, (Date.now() - t) / 1000);
@@ -2021,10 +2025,8 @@ const social = (() => {
     try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch {}
     updateDot();
     $('#rank-board').hidden = mode !== 'board';
-    $('#photo-feed').hidden = mode !== 'photos';
     $('#rank-kings').hidden = mode !== 'kings';
     $('#rank-mode').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.mode === mode));
-    if (mode === 'photos') { renderPhotoFeed(); return; }
     if (mode === 'kings') { renderAwards(); return; }
     renderCheers();
 
@@ -2260,7 +2262,8 @@ const social = (() => {
     feedIdx = (i + feedList.length) % feedList.length;
     const x = feedList[feedIdx];
     if (!x) return;
-    $('#post-who').textContent = x.own ? `내 눈바디 · ${fmtDate(x.date)}` : `${x.who} · ${x.at ? relTime(x.at) : ''}`;
+    $('#post-who').textContent = x.own ? `내 눈바디 · ${fmtDate(x.date)}` : `${x.mine ? '나' : x.who} · ${x.at ? relTime(x.at) : ''}`;
+    $('#post-del').hidden = !(x.meal && x.mine);
     $('#post-img').src = x.img;
     $('#post-sum').textContent = String(x.summary || '');
     $('#post-text').textContent = String(x.text || '');
@@ -2270,6 +2273,12 @@ const social = (() => {
     document.body.classList.add('modal-open');
   }
   function closePost() { $('#post-modal').hidden = true; document.body.classList.remove('modal-open'); }
+  $('#post-del').addEventListener('click', async () => {
+    const x = feedList[feedIdx];
+    if (!x || !x.meal || !x.mine) return;
+    if (!(await askConfirm('이 식단 사진을 삭제할까요?', { okText: '삭제', danger: true }))) return;
+    try { await store.doc(`comments/${myId}/items/${x.meal}`).delete(); closePost(); toast('삭제했어요'); } catch { toast('삭제하지 못했어요'); }
+  });
   $('#post-close').addEventListener('click', closePost);
   $('#post-modal .rest-backdrop').addEventListener('click', closePost);
   $('#post-prev').addEventListener('click', () => openPost(feedIdx - 1));
@@ -2291,6 +2300,66 @@ const social = (() => {
       toast(`${x.who}님에게 ${b.dataset.cheer} 보냈어요`);
     } catch { toast('보내지 못했어요'); }
   }));
+
+  /* ---- 🍱 식단 피드 · 눈바디 피드 (피드 탭) ---- */
+  const MEAL_KEEP_DAYS = 14;
+  const SLOTS = ['아침', '점심', '저녁', '간식'];
+  let feedKind = 'meal', mealSrc = 'all';
+  let mealSlot = (() => { const h = new Date().getHours(); return h < 10 ? '아침' : h < 15 ? '점심' : h < 21 ? '저녁' : '간식'; })();
+  function allMeals() {
+    return Object.values(comments).flat().filter((c) => c.kind === 'meal' && members[c.from] && typeof c.img === 'string' && c.img.startsWith('data:image/')).sort((a, b) => b.at - a.at);
+  }
+  function renderFeed() {
+    const ok = !!store && ready && !!myNick();
+    $('#feed-off').hidden = ok;
+    $('#feed-main').hidden = !ok;
+    if (!ok) return;
+    document.querySelectorAll('#feed-kind button').forEach((b) => b.classList.toggle('active', b.dataset.k === feedKind));
+    $('#meal-box').hidden = feedKind !== 'meal';
+    $('#photo-feed').hidden = feedKind !== 'body';
+    if (feedKind === 'body') { renderPhotoFeed(); return; }
+    $('#meal-slots').innerHTML = SLOTS.map((x) => `<button type="button" class="chip ${x === mealSlot ? 'active' : ''}" data-s="${x}">${x}</button>`).join('');
+    $('#meal-slots').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => { mealSlot = b.dataset.s; renderFeed(); }));
+    document.querySelectorAll('#meal-src .chip').forEach((b) => b.classList.toggle('active', b.dataset.src === mealSrc));
+    const meals = allMeals().filter((c) => mealSrc === 'all' || c.from === myId);
+    feedList = meals.map((c) => ({ img: c.img, who: nickOf(c.from), from: c.from, date: c.date, summary: `${c.slot || ''} · ${fmtDate(c.date)}`, text: c.text, at: c.at, mine: c.from === myId, meal: c.id }));
+    // 날짜별로 묶기
+    let html = '', lastDate = '';
+    feedList.forEach((x, i) => {
+      if (x.date !== lastDate) { if (lastDate) html += '</div>'; html += `<div class="meal-date">${escapeHtml(fmtDate(x.date))}</div><div class="photo-feed-grid">`; lastDate = x.date; }
+      html += `<button type="button" class="pf-cell" data-i="${i}"><img src="${x.img}" alt="" loading="lazy" /><span class="pf-tag">${escapeHtml(x.mine ? '나' : x.who)} · ${escapeHtml(x.summary.split(' · ')[0])}</span></button>`;
+    });
+    if (lastDate) html += '</div>';
+    $('#meal-grid').innerHTML = html || `<p class="hint center">${mealSrc === 'all' ? '아직 올라온 식단이 없어요. 첫 식단을 올려보세요 🍱' : '내가 올린 식단이 없어요'}</p>`;
+    $('#meal-grid').querySelectorAll('.pf-cell').forEach((el) => el.addEventListener('click', () => openPost(+el.dataset.i)));
+  }
+  document.querySelectorAll('#feed-kind button').forEach((b) => b.addEventListener('click', () => { feedKind = b.dataset.k; renderFeed(); }));
+  document.querySelectorAll('#meal-src .chip').forEach((b) => b.addEventListener('click', () => { mealSrc = b.dataset.src; renderFeed(); }));
+  $('#meal-add').addEventListener('click', () => $('#meal-file').click());
+  $('#meal-file').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file || !store) return;
+    const btn = $('#meal-add');
+    btn.disabled = true; btn.querySelector('span').textContent = '올리는 중…';
+    try {
+      const img = await photos.shrink(file, 640, 75000);
+      await store.collection(`comments/${myId}/items`).add({ to: '__meal', kind: 'meal', date: todayStr(), slot: mealSlot, text: ($('#meal-text').value || '').trim().slice(0, 60), img, at: Date.now() });
+      $('#meal-text').value = '';
+      toast(`🍱 ${mealSlot} 식단을 올렸어요`);
+    } catch (err) {
+      toast(err && err.code === 'invalid_argument' ? '올릴 권한이 없어요' : '사진을 올리지 못했어요');
+    }
+    btn.disabled = false; btn.querySelector('span').textContent = '식단 사진 올리기';
+  });
+  // 2주 지난 내 식단 사진은 자동 정리 (용량 관리)
+  let mealCleaned = false;
+  function cleanOldMeals() {
+    if (mealCleaned || !store || !comments[myId]) return;
+    mealCleaned = true;
+    const cut = addDays(todayStr(), -MEAL_KEEP_DAYS);
+    comments[myId].filter((c) => c.kind === 'meal' && c.date < cut).forEach((c) => { store.doc(`comments/${myId}/items/${c.id}`).delete().catch(() => {}); });
+  }
 
   /* ---- 운동 공유 ---- */
   let shareDate = null;
@@ -2362,7 +2431,7 @@ const social = (() => {
   }
 
   return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
-    members: () => members, me: () => members[myId], nick: () => myNick(), openProfile };
+    members: () => members, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed };
 })();
 
 /* =========================================================
@@ -2660,7 +2729,7 @@ cloud.init();
 setTimeout(() => {
   let ok = false;
   try { ok = !!social.id(); } catch {}
-  if (!ok) $('#login-banner').hidden = false;
+  $('#login-banner').hidden = ok;
 }, 9000);
 
 /* ---------- 🎉 이벤트 배경 ---------- */

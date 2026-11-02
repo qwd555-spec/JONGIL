@@ -1053,3 +1053,15 @@ body.event-bg .routine-nudge, body.event-bg .rt-apply, body.event-bg .rt-save bu
 body.event-bg .rb-name, body.event-bg .rb-res, body.event-bg .rb-opts input, body.event-bg .rb-step, body.event-bg .rb-move button { background: rgba(255,255,255,.08); color: var(--text); }
 body.event-bg .rb-item, body.event-bg .rb-res b, body.event-bg .rb-step button { background: rgba(255,255,255,.12); }
 body.event-bg .rt-save-btn { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+/* ---------- 🍱 피드 탭 ---------- */
+#feed-kind { margin-bottom: 12px; }
+.meal-up .part-chips { margin: 0 0 4px; }
+.meal-add { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 50px; margin-top: 10px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 800; font-size: 15px; }
+.meal-add .i { width: 18px; height: 18px; }
+.meal-add:disabled { opacity: .6; }
+.meal-date { margin: 14px 4px 8px; font-size: 13px; font-weight: 800; color: var(--muted); }
+.post-del { margin-left: auto; margin-right: 8px; font-size: 13px; font-weight: 700; color: var(--danger); }
+.tabbar .tab { padding: 0 6px; gap: 6px; }
+.tabbar .tab-text { font-size: 13px; }
+body.event-bg .meal-add { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+.login-banner[hidden] { display: none; }
