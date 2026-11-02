@@ -317,7 +317,13 @@ window.athlete = (() => {
     const rest = restDays();
     // 3D 무대 (안 되면 2D 그림으로)
     const fallback = () => { $('#ath-3d').hidden = true; $('#ath-figure').hidden = false; $('#ath-figure').innerHTML = drawAthlete({ up: R.up, low: R.low, track: G.track, mood: rest <= 1 ? 'happy' : rest <= 3 ? 'ok' : 'sad', size: 170 }); };
-    if (window.stage3d) window.stage3d.show($('#ath-3d'), { up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42' }).then((ok) => { if (!ok) fallback(); }).catch(fallback);
+    let scene3d = { up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42' };
+    const team = teamList();
+    $('#ath-view').hidden = team.length < 2;
+    document.querySelectorAll('#ath-view button').forEach((b) => b.classList.toggle('active', b.dataset.v === view3d));
+    $('.ath-hero.cine').classList.toggle('team', view3d === 'team' && team.length >= 2);
+    if (view3d === 'team' && team.length >= 2) scene3d = { team };
+    if (window.stage3d) window.stage3d.show($('#ath-3d'), scene3d).then((ok) => { if (!ok) fallback(); }).catch(fallback);
     else fallback();
     $('#ath-chapter').textContent = `CHAPTER ${String((T ? G.stage : 0) + 1).padStart(2, '0')}`;
     let nick = '나'; try { nick = social.nick() || '나'; } catch {}
@@ -409,6 +415,20 @@ window.athlete = (() => {
     </button>`).join('');
     $('#ath-team').querySelectorAll('.ath-mate').forEach((b) => b.addEventListener('click', () => { try { social.openProfile(b.dataset.id); } catch {} }));
   }
+
+  /* 다같이 한 무대에 */
+  let view3d = 'me';
+  function teamList() {
+    let members = {}, myId = null, live = () => false;
+    try { members = social.members(); myId = social.id(); live = social.live; } catch {}
+    return Object.keys(members).map((id) => {
+      const m = members[id];
+      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', live: live(id) }; }
+      const c = m.char || {}, t = TRACKS[c.t] ? c.t : '';
+      return { nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id) };
+    }).slice(0, 12);
+  }
+  document.querySelectorAll('#ath-view button').forEach((b) => b.addEventListener('click', () => { view3d = b.dataset.v; render(); }));
 
   /** 친구들에게 보일 내 선수 요약 */
   function summary() { const R = real(); return { t: G.track, st: G.stage, s: { u: R.up, l: R.low } }; }

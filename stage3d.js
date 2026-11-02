@@ -7,7 +7,7 @@
  * ========================================================= */
 window.stage3d = (() => {
   let THREE = null, loading = null, ready = false, failed = false;
-  let renderer, scene, camera, root, fig, mats = {}, dust, glow, cones = [], ring;
+  let renderer, scene, camera, root, dust, glow, cones = [], ring;
   let box = null, want = null, raf = 0, t0 = 0, yaw = 0.5, yawV = 0, drag = null, lastKey = '';
   const reduce = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } })();
 
@@ -120,8 +120,8 @@ window.stage3d = (() => {
   }
 
   /* ---- 선수 만들기 (근육량 = 진짜 운동 레벨) ---- */
-  function build({ up = 0, low = 0, color = '#3a3a42', track = '' }) {
-    if (fig) { root.remove(fig); fig.traverse((o) => o.geometry && o.geometry.dispose()); }
+  function makeFigure({ up = 0, low = 0, color = '#3a3a42', track = '' }) {
+    const mats = {};
     const U = Math.min(up, 40) / 40, L = Math.min(low, 40) / 40;
     const hulk = Math.max(0, Math.min(1, ((up + low) / 2 - 16) / 14));
     mats.skin = new THREE.MeshStandardMaterial({ color: mix('#e9b994', '#5fb840', hulk), roughness: 0.55, metalness: 0.05 });
@@ -175,17 +175,75 @@ window.stage3d = (() => {
     if (track === 'runner') { const band = C(0.18, 0.18, 0.05, mats.shirt, 0, chestY + 0.5, 0); band.scale.z = 1.05; }
     if (track === 'olympia') { C(waist + 0.02, waist + 0.02, 0.1, mats.shirt, 0, hipY + 0.08, 0); }
     f.scale.setScalar(1 + (U + L) * 0.08);
-    fig = f; root.add(f);
-    ring.material.color = hex(color === '#3a3a42' ? '#e98ce6' : color);
+    f.userData.sy = f.scale.y;
+    f.userData.top = (chestY + 0.75) * f.scale.y;
+    return f;
   }
+  // 이름표 (머리 위 말풍선)
+  function nameTag(text, sub, me, live) {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 160;
+    const x = c.getContext('2d');
+    x.font = '800 64px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    const w = Math.min(500, Math.max(x.measureText(text).width + (live ? 70 : 40), 160));
+    const left = (512 - w) / 2;
+    x.fillStyle = me ? 'rgba(233,140,230,.95)' : 'rgba(17,17,24,.82)';
+    x.beginPath(); x.roundRect ? x.roundRect(left, 8, w, 92, 46) : x.rect(left, 8, w, 92); x.fill();
+    if (live) { x.fillStyle = '#22c55e'; x.beginPath(); x.arc(left + 36, 54, 12, 0, Math.PI * 2); x.fill(); }
+    x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(text, 256 + (live ? 16 : 0), 56);
+    if (sub) { x.font = '700 34px -apple-system, "Apple SD Gothic Neo", sans-serif'; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText(sub, 256, 132); }
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false }));
+    sp.scale.set(1.25, 0.39, 1);
+    return sp;
+  }
+  let figs = [];
+  function clearFigs() {
+    figs.forEach((g) => { root.remove(g); g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); }); });
+    figs = [];
+  }
+  function build(opts) {
+    clearFigs();
+    const team = opts.team;
+    if (!team) {
+      const f = makeFigure(opts); root.add(f); figs.push(f);
+      ring.material.color = hex(opts.color === '#3a3a42' ? '#e98ce6' : opts.color);
+      camDist = 7.2; camLook = 1.35; camLift = 0;
+      return;
+    }
+    // 다같이: 단체사진처럼 한 줄 5명, 나는 앞줄 가운데 · 넘치면 뒷줄 (계단처럼 뒤로)
+    ring.material.color = hex('#e98ce6');
+    const others = team.filter((m) => !m.me), me = team.find((m) => m.me);
+    const ordered = [];
+    const firstRow = others.slice(0, me ? 4 : 5);
+    firstRow.forEach((m, i) => (i % 2 ? ordered.push(m) : ordered.unshift(m)));
+    if (me) ordered.splice(Math.floor(ordered.length / 2), 0, me);
+    const rows = [ordered];
+    for (let i = firstRow.length; i < others.length; i += 5) rows.push(others.slice(i, i + 5));
+    const spots = [];
+    rows.forEach((row, r) => {
+      const n = row.length, gap = 1.12;
+      row.forEach((m, i) => { const x = (i - (n - 1) / 2) * gap + (r % 2 ? gap / 2 : 0) * (n === 5 ? 0 : 1); spots.push([m, x, 0.5 - r * 1.5 - x * x * 0.05, r]); });
+    });
+    spots.forEach(([m, x, z, r]) => {
+      const g = new THREE.Group();
+      const f = makeFigure(m); g.add(f);
+      const tag = nameTag(m.nick, m.sub, m.me, m.live); tag.position.y = f.userData.top + 0.32; g.add(tag);
+      g.position.set(x, r * 0.35, z); g.lookAt(x * 0.3, r * 0.35, 8);
+      g.userData.fig = f;
+      root.add(g); figs.push(g);
+    });
+    camDist = 11.5 + (rows.length - 1) * 1.2; camLook = 1.0 + (rows.length - 1) * 0.3; camLift = 1.6 + (rows.length - 1) * 0.6;
+  }
+  let camDist = 7.2, camLook = 1.35, camLift = 0;
 
   function tick(t) {
     raf = requestAnimationFrame(tick);
     if (!box || !box.isConnected || box.offsetParent === null || document.hidden) return;   // 안 보일 땐 쉼
     const s = (t - t0) / 1000;
-    if (!drag && !reduce) yaw += 0.0025;
-    camera.position.set(Math.sin(yaw) * 7.2, 2.0 + Math.sin(s * 0.25) * 0.08, Math.cos(yaw) * 7.2);
-    camera.lookAt(0, 1.35, 0);
+    if (!drag && !reduce) { if (want && want.team) yaw += (Math.sin(s * 0.15) * 0.35 - yaw) * 0.01; else yaw += 0.0025; }
+    camera.position.set(Math.sin(yaw) * camDist, 2.0 + camLift + Math.sin(s * 0.25) * 0.08, Math.cos(yaw) * camDist);
+    camera.lookAt(0, camLook, 0);
     // 달은 항상 화면 왼쪽 위 먼 곳에
     const [moon, disc] = scene.userData.moon;
     const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
@@ -193,11 +251,12 @@ window.stage3d = (() => {
     const mp = camera.position.clone().addScaledVector(fwd, 13).addScaledVector(right, -2.6);
     mp.y += 3.2;
     moon.position.copy(mp); disc.position.copy(mp).addScaledVector(fwd, 0.05); disc.lookAt(camera.position);
-    if (fig) {
-      const br = 1 + Math.sin(s * 1.6) * 0.012;
-      fig.children.forEach((o) => { if (o.userData.spin) { o.rotation.x = s * 2; } });
-      fig.scale.y = (fig.userData.sy || (fig.userData.sy = fig.scale.y)) * br;
-    }
+    figs.forEach((g, i) => {
+      const f = g.userData.fig || g;
+      const br = 1 + Math.sin(s * 1.6 + i * 0.9) * 0.012;
+      f.children.forEach((o) => { if (o.userData.spin) { o.rotation.x = s * 2; } });
+      f.scale.y = f.userData.sy * br;
+    });
     const p = dust.geometry.attributes.position;
     for (let i = 0; i < p.count; i++) { let y = p.getY(i) - 0.006; if (y < 0) y = 8; p.setY(i, y); }
     p.needsUpdate = true;

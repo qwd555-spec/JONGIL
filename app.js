@@ -2451,7 +2451,7 @@ const social = (() => {
   }
 
   return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
-    members: () => members, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed };
+    members: () => members, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id) };
 })();
 
 /* =========================================================

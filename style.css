@@ -1097,3 +1097,8 @@ body.event-bg .meal-row { background: rgba(255,255,255,.06); }
 .cine-bottom span { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.72); letter-spacing: -0.01em; }
 .cine-hint { position: absolute; right: 18px; bottom: 22px; font-size: 10.5px; color: rgba(255,255,255,.45); pointer-events: none; }
 body.event-bg .ath-hero.cine { background: #07070d; }
+.ath-view { position: absolute; left: 50%; transform: translateX(-50%); bottom: 96px; display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 2; }
+.ath-view[hidden] { display: none; }
+.ath-view button { height: 30px; padding: 0 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: rgba(255,255,255,.75); }
+.ath-view button.active { background: #fff; color: #111; }
+.ath-hero.cine.team .ath-hulk { display: none; }
