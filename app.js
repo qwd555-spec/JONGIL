@@ -2303,9 +2303,7 @@ const social = (() => {
 
   /* ---- 🍱 식단 피드 · 눈바디 피드 (피드 탭) ---- */
   const MEAL_KEEP_DAYS = 14;
-  const SLOTS = ['아침', '점심', '저녁', '간식'];
-  let feedKind = 'meal', mealSrc = 'all';
-  let mealSlot = (() => { const h = new Date().getHours(); return h < 10 ? '아침' : h < 15 ? '점심' : h < 21 ? '저녁' : '간식'; })();
+  let feedKind = 'meal', mealRows = [];
   function allMeals() {
     return Object.values(comments).flat().filter((c) => c.kind === 'meal' && members[c.from] && typeof c.img === 'string' && c.img.startsWith('data:image/')).sort((a, b) => b.at - a.at);
   }
@@ -2318,23 +2316,22 @@ const social = (() => {
     $('#meal-box').hidden = feedKind !== 'meal';
     $('#photo-feed').hidden = feedKind !== 'body';
     if (feedKind === 'body') { renderPhotoFeed(); return; }
-    $('#meal-slots').innerHTML = SLOTS.map((x) => `<button type="button" class="chip ${x === mealSlot ? 'active' : ''}" data-s="${x}">${x}</button>`).join('');
-    $('#meal-slots').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => { mealSlot = b.dataset.s; renderFeed(); }));
-    document.querySelectorAll('#meal-src .chip').forEach((b) => b.classList.toggle('active', b.dataset.src === mealSrc));
-    const meals = allMeals().filter((c) => mealSrc === 'all' || c.from === myId);
-    feedList = meals.map((c) => ({ img: c.img, who: nickOf(c.from), from: c.from, date: c.date, summary: `${c.slot || ''} · ${fmtDate(c.date)}`, text: c.text, at: c.at, mine: c.from === myId, meal: c.id }));
-    // 날짜별로 묶기
-    let html = '', lastDate = '';
-    feedList.forEach((x, i) => {
-      if (x.date !== lastDate) { if (lastDate) html += '</div>'; html += `<div class="meal-date">${escapeHtml(fmtDate(x.date))}</div><div class="photo-feed-grid">`; lastDate = x.date; }
-      html += `<button type="button" class="pf-cell" data-i="${i}"><img src="${x.img}" alt="" loading="lazy" /><span class="pf-tag">${escapeHtml(x.mine ? '나' : x.who)} · ${escapeHtml(x.summary.split(' · ')[0])}</span></button>`;
-    });
-    if (lastDate) html += '</div>';
-    $('#meal-grid').innerHTML = html || `<p class="hint center">${mealSrc === 'all' ? '아직 올라온 식단이 없어요. 첫 식단을 올려보세요 🍱' : '내가 올린 식단이 없어요'}</p>`;
-    $('#meal-grid').querySelectorAll('.pf-cell').forEach((el) => el.addEventListener('click', () => openPost(+el.dataset.i)));
+    // 사람별로 묶고, 가장 최근에 올린 사람이 맨 위 · 사진은 옆으로 쌓이게
+    const byWho = new Map();
+    for (const c of allMeals()) { if (!byWho.has(c.from)) byWho.set(c.from, []); byWho.get(c.from).push(c); }
+    const people = [...byWho.entries()];   // allMeals가 최신순이라 첫 등장 순서 = 최근 업데이트 순
+    mealRows = people.map(([from, list]) => list.map((c) => ({ img: c.img, who: nickOf(from), from, date: c.date, summary: fmtDate(c.date), text: c.text, at: c.at, mine: from === myId, meal: c.id })));
+    $('#meal-grid').innerHTML = people.length ? people.map(([from, list], r) => `
+      <div class="meal-row">
+        <div class="meal-who"><b>${escapeHtml(from === myId ? '나' : nickOf(from))}</b><small>${relTime(list[0].at)} · ${list.length}장</small></div>
+        <div class="meal-strip">${list.map((c, i) => `<button type="button" class="meal-cell" data-r="${r}" data-i="${i}">
+          <img src="${c.img}" alt="" loading="lazy" />
+          <span>${escapeHtml(c.text || fmtDate(c.date))}</span>
+        </button>`).join('')}</div>
+      </div>`).join('') : '<p class="hint center">아직 올라온 식단이 없어요. 첫 식단을 올려보세요 🍱</p>';
+    $('#meal-grid').querySelectorAll('.meal-cell').forEach((el) => el.addEventListener('click', () => { feedList = mealRows[+el.dataset.r]; openPost(+el.dataset.i); }));
   }
   document.querySelectorAll('#feed-kind button').forEach((b) => b.addEventListener('click', () => { feedKind = b.dataset.k; renderFeed(); }));
-  document.querySelectorAll('#meal-src .chip').forEach((b) => b.addEventListener('click', () => { mealSrc = b.dataset.src; renderFeed(); }));
   $('#meal-add').addEventListener('click', () => $('#meal-file').click());
   $('#meal-file').addEventListener('change', async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -2344,9 +2341,9 @@ const social = (() => {
     btn.disabled = true; btn.querySelector('span').textContent = '올리는 중…';
     try {
       const img = await photos.shrink(file, 640, 75000);
-      await store.collection(`comments/${myId}/items`).add({ to: '__meal', kind: 'meal', date: todayStr(), slot: mealSlot, text: ($('#meal-text').value || '').trim().slice(0, 60), img, at: Date.now() });
+      await store.collection(`comments/${myId}/items`).add({ to: '__meal', kind: 'meal', date: todayStr(), text: ($('#meal-text').value || '').trim().slice(0, 60), img, at: Date.now() });
       $('#meal-text').value = '';
-      toast(`🍱 ${mealSlot} 식단을 올렸어요`);
+      toast('🍱 식단을 올렸어요');
     } catch (err) {
       toast(err && err.code === 'invalid_argument' ? '올릴 권한이 없어요' : '사진을 올리지 못했어요');
     }
