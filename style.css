@@ -1025,3 +1025,31 @@ body.event-bg .welcome-err b { color: #9f1d35; }
 body.event-bg .rt-card, body.event-bg .rt-wait, body.event-bg .rt-save input { background: rgba(255,255,255,.08); }
 body.event-bg .routine-nudge, body.event-bg .rt-apply, body.event-bg .rt-save button { background: linear-gradient(135deg, #7c3aed, #a855f7); }
 .routine-nudge[hidden] { display: none; }
+/* 루틴 직접 만들기 */
+.rt-new { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 46px; margin-bottom: 12px; border-radius: 999px; border: 1.5px dashed #c8c8d0; font-weight: 700; font-size: 14px; color: var(--text); }
+.rt-new .i { width: 16px; height: 16px; }
+.rb-name { width: 100%; height: 46px; margin-top: 10px; border-radius: 14px; border: 0; background: var(--layer); padding: 0 14px; font: inherit; font-size: 15px; font-weight: 600; color: var(--text); }
+.rb-parts { margin: 10px 0 6px; }
+.rb-results { display: flex; flex-direction: column; gap: 4px; max-height: 210px; overflow-y: auto; }
+.rb-res { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 12px; background: var(--layer); text-align: left; }
+.rb-res span { display: flex; flex-direction: column; font-size: 14px; font-weight: 600; }
+.rb-res small { font-size: 11px; color: var(--muted); font-weight: 500; }
+.rb-res b { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); font-size: 16px; }
+.rb-res.on b { background: var(--ink); color: #fff; }
+.rb-items { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.rb-item { padding: 12px; border-radius: 16px; background: var(--raised); box-shadow: var(--shadow-raised); }
+.rb-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rb-top b { font-size: 14.5px; font-weight: 800; }
+.rb-move { display: flex; gap: 2px; flex: none; }
+.rb-move button { width: 28px; height: 28px; border-radius: 50%; background: var(--layer); font-size: 13px; font-weight: 700; color: var(--muted); }
+.rb-opts { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.rb-opts label { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.rb-opts input { width: 58px; height: 36px; border-radius: 10px; border: 0; background: var(--layer); text-align: center; font: inherit; font-weight: 700; font-size: 15px; color: var(--text); }
+.rb-step { display: flex; align-items: center; gap: 4px; padding: 3px; border-radius: 999px; background: var(--layer); }
+.rb-step button { width: 30px; height: 30px; border-radius: 50%; background: var(--raised); font-size: 16px; font-weight: 700; }
+.rb-step em { font-style: normal; font-size: 13px; font-weight: 800; min-width: 38px; text-align: center; }
+.rb-opt { margin: 4px 0 10px; }
+.rt-save-btn { width: 100%; height: 50px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 800; font-size: 15px; }
+body.event-bg .rb-name, body.event-bg .rb-res, body.event-bg .rb-opts input, body.event-bg .rb-step, body.event-bg .rb-move button { background: rgba(255,255,255,.08); color: var(--text); }
+body.event-bg .rb-item, body.event-bg .rb-res b, body.event-bg .rb-step button { background: rgba(255,255,255,.12); }
+body.event-bg .rt-save-btn { background: linear-gradient(135deg, #7c3aed, #a855f7); }

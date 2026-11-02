@@ -569,12 +569,32 @@
         <button id="routine-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
       </div>
       <div class="rt-list" id="routine-list"></div>
+      <button type="button" class="rt-new" id="routine-new"><svg class="i"><use href="#i-plus"/></svg>루틴 직접 만들기</button>
       <div class="rt-save" id="routine-save" hidden>
         <input type="text" id="routine-name" maxlength="20" placeholder="루틴 이름 (비우면 자동)" />
         <button type="button">오늘 운동을 루틴으로 저장</button>
       </div>
       <div class="sub-head">✦ 추천 루틴 <small>한 달 기록 분석</small></div>
       <div class="rt-list" id="routine-suggest"></div>
+    </div>
+  </div>
+
+  <div id="rb-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="rb-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet routine-sheet rb-sheet">
+      <div class="rest-head">
+        <span class="rest-chip" id="rb-title">루틴 직접 만들기</span>
+        <button id="rb-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <input type="text" id="rb-name" class="rb-name" maxlength="20" placeholder="루틴 이름 · 예) 월요일 가슴 데이" />
+      <div class="sub-head">운동 고르기</div>
+      <input type="search" id="rb-search" class="rb-name" placeholder="검색 · 벤치, ㅅㅋㅌ, squat" />
+      <div class="part-chips rb-parts" id="rb-parts"></div>
+      <div class="rb-results" id="rb-results"></div>
+      <div class="sub-head">내 루틴 구성 <small id="rb-count"></small></div>
+      <div class="rb-items" id="rb-items"></div>
+      <label class="list-btn share-opt rb-opt"><span>불러올 때 지난 기록 무게 사용 <small>끄면 여기 적은 무게·횟수 그대로</small></span><input type="checkbox" id="rb-uselast" class="switch" checked /></label>
+      <button type="button" class="rt-save-btn" id="rb-save">루틴 저장</button>
     </div>
   </div>
 

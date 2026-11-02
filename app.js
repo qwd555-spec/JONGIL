@@ -2502,7 +2502,12 @@ const routines = (() => {
     if (isClosed(state.day)) { toast('마감된 날이에요. 다시 열기를 눌러주세요'); return; }
     const have = new Set((db[state.day] || []).map((e) => e.name));
     let n = 0;
-    for (const it of r.items) { if (have.has(it.n)) continue; (db[state.day] ||= []).push(makeEntry(it.n, it.sets)); n++; }
+    for (const it of r.items) {
+      if (have.has(it.n)) continue;
+      const e = makeEntry(it.n, it.sets);
+      if (r.useLast === false && it.sets && it.sets.length) e.sets = it.sets.map((x) => ({ ...x }));
+      (db[state.day] ||= []).push(e); n++;
+    }
     save(); renderDay(); close();
     toast(n ? `📋 ${r.name} · 운동 ${n}개를 불러왔어요` : '이미 다 추가돼 있어요');
   }
@@ -2514,7 +2519,7 @@ const routines = (() => {
     $('#routine-save').hidden = !today.length;
     $('#routine-list').innerHTML = list.length ? list.map((r) => `<div class="rt-card" data-id="${r.id}">
         <div class="rt-main"><b>${escapeHtml(r.name)}</b><small>${r.items.length}개 · ${itemsText(r)}</small></div>
-        <div class="rt-acts"><button type="button" class="rt-apply" data-act="apply">불러오기</button><button type="button" class="rt-del" data-act="del" aria-label="삭제"><svg class="i"><use href="#i-trash"/></svg></button></div>
+        <div class="rt-acts"><button type="button" class="rt-apply" data-act="apply">불러오기</button><button type="button" class="rt-del" data-act="edit" aria-label="수정"><svg class="i"><use href="#i-settings"/></svg></button><button type="button" class="rt-del" data-act="del" aria-label="삭제"><svg class="i"><use href="#i-trash"/></svg></button></div>
       </div>`).join('') : '<p class="empty-text">아직 저장한 루틴이 없어요</p>';
     const el = eligibility(), sg = suggest();
     $('#routine-suggest').innerHTML = !el.ok
@@ -2526,6 +2531,7 @@ const routines = (() => {
     document.querySelectorAll('#routine-modal .rt-card').forEach((c) => c.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
       const id = c.dataset.id, act = b.dataset.act;
       if (act === 'apply') apply(list.find((x) => x.id === id));
+      if (act === 'edit') builder.open(list.find((x) => x.id === id));
       if (act === 'del') { if (!(await askConfirm('이 루틴을 삭제할까요?', { okText: '삭제', danger: true }))) return; list = list.filter((x) => x.id !== id); persist(); render(); }
       if (act === 'keep') { const r = sg.find((x) => x.id === id); list.push({ id: uid(), name: r.name, items: r.items }); persist(); toast('루틴으로 저장했어요'); render(); renderNudge(); }
       if (act === 'skip') { dismissed.push(id); try { localStorage.setItem(DISMISS, JSON.stringify(dismissed)); } catch {} render(); renderNudge(); }
@@ -2551,6 +2557,94 @@ const routines = (() => {
     list.push(r); persist(); $('#routine-name').value = '';
     toast(`📋 "${r.name}" 저장했어요`); render();
   });
+  /* ---- 직접 만들기 / 수정 ---- */
+  const builder = (() => {
+    let draft = null, part = '전체';
+    const isCardioName = (n) => !!(typeof CARDIO !== 'undefined' && CARDIO[n]);
+    function open(r) {
+      draft = r ? JSON.parse(JSON.stringify(r)) : { id: null, name: '', useLast: true, items: [] };
+      if (draft.useLast === undefined) draft.useLast = true;
+      draft.items.forEach((it) => { if (!it.sets || !it.sets.length) it.sets = [isCardioName(it.n) ? { min: '' } : { w: '', r: '10' }]; });
+      part = '전체';
+      $('#rb-name').value = draft.name || '';
+      $('#rb-uselast').checked = draft.useLast;
+      $('#rb-search').value = '';
+      $('#rb-title').textContent = r ? '루틴 수정' : '루틴 직접 만들기';
+      $('#rb-modal').hidden = false; document.body.classList.add('modal-open');
+      renderParts(); renderResults(); renderItems();
+    }
+    function close() { $('#rb-modal').hidden = true; if ($('#routine-modal').hidden) document.body.classList.remove('modal-open'); }
+    function renderParts() {
+      $('#rb-parts').innerHTML = ['전체', ...EXERCISE_PARTS].map((p) => `<button type="button" class="chip ${p === part ? 'active' : ''}" data-p="${p}">${p}</button>`).join('');
+      $('#rb-parts').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => { part = b.dataset.p; renderParts(); renderResults(); }));
+    }
+    function renderResults() {
+      const q = $('#rb-search').value.trim();
+      const have = new Set(draft.items.map((i) => i.n));
+      const res = EXERCISES.filter((e) => part === '전체' || e.part === part)
+        .map((e) => ({ e, sc: matchScore(e, q) })).filter((x) => x.sc > 0)
+        .sort((a, b) => b.sc - a.sc).slice(0, q ? 12 : 8);
+      $('#rb-results').innerHTML = res.map(({ e }) => `<button type="button" class="rb-res ${have.has(e.name) ? 'on' : ''}" data-n="${escapeHtml(e.name)}"><span>${escapeHtml(e.name)}<small>${e.part}</small></span><b>${have.has(e.name) ? '✓' : '+'}</b></button>`).join('')
+        || '<p class="rt-wait">검색 결과가 없어요</p>';
+      $('#rb-results').querySelectorAll('.rb-res').forEach((b) => b.addEventListener('click', () => {
+        const n = b.dataset.n;
+        if (draft.items.some((i) => i.n === n)) draft.items = draft.items.filter((i) => i.n !== n);
+        else {
+          const last = findLastExercise(n, addDays(todayStr(), 1));
+          const sets = last ? last.sets.map((x) => ({ ...x })) : isCardioName(n) ? [{ min: '30' }] : [1, 2, 3].map(() => ({ w: '', r: '10' }));
+          draft.items.push({ n, sets });
+        }
+        renderResults(); renderItems();
+      }));
+    }
+    function renderItems() {
+      $('#rb-count').textContent = draft.items.length ? `${draft.items.length}개` : '';
+      $('#rb-items').innerHTML = draft.items.length ? draft.items.map((it, i) => {
+        const c = isCardioName(it.n), f = it.sets[0] || {};
+        return `<div class="rb-item" data-i="${i}">
+          <div class="rb-top"><b>${i + 1}. ${escapeHtml(it.n)}</b>
+            <span class="rb-move"><button type="button" data-a="up" aria-label="위로">↑</button><button type="button" data-a="down" aria-label="아래로">↓</button><button type="button" data-a="rm" aria-label="빼기">✕</button></span></div>
+          <div class="rb-opts">${c
+            ? `<label>시간 <input type="text" inputmode="numeric" data-k="min" value="${escapeHtml(String(f.min ?? ''))}" placeholder="30" />분</label>`
+            : `<span class="rb-step"><button type="button" data-a="minus">−</button><em>${it.sets.length}세트</em><button type="button" data-a="plus">+</button></span>
+               <label><input type="text" inputmode="decimal" data-k="w" value="${escapeHtml(String(f.w ?? ''))}" placeholder="0" />kg</label>
+               <label><input type="text" inputmode="numeric" data-k="r" value="${escapeHtml(String(f.r ?? ''))}" placeholder="10" />회</label>`}
+          </div></div>`;
+      }).join('') : '<p class="rt-wait">위에서 운동을 골라 추가하세요</p>';
+      $('#rb-items').querySelectorAll('.rb-item').forEach((row) => {
+        const i = +row.dataset.i, it = draft.items[i];
+        row.querySelectorAll('button[data-a]').forEach((b) => b.addEventListener('click', () => {
+          const a = b.dataset.a;
+          if (a === 'up' && i > 0) [draft.items[i - 1], draft.items[i]] = [draft.items[i], draft.items[i - 1]];
+          if (a === 'down' && i < draft.items.length - 1) [draft.items[i + 1], draft.items[i]] = [draft.items[i], draft.items[i + 1]];
+          if (a === 'rm') draft.items.splice(i, 1);
+          if (a === 'plus' && it.sets.length < 10) it.sets.push({ ...it.sets[it.sets.length - 1] });
+          if (a === 'minus' && it.sets.length > 1) it.sets.pop();
+          renderItems(); renderResults();
+        }));
+        row.querySelectorAll('input[data-k]').forEach((inp) => inp.addEventListener('input', () => {
+          const k = inp.dataset.k, v = inp.value.replace(/[^0-9.]/g, '');
+          it.sets.forEach((x) => { x[k] = v; });   // 모든 세트에 같은 값
+        }));
+      });
+    }
+    $('#rb-search').addEventListener('input', renderResults);
+    $('#rb-close').addEventListener('click', close);
+    $('#rb-modal .rest-backdrop').addEventListener('click', close);
+    $('#rb-save').addEventListener('click', () => {
+      if (!draft.items.length) { toast('운동을 하나 이상 골라주세요'); return; }
+      draft.name = ($('#rb-name').value || '').trim().slice(0, 20) || `${partsName(draft.items.map((i) => i.n))} 루틴`;
+      draft.useLast = $('#rb-uselast').checked;
+      const items = draft.items.map((it) => ({ n: it.n, sets: cleanSets(it.sets) }));
+      if (draft.id) list = list.map((x) => (x.id === draft.id ? { ...x, name: draft.name, useLast: draft.useLast, items } : x));
+      else list.push({ id: uid(), name: draft.name, useLast: draft.useLast, items });
+      persist(); close(); render();
+      toast(`📋 "${draft.name}" 저장했어요`);
+    });
+    return { open };
+  })();
+  $('#routine-new').addEventListener('click', () => builder.open(null));
+
   function restore(remote) {
     const ids = new Set(list.map((x) => x.id));
     let changed = false;
