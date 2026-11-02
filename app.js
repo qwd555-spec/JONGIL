@@ -410,7 +410,7 @@ function showView(view) {
   window.scrollTo({ top: 0 });
   render();
 }
-const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', rank: 'Ranking', settings: 'Settings', career: 'Athlete', feed: 'Feed' };
+const PAGE_TITLES = { chat: 'Talk', day: 'Today', week: 'Weekly', month: 'Monthly', rank: 'Ranking', settings: 'Settings', career: 'Athlete', feed: 'Feed' };
 function updateHeader() {
   const d = new Date();
   $('#header-sub').textContent = `${d.getMonth() + 1}.${d.getDate()} ${'일월화수목금토'[d.getDay()]}`;
@@ -1619,6 +1619,7 @@ function render() {
   else if (v === 'rank') social.render();
   else if (v === 'career' && window.athlete) window.athlete.render();
   else if (v === 'feed') social.renderFeed();
+  else if (v === 'chat') social.renderChat(true);
   else if (v === 'settings') updateGoalNote();
 }
 
@@ -1919,6 +1920,8 @@ const social = (() => {
     checkCongrats();
     checkMemoPop();
     cleanOldMeals();
+    cleanOldChat();
+    chatTick();
     if (store && myId) { const lb = document.getElementById('login-banner'); if (lb) lb.hidden = true; }
     if (currentView() === 'feed') renderFeed();
     if (currentView() === 'rank') render();
@@ -2103,7 +2106,7 @@ const social = (() => {
   const periodLabel = () => ({ week: '이번 주', month: '이번 달', all: '전체 기간' }[period]);
 
   function allComments() {
-    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal' && c.kind !== 'fcmt' && c.kind !== 'memo' && c.kind !== 'pray').sort((a, b) => b.at - a.at);
+    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal' && c.kind !== 'fcmt' && c.kind !== 'memo' && c.kind !== 'pray' && c.kind !== 'chat').sort((a, b) => b.at - a.at);
   }
   function relTime(t) {
     const s = Math.max(0, (Date.now() - t) / 1000);
@@ -2859,6 +2862,97 @@ const social = (() => {
     comments[myId].filter((c) => c.kind === 'meal' && c.date < cut).forEach((c) => { store.doc(`comments/${myId}/items/${c.id}`).delete().catch(() => {}); });
   }
 
+  /* ---- 💬 운동톡방 (단톡방) ----
+   * comments/{내id}/items 에 { to: '__chat', kind: 'chat', text, at } 로 저장 → 모두가 실시간으로 받음 */
+  const CHAT_SEEN_KEY = 'gymlog.chatSeen';
+  const CHAT_KEEP_DAYS = 30;
+  const chatBoot = Date.now();
+  const chatToasted = new Set();
+  let chatCleaned = false, chatCount = 0;
+  const chatSeen = () => { try { return +localStorage.getItem(CHAT_SEEN_KEY) || 0; } catch { return 0; } };
+  function chatMsgs() {
+    return Object.values(comments).flat().filter((c) => c.kind === 'chat' && members[c.from] && typeof c.text === 'string')
+      .sort((a, b) => num(a.at) - num(b.at)).slice(-300);
+  }
+  function cleanOldChat() {
+    if (chatCleaned || !store || !comments[myId]) return;
+    chatCleaned = true;
+    const cut = Date.now() - CHAT_KEEP_DAYS * 86400000;
+    comments[myId].filter((c) => c.kind === 'chat' && num(c.at) < cut).forEach((c) => { store.doc(`comments/${myId}/items/${c.id}`).delete().catch(() => {}); });
+  }
+  function avaColor(id) { return `hsl(${hashStr(String(id)) % 360} 55% 58%)`; }
+  /** 새 메시지 → 탭 점 + (톡방 밖이면) 토스트 */
+  function chatTick() {
+    const list = chatMsgs();
+    const inChat = currentView() === 'chat';
+    if (inChat) { renderChat(false); return; }
+    const seen = chatSeen();
+    const fresh = list.filter((c) => c.from !== myId && num(c.at) > seen);
+    $('#chat-dot').classList.toggle('on', fresh.length > 0);
+    const pop = fresh.filter((c) => num(c.at) > chatBoot - 5000 && !chatToasted.has(c.id));
+    pop.forEach((c) => chatToasted.add(c.id));
+    const last = pop[pop.length - 1];
+    if (last) toast(`💬 ${nickOf(last.from)}: ${last.text.slice(0, 40)}`);
+  }
+  function renderChat(jump) {
+    const off = !store || !myId || !ready || !myNick();
+    $('#chat-off').hidden = !off;
+    $('#chat-main').hidden = off;
+    if (off) return;
+    const list = chatMsgs();
+    try { localStorage.setItem(CHAT_SEEN_KEY, String(Date.now())); } catch { /* 없음 */ }
+    $('#chat-dot').classList.remove('on');
+    list.forEach((c) => chatToasted.add(c.id));
+    $('#chat-count').textContent = `${Object.values(members).filter((m) => m && m.nick).length}명`;
+    const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
+    const changed = list.length !== chatCount;
+    chatCount = list.length;
+    const tm = (t) => { const d = new Date(t); const h = d.getHours(); return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    const dayLabel = (t) => { const d = new Date(t); return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`; };
+    let html = '', prevDay = '';
+    list.forEach((c, i) => {
+      const at = num(c.at), day = toStr(new Date(at));
+      if (day !== prevDay) { html += `<div class="chat-day"><span>${dayLabel(at)}</span></div>`; prevDay = day; }
+      const prev = list[i - 1], next = list[i + 1];
+      const first = !prev || prev.from !== c.from || toStr(new Date(num(prev.at))) !== day || at - num(prev.at) > 180000;
+      const lastOfGroup = !next || next.from !== c.from || toStr(new Date(num(next.at))) !== day || num(next.at) - at > 180000 || tm(num(next.at)) !== tm(at);
+      const mine = c.from === myId;
+      const nk = nickOf(c.from);
+      const bubble = `<div class="chat-bubble${c.share ? ' share' : ''}" ${mine ? `data-del="${escapeHtml(c.id)}"` : ''}>${escapeHtml(c.text)}</div>`;
+      const time = lastOfGroup ? `<span class="chat-time">${tm(at)}</span>` : '';
+      if (mine) html += `<div class="chat-row me${first ? ' first' : ''}">${time}${bubble}</div>`;
+      else html += `<div class="chat-row${first ? ' first' : ''}">${first ? `<span class="chat-ava" style="background:${avaColor(c.from)}">${escapeHtml([...nk][0] || '?')}</span>` : '<span class="chat-ava ghost"></span>'}<div class="chat-col">${first ? `<span class="chat-nick">${escapeHtml(nk)}</span>` : ''}<div class="chat-line">${bubble}${time}</div></div></div>`;
+    });
+    $('#chat-list').innerHTML = html || '<p class="chat-empty">아직 조용해요. 첫 메시지를 보내보세요 💪</p>';
+    $('#chat-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('이 메시지를 지울까요?')) return;
+      try { await store.doc(`comments/${myId}/items/${b.dataset.del}`).delete(); } catch { toast('지우지 못했어요'); }
+    }));
+    if (jump || (changed && nearBottom)) requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: jump ? 'auto' : 'smooth' }));
+  }
+  async function sendChat(text, extra) {
+    text = String(text || '').trim().slice(0, 300);
+    if (!text || !store || !myId) return false;
+    try { await store.collection(`comments/${myId}/items`).add({ to: '__chat', kind: 'chat', text, at: Date.now(), ...(extra || {}) }); return true; }
+    catch { toast('메시지를 보내지 못했어요'); return false; }
+  }
+  $('#chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const inp = $('#chat-text');
+    const t = inp.value;
+    if (!t.trim()) return;
+    inp.value = '';
+    if (!(await sendChat(t))) inp.value = t;
+    inp.focus();
+  });
+  $('#chat-share').addEventListener('click', async () => {
+    const d = todayStr(), list = (db[d] || []).filter((ex) => exerciseVolume(ex, d) !== 0 || ex.sets.some((st) => num(st.r) > 0 || num(st.min) > 0));
+    if (!list.length) { toast('오늘 기록한 운동이 없어요'); return; }
+    const lines = list.slice(0, 8).map((ex) => `· ${ex.name} ${fmtKg(Math.round(exerciseVolume(ex, d)))}`);
+    const text = `💪 오늘 운동 기록\n총 ${fmtKg(Math.round(dayVolume(d)))}\n${lines.join('\n')}${list.length > 8 ? `\n외 ${list.length - 8}개` : ''}`;
+    if (await sendChat(text, { share: 1 })) toast('오늘 운동을 톡방에 올렸어요');
+  });
+
   /* ---- 운동 공유 ---- */
   let shareDate = null;
   function shareSummary(date) {
@@ -2928,7 +3022,7 @@ const social = (() => {
       .sort((a, b) => b.v - a.v);
   }
 
-  return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
+  return { renderChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
     members: () => members, jailed: isJailed,
     // 🏠 각자 짐 메모: { 주인id: [{id, from, who, text, c, at, mine}] } (최신순)
     memos: () => {

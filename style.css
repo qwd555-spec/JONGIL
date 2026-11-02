@@ -1429,3 +1429,36 @@ body.gym-full .toast { z-index: 95; }
 .memo-pop-list{display:flex;flex-direction:column;gap:8px;text-align:left}
 .memo-pop-more{margin:2px 0 0;font-size:12px;opacity:.6;text-align:center}
 .memo-pop #memo-pop-go{flex:1.8;background:#7c3aed;color:#fff}
+/* 💬 운동톡방 (카톡 단톡방 느낌) */
+.chat-room { border-radius: 24px; background: #b2c7da; padding: 0 0 14px; min-height: calc(100vh - 260px); color: #1d1d22; overflow: hidden; margin-bottom: 70px; }
+.chat-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: baseline; gap: 8px; padding: 14px 16px 10px; background: rgba(178,199,218,.94); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.chat-head b { font-size: 16px; }
+.chat-head small { font-size: 13px; color: rgba(29,29,34,.55); font-weight: 700; }
+.chat-list { display: flex; flex-direction: column; padding: 0 10px; }
+.chat-empty { text-align: center; color: rgba(29,29,34,.55); margin: 60px 0; font-size: 14px; }
+.chat-day { display: flex; justify-content: center; margin: 14px 0 6px; }
+.chat-day span { font-size: 11.5px; padding: 4px 12px; border-radius: 999px; background: rgba(0,0,0,.12); color: #fff; font-weight: 600; }
+.chat-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 3px; }
+.chat-row.first { margin-top: 10px; }
+.chat-row.me { justify-content: flex-end; align-items: flex-end; gap: 5px; }
+.chat-ava { flex: none; width: 38px; height: 38px; border-radius: 15px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; }
+.chat-ava.ghost { visibility: hidden; height: 0; }
+.chat-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: calc(100% - 90px); }
+.chat-nick { font-size: 12.5px; color: rgba(29,29,34,.75); font-weight: 600; }
+.chat-line { display: flex; align-items: flex-end; gap: 5px; }
+.chat-bubble { padding: 8px 11px; border-radius: 4px 16px 16px 16px; background: #fff; font-size: 14.5px; line-height: 1.42; white-space: pre-wrap; word-break: break-all; max-width: 100%; }
+.chat-row:not(.first) .chat-bubble { border-radius: 16px; }
+.chat-row.me .chat-bubble { background: #fee500; border-radius: 16px 4px 16px 16px; max-width: calc(100% - 70px); cursor: pointer; }
+.chat-row.me:not(.first) .chat-bubble { border-radius: 16px; }
+.chat-bubble.share { border: 2px solid rgba(124,58,237,.35); }
+.chat-time { flex: none; font-size: 10.5px; color: rgba(29,29,34,.55); white-space: nowrap; }
+.chat-bar { position: fixed; z-index: 29; left: 50%; transform: translateX(-50%); bottom: calc(92px + var(--safe-b)); width: min(calc(100% - 28px), 420px); display: flex; gap: 6px; align-items: center; padding: 6px; border-radius: 999px; background: #fff; box-shadow: 0 10px 30px -12px rgba(20,20,30,.45); }
+.chat-bar input { flex: 1; min-width: 0; height: 40px; border: 0; background: transparent; font-size: 15px; padding: 0 6px; color: #1d1d22; outline: none; }
+.chat-share { flex: none; width: 40px; height: 40px; border-radius: 50%; background: #f1f1f4; font-size: 18px; }
+.chat-send { flex: none; width: 40px; height: 40px; border-radius: 50%; background: #fee500; color: #3a1d1d; display: grid; place-items: center; }
+.chat-send .i { width: 20px; height: 20px; }
+@media (max-width: 400px) { .tabbar .tab { padding: 0 4px; gap: 4px; } .tabbar .tab-text { font-size: 12px; } }
+body .chat-head b, body .chat-head small { color: #1d1d22; }
+body .chat-head small { opacity: .55; }
+body .chat-bar input { color: #1d1d22; background: transparent; }
+body .chat-bar input::placeholder { color: #9a9aa3; }
