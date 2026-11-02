@@ -1589,9 +1589,8 @@ const social = (() => {
 
   const myNick = () => (members[myId] && members[myId].nick) || '';
   /* ---- 처음 들어온 사람: 닉네임부터 등록 ---- */
-  let welcomeSkipped = false;
   function checkWelcome() {
-    const need = !!store && ready && !failed && !myNick() && !welcomeSkipped;
+    const need = !!store && ready && !failed && !myNick();
     const el = $('#welcome-modal');
     if (need && el.hidden) {
       const names = Object.values(members).map((m) => m.nick).filter(Boolean);
@@ -2181,14 +2180,10 @@ const social = (() => {
     btn.disabled = true;
     const r = await join($('#welcome-nick').value);
     btn.disabled = false;
-    if (r === 'denied' || r === false) {
-      $('#welcome-err').hidden = false;
-      $('#welcome-skip').hidden = false;
-    }
+    if (r === 'denied' || r === false) $('#welcome-err').hidden = false;
     checkWelcome();
   });
-  // 등록이 막혔을 때도 앱은 쓸 수 있게
-  $('#welcome-skip').addEventListener('click', () => { welcomeSkipped = true; checkWelcome(); });
+
   $('#rank-period').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
     period = b.dataset.period;
     $('#rank-period').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
