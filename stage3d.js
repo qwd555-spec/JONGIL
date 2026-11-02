@@ -96,11 +96,12 @@ window.stage3d = (() => {
     // 손가락으로 돌리기
     const dom = renderer.domElement;
     dom.style.touchAction = 'pan-y';
-    const ptrs = new Map();   // 📸 단체사진: 핀치 줌용
+    const ptrs = new Map(); let gymPinch = null;   // 📸 단체사진: 핀치 줌용
     dom.addEventListener('pointerdown', (e) => {
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (photo && ptrs.size === 2) { const [a, b] = [...ptrs.values()]; photo.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: photo.zoom }; drag = null; return; }
-      drag = { x: e.clientX, y: e.clientY, yaw, gy: gymYaw, moved: false, pan: photo ? photo.pan : 0, tilt: photo ? photo.tilt : 0 };
+      if (!photo && want && want.team && ptrs.size === 2) { const [a, b] = [...ptrs.values()]; gymPinch = { d: Math.hypot(a.x - b.x, a.y - b.y), dist: gymDist }; drag = null; return; }
+      drag = { x: e.clientX, y: e.clientY, yaw, gy: gymYaw, gh: gymH, moved: false, pan: photo ? photo.pan : 0, tilt: photo ? photo.tilt : 0 };
       dom.setPointerCapture(e.pointerId);
     });
     dom.addEventListener('pointermove', (e) => {
@@ -108,6 +109,12 @@ window.stage3d = (() => {
       if (photo && photo.pinch && ptrs.size >= 2) {
         const [a, b] = [...ptrs.values()];
         photoZoom(photo.pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / Math.max(20, photo.pinch.d));
+        return;
+      }
+      if (gymPinch && ptrs.size >= 2) {
+        const [a, b] = [...ptrs.values()];
+        gymDist = Math.max(9, Math.min(32, gymPinch.dist * gymPinch.d / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y))));
+        gymTouched = performance.now();
         return;
       }
       if (!drag) return;
@@ -119,7 +126,8 @@ window.stage3d = (() => {
         return;
       }
       if (Math.abs(e.clientX - drag.x) > 6) drag.moved = true;
-      if (want && want.team) gymYaw = drag.gy - (e.clientX - drag.x) * 0.008; else { yaw = drag.yaw - (e.clientX - drag.x) * 0.012; yawV = 0; }
+      if (Math.abs(e.clientY - drag.y) > 6) drag.moved = true;
+      if (want && want.team) { gymYaw = drag.gy - (e.clientX - drag.x) * 0.008; if (immersive) gymH = Math.max(2.2, Math.min(20, drag.gh + (e.clientY - drag.y) * 0.04)); gymTouched = performance.now(); } else { yaw = drag.yaw - (e.clientX - drag.x) * 0.012; yawV = 0; }
     });
     const up = (e) => {
       if (drag && !drag.moved && want && want.team && gymScene && !photo && onPick && e && e.clientX !== undefined) {
@@ -132,9 +140,13 @@ window.stage3d = (() => {
       drag = null;
       if (e && e.pointerId !== undefined) ptrs.delete(e.pointerId);
       if (photo && ptrs.size < 2) photo.pinch = null;
+      if (ptrs.size < 2) gymPinch = null;
     };
     dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
-    dom.addEventListener('wheel', (e) => { if (!photo) return; e.preventDefault(); photoZoom(photo.zoom * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+    dom.addEventListener('wheel', (e) => {
+      if (photo) { e.preventDefault(); photoZoom(photo.zoom * Math.exp(-e.deltaY * 0.0015)); return; }
+      if (immersive && want && want.team) { e.preventDefault(); gymDist = Math.max(9, Math.min(32, gymDist * Math.exp(e.deltaY * 0.0012))); gymTouched = performance.now(); }
+    }, { passive: false });
     new ResizeObserver(resize).observe(el);
     resize();
     ready = true;
@@ -152,7 +164,7 @@ window.stage3d = (() => {
     renderer.setSize(w, h, false);
     renderer.domElement.style.width = '100%'; renderer.domElement.style.height = '100%';
     camera.aspect = w / h; camera.updateProjectionMatrix();
-    if (gymCam) { gymCam.aspect = w / h; gymCam.updateProjectionMatrix(); }
+    if (gymCam) { gymCam.aspect = w / h; gymCam.fov = Math.max(46, Math.min(80, 2 * Math.atan(0.331 / (w / h)) * 180 / Math.PI)); gymCam.updateProjectionMatrix(); }
   }
 
   /* ---- 선수 만들기 (근육량 = 진짜 운동 레벨) ---- */
@@ -302,6 +314,7 @@ window.stage3d = (() => {
     jail: { label: '🔒 수감 중', station: 'jail', hidden: true },
   };
   let gymScene = null, gymCam = null, stations = {}, agents = [], gymYaw = 0.25, onPick = null;
+  let gymDist = 21, gymH = 12.5, gymTouched = 0;   // 산스장 카메라: 거리(줌) · 높이
   function buildGymScene() {
     /* ⛰️ 볼류머 산스장 — 산 정상을 평평하게 깎아 올린 헬스장 (구름 위) */
     gymScene = new THREE.Scene();
@@ -713,7 +726,7 @@ window.stage3d = (() => {
   function endPhoto() {
     if (!photo) return;
     photo = null;
-    if (renderer) renderer.domElement.style.touchAction = 'pan-y';
+    if (renderer) renderer.domElement.style.touchAction = immersive ? 'none' : 'pan-y';
     if (gymScene && gymScene.userData.riser) gymScene.userData.riser.visible = false;
     agents.forEach((a) => { if (a.mode === 'photo') { a.g.position.set(a.g.position.x, 0, a.g.position.z + 0.6); goTo(a, pickTask(a)); } });
   }
@@ -786,15 +799,23 @@ window.stage3d = (() => {
     return true;
   }
 
+  let immersive = false;
+  /** 산스장 들어가기(전체화면): 위아래 드래그로 높이, 핀치·휠로 줌 */
+  function setImmersive(on) {
+    immersive = !!on;
+    if (renderer) renderer.domElement.style.touchAction = on || photo ? 'none' : 'pan-y';
+    if (!on) { gymDist = 21; gymH = 12.5; }
+  }
   function tick(t) {
     raf = requestAnimationFrame(tick);
     if (!box || !box.isConnected || box.offsetParent === null || document.hidden) return;   // 안 보일 땐 쉼
     const s = (t - t0) / 1000;
     const dt = Math.min(0.05, s - (tick.last || s)); tick.last = s;
     if (want && want.team && gymScene) {
-      if (!drag && !reduce) gymYaw += (Math.sin(s * 0.08) * 0.35 + 0.15 - gymYaw) * 0.005;
-      gymCam.position.set(Math.sin(gymYaw) * 21, 12.5, Math.cos(gymYaw) * 21 + 1.5);
-      gymCam.lookAt(0, -0.6, 0);
+      if (!drag && !reduce && performance.now() - gymTouched > 8000) gymYaw += (Math.sin(s * 0.08) * 0.35 + 0.15 - gymYaw) * 0.005;
+      const low = Math.max(0, Math.min(1, (12.5 - gymH) / 10));
+      gymCam.position.set(Math.sin(gymYaw) * gymDist, gymH, Math.cos(gymYaw) * gymDist + 1.5);
+      gymCam.lookAt(0, -0.6 + low * 1.8, 0);
       updateAgents(dt, s);
       if (photo) {
         const w = box.clientWidth || 300, h = box.clientHeight || 360;
@@ -844,5 +865,5 @@ window.stage3d = (() => {
     if (!raf) { t0 = performance.now(); raf = requestAnimationFrame(tick); }
     return true;
   }
-  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, photoAngle, inPhoto: () => !!photo, poses: PHOTO_POSES };
+  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, photoAngle, setImmersive, inPhoto: () => !!photo, poses: PHOTO_POSES };
 })();

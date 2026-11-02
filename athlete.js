@@ -325,6 +325,8 @@ window.athlete = (() => {
     $('#cine-hint').textContent = view3d === 'team' && team.length >= 2 ? '사람을 누르면 운동을 시킬 수 있어요' : '드래그해서 돌려보기';
     if (view3d !== 'team') $('#order-sheet').hidden = true;
     $('#ath-photo').hidden = !(view3d === 'team' && team.length >= 2) || (window.stage3d && window.stage3d.inPhoto());
+    $('#ath-enter').hidden = !(view3d === 'team' && team.length >= 2);
+    if (!(view3d === 'team' && team.length >= 2) && gymFull) setFull(false);
     if (view3d !== 'team' && window.stage3d && window.stage3d.inPhoto()) { window.stage3d.endPhoto(); $('#photo-bar').hidden = true; }
     if (view3d === 'team' && team.length >= 2) scene3d = { team };
     if (window.stage3d) window.stage3d.show($('#ath-3d'), scene3d).then((ok) => { if (!ok) fallback(); }).catch(fallback);
@@ -458,6 +460,24 @@ window.athlete = (() => {
   }
   $('#order-close').addEventListener('click', () => { $('#order-sheet').hidden = true; });
   if (window.stage3d) window.stage3d.onPick(openOrder);
+
+  /* ⛶ 산스장 들어가기 (전체화면) */
+  let gymFull = false;
+  function setFull(on) {
+    gymFull = on;
+    const hero = $('.ath-hero.cine');
+    // 부모 요소의 레이아웃에 갇히지 않게, 들어갈 땐 body로 옮겼다가 나올 때 제자리로
+    if (on && !setFull.ph) { setFull.ph = document.createComment('ath-hero'); hero.before(setFull.ph); document.body.appendChild(hero); }
+    if (!on && setFull.ph) { setFull.ph.replaceWith(hero); setFull.ph = null; }
+    hero.classList.toggle('full', on);
+    document.body.classList.toggle('gym-full', on);
+    $('#ath-enter').textContent = on ? '✕ 나가기' : '⛶ 들어가기';
+    $('#cine-hint').textContent = on ? '드래그: 돌리기·높이 · 두 손가락: 줌 · 사람 누르면 시키기' : '사람을 누르면 운동을 시킬 수 있어요';
+    if (window.stage3d) window.stage3d.setImmersive(on);
+  }
+  $('#ath-enter').addEventListener('click', () => setFull(!gymFull));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && gymFull) setFull(false); });
+  document.querySelectorAll('.tabbar [data-view]').forEach((b) => b.addEventListener('click', () => { if (gymFull) setFull(false); }));
 
   /* 📸 산스장 단체사진 */
   function photoMode(on) {
