@@ -318,7 +318,7 @@ window.stage3d = (() => {
     stretch: { label: '🧘 스트레칭', station: 'mat' },
     rest: { label: '🥤 약수 한 사발', station: 'seat' },
     home: { label: '🏠 자기 짐에서 운동', station: 'home' },
-    pray: { label: '🙏 대불께 기도 (스쿼트)', station: 'pray' },
+    pray: { label: '🙏 기도 (스쿼트)', station: 'pray' },
     jail: { label: '🔒 수감 중', station: 'jail', hidden: true },
   };
   let gymScene = null, gymCam = null, stations = {}, agents = [], gymYaw = 0.25, onPick = null;
@@ -341,7 +341,7 @@ window.stage3d = (() => {
     const Cy = (r, h, mat, x, y, z, rx = 0, rz = 0, par = gymScene) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 14), mat); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); o.castShadow = true; par.add(o); return o; };
     // ── 🏟 실내 메가짐: 산 정상에 세운 거대한 실내 헬스장 (유리창 너머 산맥)
     const R = 18.5;   // 가운데 공용 구역 반지름 (각자 짐은 그 둘레)
-    const HW = 40, HZ0 = -36, HZ1 = 28, HH = 13;   // 홀 크기: x ±40, z -36 ~ 28, 천장 13
+    const HW = 40, HZ0 = -36, HZ1 = 28, HH = 17;   // 홀 크기: x ±40, z -36 ~ 28, 천장 17
     const FW = HW * 2, FD = HZ1 - HZ0, FZ = (HZ0 + HZ1) / 2;
     // 바닥: 고무매트 + 구역별 색 + 이음선
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(FW, FD), M(0x1c1d22, 0.95)); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, FZ); floor.receiveShadow = true; gymScene.add(floor);
@@ -430,8 +430,8 @@ window.stage3d = (() => {
     sx.fillStyle = '#fff'; sx.font = '900 104px -apple-system, "Apple SD Gothic Neo", sans-serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.fillText('⛰ 산스장 MEGA GYM', 512, 116);
     const st = new THREE.CanvasTexture(sign); st.encoding = THREE.sRGBEncoding;
     const signM = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.9), new THREE.MeshStandardMaterial({ map: st, roughness: 0.6, emissive: 0x222222 }));
-    signM.position.set(0, 2.05, -10.2); gymScene.add(signM);
-    // 📢 뒤쪽 대형 광고판 (가로로 길게) — 11/3부터 새 모델
+    signM.position.set(0, 2.1, 25.3); gymScene.add(signM);
+    // 🖼 뒤쪽 벽: 큰 사진 액자 + 그 아래 작은 광고판 3개 (가로로)
     const BBS = [   // 날짜부터 바뀌는 광고판 모델 (가장 최근 것)
       { from: '', src: 'billboard.jpg', l1: '볼륨은', l2: '배신하지 않는다', sub: '오늘도 한 세트 더 — 해발 1,000m' },
       { from: '2026-11-03', src: 'billboard2.jpg', l1: '단백질은', l2: '배신하지 않는다', sub: '오늘의 식단: 치킨 🍗 — 해발 1,000m' },
@@ -441,88 +441,71 @@ window.stage3d = (() => {
       { from: '2026-11-07', src: 'billboard6.jpg', l1: '무표정도', l2: '집중이다', sub: '오늘의 출근길 🚇 — 해발 1,000m' },
     ];
     const today = typeof todayStr === 'function' ? todayStr() : '';
-    const BB = BBS.filter((b) => b.from <= today).pop();
-    (() => {
+    const black = M(0x1d1e22, 0.5, 0.5), steel = M(0xd9dbe0, 0.25, 0.9), plate = M(0x121214, 0.7, 0.2), red = M(0xd83a3a, 0.5, 0.3), pad = M(0x2b2c31, 0.6, 0.1), conc = M(0xa9a59c, 0.95);
+    const praySlots = [];
+    const WZ = HZ0 + 0.2;   // 뒤 벽 바로 앞
+    const glow = (x, y, z, k = 1.4) => { const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture('rgba(255,240,200,.9)', 'rgba(255,240,200,0)'), transparent: true, depthWrite: false })); gl.scale.set(k, k, 1); gl.position.set(x, y, z); gymScene.add(gl); };
+    // 광고 그리기 (사진 + 문구)
+    function adTexture(bb) {
       const W = 1400, H = 520, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const cx = cv.getContext('2d'); cx.fillStyle = '#111'; cx.fillRect(0, 0, W, H);
       const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
-      const img = new Image();
-      img.onload = () => {
-        cx.drawImage(img, 0, 0, W, H);
+      const text = () => {
         const g = cx.createLinearGradient(0, 0, 640, 0); g.addColorStop(0, 'rgba(0,0,0,.7)'); g.addColorStop(1, 'rgba(0,0,0,0)');
         cx.fillStyle = g; cx.fillRect(0, 0, 640, H);
         cx.textAlign = 'left'; cx.textBaseline = 'alphabetic';
         cx.fillStyle = '#e8b923'; cx.font = '800 34px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText('VOLUMER 산스장 공식 모델', 56, 150);
-        cx.fillStyle = '#fff'; cx.font = '900 76px -apple-system, "Apple SD Gothic Neo", sans-serif';
-        cx.fillText(BB.l1, 52, 260); cx.fillText(BB.l2, 52, 350);
-        cx.fillStyle = 'rgba(255,255,255,.75)'; cx.font = '600 30px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText(BB.sub, 56, 420);
+        cx.fillStyle = '#fff'; cx.font = '900 76px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText(bb.l1, 52, 260); cx.fillText(bb.l2, 52, 350);
+        cx.fillStyle = 'rgba(255,255,255,.75)'; cx.font = '600 30px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText(bb.sub, 56, 420);
         tex.needsUpdate = true;
       };
-      img.src = BB.src;
-      const bw = 9.6, bh = bw * H / W, by = 4.5, bz = -10.4;
-      const board = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
-      board.position.set(0, by, bz + 0.09); gymScene.add(board);
-      const fm = M(0x15161a, 0.5, 0.6);
-      B(bw + 0.35, bh + 0.35, 0.15, fm, 0, by, bz);
-      [-bw * 0.32, bw * 0.32].forEach((x) => B(0.22, by + 6, 0.22, fm, x, (by - 6) / 2, bz - 0.2));
-      B(bw * 0.8, 0.1, 0.5, fm, 0, by + bh / 2 + 0.3, bz + 0.25);
-      for (let i = 0; i < 4; i++) { const x = -bw * 0.36 + i * bw * 0.24; B(0.12, 0.25, 0.35, M(0x333333, 0.4, 0.6), x, by + bh / 2 + 0.36, bz + 0.45);
-        const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture('rgba(255,240,200,.9)', 'rgba(255,240,200,0)'), transparent: true, depthWrite: false })); gl.scale.set(1.2, 1.2, 1); gl.position.set(x, by + bh / 2 + 0.2, bz + 0.6); gymScene.add(gl); }
-    })();
-    const black = M(0x1d1e22, 0.5, 0.5), steel = M(0xd9dbe0, 0.25, 0.9), plate = M(0x121214, 0.7, 0.2), red = M(0xd83a3a, 0.5, 0.3), pad = M(0x2b2c31, 0.6, 0.1), conc = M(0xa9a59c, 0.95);
-    const praySlots = [];
-    // 🙏 먼 산 위 '스쿼트 대불' (거대 황금 동상) + 정상 끝 기도 자리
+      if (bb.src) { const img = new Image(); img.onload = () => { cx.drawImage(img, 0, 0, W, H); text(); }; img.onerror = text; img.src = bb.src; }
+      else { const g2 = cx.createLinearGradient(0, 0, W, H); g2.addColorStop(0, '#2e1065'); g2.addColorStop(1, '#0b0b12'); cx.fillStyle = g2; cx.fillRect(0, 0, W, H); text(); }
+      return tex;
+    }
+    // 광고판 3개: 오늘까지 공개된 모델 중 최근 3명 (모자라면 볼류머 광고)
+    const shown = BBS.filter((b) => b.from <= today).slice(-3);
+    const fillers = [{ l1: '오늘도', l2: '한 세트 더', sub: 'VOLUMER MEGA GYM — 해발 1,000m' }, { l1: '광고 문의', l2: '단톡방으로', sub: '다음 모델은 바로 당신 📸' }];
+    while (shown.length < 3) shown.push(fillers[(shown.length + 1) % 2]);
+    const aw = 7.2, ah = aw * 520 / 1400, ay = 0.9 + ah / 2, gap = 0.6;
+    shown.forEach((bb, i) => {
+      const x = (i - 1) * (aw + gap);
+      const ad = new THREE.Mesh(new THREE.PlaneGeometry(aw, ah), new THREE.MeshBasicMaterial({ map: adTexture(bb), toneMapped: false }));
+      ad.position.set(x, ay, WZ + 0.12); gymScene.add(ad);
+      B(aw + 0.25, ah + 0.25, 0.12, M(0x15161a, 0.5, 0.6), x, ay, WZ + 0.02);
+    });
+    // 큰 사진 액자 (wall-photo.jpg — 비율에 맞춰 크기 조절)
+    const wallPhoto = new THREE.Group(); gymScene.add(wallPhoto);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.8, roughness: 0.3 });
+    const photoTop = HH - 0.8, maxH = photoTop - (ay + ah / 2) - 0.8;
+    const placePhoto = (aspect, tex) => {
+      while (wallPhoto.children.length) wallPhoto.remove(wallPhoto.children[0]);
+      let ph = maxH, pw = ph * aspect; if (pw > 30) { pw = 30; ph = pw / aspect; }
+      const cy = photoTop - ph / 2;
+      const pic = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), tex ? new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }) : new THREE.MeshStandardMaterial({ color: 0x2a2c33 }));
+      pic.position.set(0, cy, WZ + 0.2); wallPhoto.add(pic);
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(pw + 0.8, ph + 0.8, 0.2), frameMat); fr.position.set(0, cy, WZ + 0.06); wallPhoto.add(fr);
+      if (!tex) {
+        const c = document.createElement('canvas'); c.width = 512; c.height = 256; const x = c.getContext('2d');
+        x.fillStyle = 'rgba(255,255,255,.55)'; x.font = '800 44px -apple-system, "Apple SD Gothic Neo", sans-serif'; x.textAlign = 'center'; x.fillText('🖼 사진 걸 자리', 256, 140);
+        const t = new THREE.CanvasTexture(c); const lab = new THREE.Mesh(new THREE.PlaneGeometry(pw * 0.6, pw * 0.3), new THREE.MeshBasicMaterial({ map: t, transparent: true })); lab.position.set(0, cy, WZ + 0.25); wallPhoto.add(lab);
+      }
+      [-pw / 3, 0, pw / 3].forEach((x) => glow(x, photoTop + 0.4, WZ + 0.8, 2.2));
+    };
+    placePhoto(4 / 3, null);
+    (() => { const img = new Image(); img.onload = () => { const t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.needsUpdate = true; placePhoto(img.width / img.height, t); }; img.onerror = () => {}; img.src = 'wall-photo.jpg'; })();
+    wallPhoto.userData.statue = true;
+    gymScene.userData.statue = wallPhoto;
+    // 벽 앞 기도 자리 (사진을 바라봄)
     (() => {
-      const SX = 0, SZ = -31, peakTop = 0;   // 홀 맨 뒤 가운데 (실내 대불)
-      const fig = makeFigure({ up: 26, low: 26, color: '#d4a73a', stage: 0 });
-      const gold = new THREE.MeshStandardMaterial({ color: 0xd9ab3c, metalness: 0.85, roughness: 0.3, emissive: 0x3a2a05 });
-      fig.traverse((o) => { if (o.isMesh) { o.material = gold; o.castShadow = false; } });
-      const rig = fig.userData.rig;
-      rig.legs.forEach((l, i) => { l.rotation.x = -1.25; l.rotation.z = (i ? 1 : -1) * 0.35; });   // 깊은 스쿼트
-      rig.arms.forEach((a, i) => { a.rotation.x = -1.35; a.rotation.z = (i ? -1 : 1) * 0.42; });  // 합장
-      const statue = new THREE.Group(); statue.add(fig);
-      fig.position.y = -0.55; fig.rotation.x = 0.12;
-      const K = 5.2; statue.scale.set(K, K, K);
-      statue.position.set(SX, peakTop + 1.6, SZ);
-      statue.lookAt(0, peakTop + 1.6, 0);
-      gymScene.add(statue);
-      // 연꽃 받침 + 후광
-      const lotus = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 3.6, 1.4, 16), new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.7, roughness: 0.35 }));
-      lotus.position.set(SX, peakTop + 0.7, SZ); gymScene.add(lotus);
-      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; const pet = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), new THREE.MeshStandardMaterial({ color: 0xe8c86a, metalness: 0.6, roughness: 0.35 })); pet.scale.set(1, 0.5, 0.6); pet.position.set(SX + Math.cos(a) * 4.1, peakTop + 1.2, SZ + Math.sin(a) * 4.1); pet.rotation.y = -a; gymScene.add(pet); }
-      const top = fig.userData.top || 1.9;
-      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture('rgba(255,236,170,.95)', 'rgba(255,200,90,0)'), transparent: true, depthWrite: false, fog: false }));
-      halo.scale.set(11, 11, 1); halo.position.set(SX, peakTop + 1.6 + (top - 0.75) * K, SZ - 1.6); gymScene.add(halo);
-      // 얼굴 사진 (statue.jpg 가 있으면 황금빛으로 입힘)
-      const img = new Image();
-      img.onload = () => {
-        const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
-        x.save(); x.beginPath(); x.ellipse(128, 128, 112, 124, 0, 0, Math.PI * 2); x.clip();
-        try { x.filter = 'sepia(1) saturate(2.2) brightness(1.05)'; } catch {}
-        const sz = Math.min(img.width, img.height); x.drawImage(img, (img.width - sz) / 2, Math.max(0, (img.height - sz) / 3), sz, sz, 0, 0, 256, 256); x.restore();
-        const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
-        const face = new THREE.Mesh(new THREE.CircleGeometry(0.17, 32), new THREE.MeshStandardMaterial({ map: t, transparent: true, metalness: 0.4, roughness: 0.4 }));
-        face.scale.y = 1.12; face.position.set(0, top - 0.2, 0.178); fig.add(face);
-      };
-      img.onerror = () => {};
-      img.src = 'statue.jpg';
-      statue.userData.statue = true;
-      gymScene.userData.statue = statue;
-      // 정상 끝 기도 자리 (대불 방향)
-      const dir = new THREE.Vector3(SX, 0, SZ).normalize();
-      const side = new THREE.Vector3(-dir.z, 0, dir.x);
-      const base = dir.clone().multiplyScalar(R - 2.4);
-      const face = Math.atan2(dir.x, dir.z);
+      const zc = WZ + 7, face = Math.PI;
       const matM = M(0xa0342a, 0.9);
-      [-1.3, 0, 1.3].forEach((o) => {
-        const p = base.clone().addScaledVector(side, o);
-        const m = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 1.2), matM); m.position.set(p.x, 0.03, p.z); m.rotation.y = face; gymScene.add(m);
-        praySlots.push({ x: p.x, z: p.z, face, y: 0.05, busy: null });
+      [-1.6, 0, 1.6].forEach((x) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 1.2), matM); m.position.set(x, 0.03, zc); gymScene.add(m);
+        praySlots.push({ x, z: zc, face, y: 0.05, busy: null });
       });
-      const burner = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 0.5, 12), M(0x6b5a3a, 0.5, 0.6));
-      const bp = base.clone().addScaledVector(dir, 1.3); burner.position.set(bp.x, 0.25, bp.z); gymScene.add(burner);
-      const smoke = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture('rgba(255,255,255,.55)', 'rgba(255,255,255,0)'), transparent: true, depthWrite: false }));
-      smoke.scale.set(1.2, 2.4, 1); smoke.position.set(bp.x, 1.5, bp.z); gymScene.add(smoke);
+      const burner = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 0.5, 12), M(0x6b5a3a, 0.5, 0.6)); burner.position.set(0, 0.25, zc - 1.6); gymScene.add(burner);
+      const smoke = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture('rgba(255,255,255,.55)', 'rgba(255,255,255,0)'), transparent: true, depthWrite: false })); smoke.scale.set(1.2, 2.4, 1); smoke.position.set(0, 1.5, zc - 1.6); gymScene.add(smoke);
     })();
     // 소나무 몇 그루 (가장자리)
     const trunkM = M(0x5a3b24), pineM = M(0x2f5a3a, 0.9), pineM2 = M(0x3b6b44, 0.9);
