@@ -134,7 +134,8 @@ const cloud = (() => {
           if (Array.isArray(body.photoDates)) photos.mergeDates(body.photoDates);
           if (body.bodyweight && typeof body.bodyweight === 'object') bwMap = { ...bwMap, ...body.bodyweight };
           if (body.game && window.athlete) window.athlete.restore(body.game);
-          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {}, photoDates: body.photoDates || [], game: body.game || null });
+          if (Array.isArray(body.routines)) routines.restore(body.routines);
+          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {}, photoDates: body.photoDates || [], game: body.game || null, routines: body.routines || [] });
         }
       }
       for (const [k, v] of Object.entries(remote)) synced[k] = JSON.stringify(v);
@@ -172,7 +173,7 @@ const cloud = (() => {
         if (cur === null) { await col.doc(k).delete(); delete synced[k]; }
         else { await col.doc(k).set({ list: JSON.parse(cur), updatedAt: Date.now() }); synced[k] = cur; }
       }
-      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap, photoDates: photos.dates(), game: window.athlete ? window.athlete.state() : null });
+      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap, photoDates: photos.dates(), game: window.athlete ? window.athlete.state() : null, routines: routines.list() });
       if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
       try { await social.publish(); } catch { /* 순위 참가 권한 없음 → 개인 기록만 저장 */ }
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
@@ -406,14 +407,12 @@ $('#view-day').querySelectorAll('.nav-btn').forEach((b) =>
 );
 $('#day-today').addEventListener('click', () => { state.day = todayStr(); renderDay(); });
 
-function addExercise(name) {
-  name = name.trim();
-  if (!name) return;
-  if (isClosed(state.day)) { toast('마감된 날이에요. 다시 열기를 눌러주세요'); return; }
-  // 마지막으로 했던 같은 운동의 세트를 기본값으로 불러오기
+/** 운동 하나를 기본 세트(지난번 기록 → 없으면 fallback)로 만들기 */
+function makeEntry(name, fallbackSets) {
   const last = findLastExercise(name, state.day);
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
-  const sets = last ? last.sets.map((s) => ({ ...s })) : [isCardio ? { km: '', min: '' } : { w: '', r: '' }];
+  const base = last ? last.sets : fallbackSets && fallbackSets.length ? fallbackSets : [isCardio ? { km: '', min: '' } : { w: '', r: '' }];
+  const sets = base.map((s) => ({ ...s }));
   const entry = { id: uid(), name, sets };
   if (last && last.bw !== undefined) entry.bw = last.bw;
   else if (!isCardio && !EXERCISES.some((e) => e.name === name)) {
@@ -422,7 +421,14 @@ function addExercise(name) {
   }
   if (isCardio && CARDIO[name].goals) entry.detail = true;
   if (isCardio) entry.mode = CARDIO[name].kcalOnly ? 'watch' : last && last.mode ? last.mode : preferredCardioMode();
-  (db[state.day] ||= []).push(entry);
+  return entry;
+}
+function addExercise(name) {
+  name = name.trim();
+  if (!name) return;
+  if (isClosed(state.day)) { toast('마감된 날이에요. 다시 열기를 눌러주세요'); return; }
+  // 마지막으로 했던 같은 운동의 세트를 기본값으로 불러오기
+  (db[state.day] ||= []).push(makeEntry(name));
   save();
   renderDay();
   // 방금 추가한 운동 카드로 스크롤 + 무게칸 포커스
@@ -714,6 +720,7 @@ const photos = (() => {
 })();
 
 function renderDay() {
+  try { routines.renderNudge(); } catch {}
   photos.render();
   if ((db[state.day] || []).reduce((ch, ex) => ex.sets.reduce((c, st) => stampCardio(st, ex, state.day) || c, ch), false)) save();
   dayInput.value = state.day;
@@ -2439,6 +2446,120 @@ const nightly = (() => {
   setInterval(check, 20000);
   return { show, check };
 })();
+
+/* ---------- 📋 루틴 ---------- */
+const routines = (() => {
+  const KEY = 'gymlog.routines', DISMISS = 'gymlog.routineDismissed';
+  let list = (() => { try { const v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : []; } catch { return []; } })();
+  let dismissed = (() => { try { return JSON.parse(localStorage.getItem(DISMISS)) || []; } catch { return []; } })();
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch {} cloud.markDirty(); };
+  const sig = (names) => [...new Set(names)].sort().join('|');
+  const jac = (a, b) => { const A = new Set(a), B = new Set(b); let i = 0; A.forEach((x) => B.has(x) && i++); return i / (A.size + B.size - i || 1); };
+  const cleanSets = (sets) => sets.map((x) => { const o = {}; for (const k of ['w', 'r', 'km', 'min', 'kcal', 'wkcal']) if (x[k] !== undefined && x[k] !== '') o[k] = x[k]; return o; });
+
+  function partsName(names) {
+    const cnt = {};
+    names.forEach((n) => { const p = cardioInfo({ name: n }) ? '유산소' : partOf(n); cnt[p] = (cnt[p] || 0) + 1; });
+    return Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 2).map((x) => x[0]).join('·');
+  }
+  function fromDay(date, name) {
+    const exs = (db[date] || []).filter((ex) => exerciseVolume(ex, date) > 0 || ex.sets.some((x) => num(x.w) || num(x.r)));
+    return { id: uid(), name: name || `${partsName(exs.map((e) => e.name))} 루틴`, items: exs.map((ex) => ({ n: ex.name, sets: cleanSets(ex.sets) })) };
+  }
+
+  /* 한 달 기록에서 자주 하는 운동 조합 찾기 */
+  function eligibility() {
+    const days = Object.keys(db).filter((d) => dayVolume(d) > 0).sort();
+    if (!days.length) return { ok: false, left: 30 };
+    const span = Math.round((parse(todayStr()) - parse(days[0])) / 86400000);
+    return { ok: span >= 28 && days.length >= 8, left: Math.max(0, 28 - span), days: days.length };
+  }
+  function suggest() {
+    if (!eligibility().ok) return [];
+    const from = addDays(todayStr(), -60);
+    const days = Object.keys(db).filter((d) => d >= from && dayVolume(d) > 0).sort();
+    const rows = days.map((d) => ({ d, names: [...new Set(db[d].filter((ex) => exerciseVolume(ex, d) > 0).map((ex) => ex.name))] })).filter((r) => r.names.length >= 2);
+    const clusters = [];
+    for (const r of rows) {
+      let best = null, bs = 0;
+      for (const c of clusters) { const sc = jac(r.names, c.core); if (sc > bs) { bs = sc; best = c; } }
+      if (best && bs >= 0.5) { best.days.push(r); const cnt = {}; best.days.forEach((x) => x.names.forEach((n) => (cnt[n] = (cnt[n] || 0) + 1))); best.core = Object.keys(cnt).filter((n) => cnt[n] / best.days.length >= 0.5); }
+      else clusters.push({ core: r.names, days: [r] });
+    }
+    return clusters.filter((c) => c.days.length >= 3 && c.core.length >= 2)
+      .map((c) => {
+        const pos = {}, cnt = {};
+        c.days.forEach((x) => db[x.d].forEach((ex, i) => { if (c.core.includes(ex.name)) { pos[ex.name] = (pos[ex.name] || 0) + i; cnt[ex.name] = (cnt[ex.name] || 0) + 1; } }));
+        const names = [...c.core].sort((a, b) => pos[a] / cnt[a] - pos[b] / cnt[b]);
+        const lastDay = c.days[c.days.length - 1].d;
+        return { id: 'sg-' + sig(names), name: `${partsName(names)} 루틴`, items: names.map((n) => ({ n, sets: cleanSets((db[lastDay].find((ex) => ex.name === n) || { sets: [] }).sets) })), times: c.days.length };
+      })
+      .filter((r) => !dismissed.includes(r.id) && !list.some((x) => jac(x.items.map((i) => i.n), r.items.map((i) => i.n)) >= 0.8))
+      .sort((a, b) => b.times - a.times).slice(0, 3);
+  }
+
+  function apply(r) {
+    if (isClosed(state.day)) { toast('마감된 날이에요. 다시 열기를 눌러주세요'); return; }
+    const have = new Set((db[state.day] || []).map((e) => e.name));
+    let n = 0;
+    for (const it of r.items) { if (have.has(it.n)) continue; (db[state.day] ||= []).push(makeEntry(it.n, it.sets)); n++; }
+    save(); renderDay(); close();
+    toast(n ? `📋 ${r.name} · 운동 ${n}개를 불러왔어요` : '이미 다 추가돼 있어요');
+  }
+  function open() { render(); $('#routine-modal').hidden = false; document.body.classList.add('modal-open'); }
+  function close() { $('#routine-modal').hidden = true; document.body.classList.remove('modal-open'); }
+  const itemsText = (r) => r.items.map((i) => escapeHtml(i.n)).join(' · ');
+  function render() {
+    const today = db[state.day] || [];
+    $('#routine-save').hidden = !today.length;
+    $('#routine-list').innerHTML = list.length ? list.map((r) => `<div class="rt-card" data-id="${r.id}">
+        <div class="rt-main"><b>${escapeHtml(r.name)}</b><small>${r.items.length}개 · ${itemsText(r)}</small></div>
+        <div class="rt-acts"><button type="button" class="rt-apply" data-act="apply">불러오기</button><button type="button" class="rt-del" data-act="del" aria-label="삭제"><svg class="i"><use href="#i-trash"/></svg></button></div>
+      </div>`).join('') : '<p class="empty-text">아직 저장한 루틴이 없어요</p>';
+    const el = eligibility(), sg = suggest();
+    $('#routine-suggest').innerHTML = !el.ok
+      ? `<p class="rt-wait">운동 기록이 한 달 쌓이면 자주 하는 운동 조합으로 루틴을 추천해 드려요${el.left ? ` · D-${el.left}` : ''}</p>`
+      : sg.length ? sg.map((r) => `<div class="rt-card sg" data-id="${r.id}">
+          <div class="rt-main"><b>✦ ${escapeHtml(r.name)}</b><small>최근 ${r.times}번 함 · ${itemsText(r)}</small></div>
+          <div class="rt-acts"><button type="button" class="rt-apply" data-act="keep">루틴으로 저장</button><button type="button" class="rt-del" data-act="skip" aria-label="추천 숨기기"><svg class="i"><use href="#i-x"/></svg></button></div>
+        </div>`).join('') : '<p class="rt-wait">새로 추천할 루틴이 없어요. 자주 하는 조합은 이미 저장돼 있어요 👍</p>';
+    document.querySelectorAll('#routine-modal .rt-card').forEach((c) => c.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+      const id = c.dataset.id, act = b.dataset.act;
+      if (act === 'apply') apply(list.find((x) => x.id === id));
+      if (act === 'del') { if (!(await askConfirm('이 루틴을 삭제할까요?', { okText: '삭제', danger: true }))) return; list = list.filter((x) => x.id !== id); persist(); render(); }
+      if (act === 'keep') { const r = sg.find((x) => x.id === id); list.push({ id: uid(), name: r.name, items: r.items }); persist(); toast('루틴으로 저장했어요'); render(); renderNudge(); }
+      if (act === 'skip') { dismissed.push(id); try { localStorage.setItem(DISMISS, JSON.stringify(dismissed)); } catch {} render(); renderNudge(); }
+    })));
+  }
+  /* 일간 화면 추천 알림 */
+  function renderNudge() {
+    const el = $('#routine-nudge');
+    if (!el) return;
+    const sg = suggest();
+    el.hidden = !sg.length || (db[state.day] || []).length > 0;
+    if (!el.hidden) el.querySelector('span').textContent = `한 달 기록을 보니 자주 하는 조합이 ${sg.length}개 있어요. 루틴으로 만들어 볼까요?`;
+  }
+  $('#routine-btn').addEventListener('click', open);
+  $('#routine-nudge').addEventListener('click', open);
+  $('#routine-close').addEventListener('click', close);
+  $('#routine-modal .rest-backdrop').addEventListener('click', close);
+  $('#routine-save button').addEventListener('click', () => {
+    const r = fromDay(state.day);
+    if (!r.items.length) { toast('기록한 운동이 없어요'); return; }
+    const name = ($('#routine-name').value || '').trim().slice(0, 20);
+    if (name) r.name = name;
+    list.push(r); persist(); $('#routine-name').value = '';
+    toast(`📋 "${r.name}" 저장했어요`); render();
+  });
+  function restore(remote) {
+    const ids = new Set(list.map((x) => x.id));
+    let changed = false;
+    for (const r of remote) if (r && r.id && !ids.has(r.id)) { list.push(r); changed = true; }
+    if (changed) try { localStorage.setItem(KEY, JSON.stringify(list)); } catch {}
+  }
+  return { list: () => list, restore, renderNudge };
+})();
+routines.renderNudge();
 
 cloud.init();
 // 로그인 안 된 상태(카톡 인앱 브라우저 등)면 참가 안내
