@@ -2336,9 +2336,16 @@ cloud.init();
 /* ---------- 🎉 이벤트 배경 ---------- */
 (() => {
   const KEY = 'gymlog.eventBg';
+  const EVENT_DAY = '2026-11-02'; // 하루 한정 이벤트 — 다음 날부터 원래 디자인
   let on = true;
   try { on = localStorage.getItem(KEY) !== 'off'; } catch {}
-  const apply = () => { document.body.classList.toggle('event-bg', on); $('#event-on').checked = on; };
+  const live = () => todayStr() === EVENT_DAY;
+  const apply = () => {
+    document.body.classList.toggle('event-bg', on && live());
+    $('#event-on').checked = on;
+    $('#event-on').closest('.panel').hidden = !live();
+  };
+  setInterval(() => { if (document.body.classList.contains('event-bg') && !live()) apply(); }, 60000);
   $('#event-on').addEventListener('change', (e) => {
     on = e.target.checked;
     try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch {}

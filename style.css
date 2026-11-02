@@ -812,14 +812,56 @@ body.modal-open { overflow: hidden; }
 .welcome-form button:disabled { opacity: .5; }
 .welcome-who { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); }
 
-/* ---------- 🎉 이벤트 배경 ---------- */
-body.event-bg { background: #111 url("event-bg.jpg") center top / cover no-repeat fixed; }
-@supports (-webkit-touch-callout: none) { body.event-bg { background-attachment: scroll; background-size: 100% auto; background-color: #2a2622; } }
-body.event-bg .app { padding-top: calc(env(safe-area-inset-top, 0px) + 46vh); }
-body.event-bg .app-header { background: rgba(239,239,242,.82); backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3); }
-body.event-bg main { background: rgba(239,239,242,.9); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+/* ---------- 🎉 이벤트 배경 (하루 한정): 사진 배경 + 80% 검은 레이어 + 보라 포인트 ---------- */
+body.event-bg {
+  --bg: transparent;
+  --sheet: rgba(8, 6, 14, .8);
+  --layer: rgba(255, 255, 255, .06);
+  --raised: rgba(255, 255, 255, .1);
+  --ink: #8b5cf6;
+  --text: #f3f0ff;
+  --muted: #a8a1c4;
+  --line: rgba(255, 255, 255, .1);
+  --pink: #c084fc;
+  --shadow-sheet: 0 30px 60px -30px rgba(0,0,0,.6);
+  --shadow-layer: 0 6px 18px -8px rgba(0,0,0,.5);
+  --shadow-raised: 0 10px 24px -12px rgba(0,0,0,.5);
+  background: #0b0812 url("event-bg.jpg") center top / cover no-repeat fixed;
+  color: var(--text);
+}
+@supports (-webkit-touch-callout: none) { body.event-bg { background-attachment: scroll; } body.event-bg::before { content: ""; position: fixed; inset: 0; z-index: -1; background: #0b0812 url("event-bg.jpg") center top / cover no-repeat; } }
+body.event-bg .app-header, body.event-bg main { background: var(--sheet); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: none; }
+body.event-bg .app-header { box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
+body.event-bg .brand, body.event-bg .brand-mark, body.event-bg #page-title, body.event-bg h3, body.event-bg h4,
+body.event-bg .panel-head, body.event-bg .section-head, body.event-bg .period-label, body.event-bg b, body.event-bg strong { color: var(--text); }
+body.event-bg .brand-mark { color: #c4b5fd; }
+body.event-bg .panel, body.event-bg .bw-row, body.event-bg .exercise-card, body.event-bg .closed-banner { background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+body.event-bg input, body.event-bg select, body.event-bg textarea { color: var(--text); background-color: rgba(255,255,255,.08); }
+body.event-bg input::placeholder { color: rgba(243,240,255,.38); }
+body.event-bg .nav-btn, body.event-bg .title-arrow, body.event-bg .chip, body.event-bg .segmented, body.event-bg .search-form, body.event-bg .bw-field,
+body.event-bg .list-btn, body.event-bg .setting-row, body.event-bg .aw-row, body.event-bg .rank-row, body.event-bg .feed-item, body.event-bg .plan-chips .chip,
+body.event-bg .picker-toggle, body.event-bg .photo-add, body.event-bg .bw-icon, body.event-bg .add-set, body.event-bg .result-item { background: rgba(255,255,255,.08); color: var(--text); box-shadow: none; }
+body.event-bg .chip.active, body.event-bg .plan-chips .chip.active, body.event-bg .segmented button.active, body.event-bg .today-btn, body.event-bg .rest-btn, body.event-bg .finish-btn,
+body.event-bg .page-dots button.active, body.event-bg .welcome-form button { background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; }
+body.event-bg .segmented button { color: var(--muted); }
+body.event-bg .summary-card { background: linear-gradient(145deg, #2e1065, #4c1d95 55%, #6d28d9); }
+body.event-bg .goal-bar div, body.event-bg #goal-fill { background: #e9d5ff; }
+body.event-bg .tabbar { background: rgba(14, 10, 24, .82); box-shadow: 0 18px 40px -16px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.08); }
+body.event-bg .tab { color: #b9b3d3; }
+body.event-bg .tab.active { background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; }
+body.event-bg .rest-sheet, body.event-bg .nl-sheet { background: rgba(20, 15, 34, .96); color: var(--text); }
+body.event-bg .rest-backdrop { background: rgba(5, 3, 10, .6); }
+body.event-bg .aw-rank { background: rgba(255,255,255,.06); }
+body.event-bg .aw-rank:first-child { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+body.event-bg .aw-main b, body.event-bg .aw-val, body.event-bg .exercise-meta, body.event-bg .hint, body.event-bg small { color: var(--muted); }
+body.event-bg .aw-me, body.event-bg .title-chip { color: #e9d5ff; background: rgba(168,85,247,.22); }
+body.event-bg .aw-me { background: none; }
+body.event-bg .sets th { color: var(--muted); }
+body.event-bg .sets input { background: rgba(255,255,255,.08); }
 .event-tag { position: absolute; z-index: 5; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 14px);
-  display: none; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; background: rgba(17,17,19,.72); color: #fff;
+  display: none; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; background: rgba(124,58,237,.85); color: #fff;
   font-size: 12px; font-weight: 700; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); white-space: nowrap; }
 body.event-bg .event-tag { display: inline-flex; }
-.event-tag .i { width: 13px; height: 13px; color: var(--pink); }
+.event-tag .i { width: 13px; height: 13px; color: #fff; }
+body.event-bg .search-form input, body.event-bg .bw-field input { background: transparent; }
+body.event-bg .app { padding-top: calc(env(safe-area-inset-top, 0px) + 54px); }
