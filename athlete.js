@@ -327,6 +327,9 @@ window.athlete = (() => {
     if (view3d !== 'team') { $('#memo-sheet').hidden = true; memoFor = null; }
     $('#ath-photo').hidden = !(view3d === 'team' && team.length >= 2) || (window.stage3d && window.stage3d.inPhoto());
     $('#ath-enter').hidden = !(view3d === 'team' && team.length >= 2);
+    $('#ath-myroom').hidden = !(view3d === 'team' && team.length >= 2) || !!roomId;
+    if (roomId && view3d !== 'team') closeRoom();
+    if (roomId) { $('#ath-view').hidden = true; $('#ath-photo').hidden = true; }
     if (!(view3d === 'team' && team.length >= 2) && gymFull) setFull(false);
     if (view3d !== 'team' && window.stage3d && window.stage3d.inPhoto()) { window.stage3d.endPhoto(); $('#photo-bar').hidden = true; }
     if (view3d === 'team' && team.length >= 2) scene3d = { team };
@@ -448,12 +451,21 @@ window.athlete = (() => {
     }
     $('#order-title').textContent = a.me ? '나는 뭐 할까?' : `${a.nick}에게 시키기`;
     $('#order-now').textContent = `지금: ${T[a.task] ? T[a.task].label : '이동 중'}`;
-    $('#order-btns').innerHTML = Object.entries(T).filter(([, t]) => !t.hidden).map(([k, t]) => `<button type="button" data-k="${k}">${t.label}</button>`).join('');
+    $('#order-now').textContent = a.me
+      ? `지금: ${T[a.task] ? T[a.task].label : '이동 중'} · 내가 시킨 건 계속 해요`
+      : `지금: ${T[a.task] ? T[a.task].label : '이동 중'} · 남이 시킨 건 30초만 해요`;
+    $('#order-btns').innerHTML = Object.entries(T).filter(([, t]) => !t.hidden).map(([k, t]) => `<button type="button" data-k="${k}"${a.me && G.order === k ? ' class="on"' : ''}>${t.label}</button>`).join('')
+      + (a.me ? `<button type="button" data-k="auto"${!G.order ? ' class="on"' : ''}>🤖 자동 (오늘 한 운동대로)</button>` : '');
     $('#order-btns').querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
-      const k = b.dataset.k, label = T[k].label;
-      window.stage3d.assign(a.id, k);
+      const k = b.dataset.k, label = k === 'auto' ? '🤖 자동' : T[k].label;
       $('#order-sheet').hidden = true;
-      if (a.me) { toast(`${label} 하러 가요`); return; }
+      if (a.me) {   // 👑 주인장 명령: 계속 유지 + 친구들 화면에도 반영
+        G.order = k === 'auto' ? null : k; persist();
+        window.stage3d.assign(a.id, k, true);
+        toast(k === 'auto' ? '오늘 한 운동대로 알아서 해요' : `👑 이제 계속 ${label} 해요`);
+        return;
+      }
+      window.stage3d.assign(a.id, k, false);
       try { await social.send(a.id, `${label.split(' ')[0]} ${label.split(' ').slice(1).join(' ')} 하러 가! (체육관에서 시킴)`); toast(`${a.nick}에게 ${label} 시켰어요 📣`); }
       catch { toast(`${a.nick}이(가) ${label} 하러 가요`); }
     }));
@@ -497,7 +509,39 @@ window.athlete = (() => {
     catch { toast('메모를 붙이지 못했어요 (권한 확인)'); }
     btn.disabled = false;
   });
-  if (window.stage3d && window.stage3d.onBooth) window.stage3d.onBooth(openMemo);
+  /* 🏠 방 구경: 짐을 누르면 그 방 앞으로, ‹ › 로 옆 방 */
+  let roomId = null;
+  function roomLabel(id) {
+    let m = {}, me = null; try { m = social.members()[id] || {}; me = social.id(); } catch {}
+    const n = (memoMap()[id] || []).length;
+    $('#room-name').textContent = `🏠 ${id === me ? '내' : `${m.nick || ''}의`} 방`;
+    $('#room-sub').textContent = `메모 ${n}장`;
+  }
+  function openRoom(id) {
+    const S = window.stage3d; if (!S || !S.viewRoom) return;
+    if (!S.viewRoom(id)) return;
+    roomId = id; roomLabel(id);
+    $('#order-sheet').hidden = true; $('#memo-sheet').hidden = true; memoFor = null;
+    $('#room-bar').hidden = false; $('#ath-view').hidden = true; $('#ath-photo').hidden = true; $('#ath-myroom').hidden = true;
+  }
+  function closeRoom() {
+    if (!roomId) return;
+    roomId = null;
+    if (window.stage3d) window.stage3d.viewRoom(null);
+    $('#room-bar').hidden = true; $('#memo-sheet').hidden = true; memoFor = null;
+    render();
+  }
+  function stepRoom(d) {
+    const ids = window.stage3d.roomIds(); if (!ids.length) return;
+    const i = ids.indexOf(roomId);
+    openRoom(ids[(i + d + ids.length) % ids.length]);
+  }
+  $('#room-prev').addEventListener('click', () => stepRoom(-1));
+  $('#room-next').addEventListener('click', () => stepRoom(1));
+  $('#room-exit').addEventListener('click', closeRoom);
+  $('#room-memo').addEventListener('click', () => { if (roomId) openMemo(roomId); });
+  $('#ath-myroom').addEventListener('click', () => { try { openRoom(social.id()); } catch {} });
+  if (window.stage3d && window.stage3d.onBooth) window.stage3d.onBooth((id) => (roomId === id ? openMemo(id) : openRoom(id)));
 
   /* ⛶ 산스장 들어가기 (전체화면) */
   let gymFull = false;
@@ -522,12 +566,12 @@ window.athlete = (() => {
     const S = window.stage3d; if (!S) return;
     if (on) { if (!S.startPhoto()) { toast('산스장이 아직 준비 중이에요'); return; } }
     else S.endPhoto();
-    $('#photo-bar').hidden = !on; $('#ath-photo').hidden = on; $('#ath-view').hidden = on;
+    $('#photo-bar').hidden = !on; $('#ath-photo').hidden = on; $('#ath-view').hidden = on; $('#ath-myroom').hidden = on;
     $('#order-sheet').hidden = true;
     $('#cine-hint').hidden = on;
     $('.ath-hero.cine').classList.toggle('photo', on);
   }
-  $('#ath-photo').addEventListener('click', () => photoMode(true));
+  $('#ath-photo').addEventListener('click', () => { if (roomId) closeRoom(); photoMode(true); });
   $('#photo-cancel').addEventListener('click', () => photoMode(false));
   document.querySelectorAll('.photo-zoom button').forEach((b) => b.addEventListener('click', () => window.stage3d.photoAngle(b.dataset.a)));
   let lastPhoto = null;
@@ -573,17 +617,17 @@ window.athlete = (() => {
     const jailed = (id) => { try { return !!social.jailed(id); } catch { return false; } };
     return Object.keys(members).map((id) => {
       const m = members[id];
-      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus(), jail: jailed(id) }; }
+      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus(), jail: jailed(id), order: G.order || null }; }
       const c = m.char || {}, t = TRACKS[c.t] ? c.t : '';
       let fc = null; try { fc = social.focus(id); } catch {}
-      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id), jail: jailed(id) };
+      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id), jail: jailed(id), order: typeof c.o === 'string' ? c.o : null };
     }).slice(0, 12);
   }
   document.querySelectorAll('#ath-view button').forEach((b) => b.addEventListener('click', () => { view3d = b.dataset.v; render(); }));
 
   /** 친구들에게 보일 내 선수 요약 */
-  function summary() { const R = real(); return { t: G.track, st: G.stage, s: { u: R.up, l: R.low } }; }
+  function summary() { const R = real(); const o = { t: G.track, st: G.stage, s: { u: R.up, l: R.low } }; if (G.order) o.o = G.order; return o; }
   const state = () => G;
 
-  return { render, summary, state, restore, draw: drawAthlete, memosChanged: () => { pushMemos(); renderMemoSheet(); } };
+  return { render, summary, state, restore, draw: drawAthlete, memosChanged: () => { pushMemos(); renderMemoSheet(); if (roomId) roomLabel(roomId); } };
 })();

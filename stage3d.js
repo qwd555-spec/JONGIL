@@ -127,6 +127,7 @@ window.stage3d = (() => {
       }
       if (Math.abs(e.clientX - drag.x) > 6) drag.moved = true;
       if (Math.abs(e.clientY - drag.y) > 6) drag.moved = true;
+      if (want && want.team && room) return;
       if (want && want.team) { gymYaw = drag.gy - (e.clientX - drag.x) * 0.008; if (immersive) gymH = Math.max(2.2, Math.min(26, drag.gh + (e.clientY - drag.y) * 0.04)); gymTouched = performance.now(); } else { yaw = drag.yaw - (e.clientX - drag.x) * 0.012; yawV = 0; }
     });
     const up = (e) => {
@@ -623,13 +624,15 @@ window.stage3d = (() => {
   }
 
   function freeSlot(station) { const list = stations[station] || []; return list.find((x) => !x.busy) || null; }
+  const FOCUS_TASK = { '가슴': 'bench', '하체': 'squat', '유산소': 'run', '팔': 'curl', '등': 'curl', '어깨': 'bench', '축구': 'run' };
+  const TEMP_MS = 30000;   // 남이 시킨 건 30초만
   function pickTask(a) {
     if (a.jail) return 'jail';
-    if (a.forced) { const k = a.forced; a.forced = null; return k; }
-    const pool = a.live
-      ? { '가슴': 'bench', '하체': 'squat', '유산소': 'run', '팔': 'curl', '등': 'curl', '어깨': 'bench', '축구': 'run' }[a.focus] || ['bench', 'squat', 'run', 'curl'][Math.floor(Math.random() * 4)]
-      : (a.today ? ['stretch', 'rest', 'curl', 'run', 'home', 'home'] : ['rest', 'rest', 'stretch', 'run', 'home'])[Math.floor(Math.random() * (a.today ? 6 : 5))];
-    return pool;
+    if (a.temp && performance.now() < a.tempUntil) return a.temp;
+    a.temp = null;
+    if (a.order && TASKS[a.order] && !TASKS[a.order].hidden) return a.order;   // 주인장이 시킨 것
+    if (a.live || a.today) return FOCUS_TASK[a.focus] || 'home';              // 오늘 한 운동
+    return 'home';                                                            // 아니면 자기 짐에서
   }
   function goTo(a, k) {
     if (a.slot) { a.slot.busy = null; const br = a.slot.bar; if (br && br.position) br.position.y = a.slot.barX !== undefined ? 1.3 : 1.55; }
@@ -638,7 +641,7 @@ window.stage3d = (() => {
     if (!slot) { k = 'stretch'; slot = freeSlot('mat') || freeSlot('seat'); }
     if (!slot) { slot = { x: (Math.random() - 0.5) * 6, z: 1 + Math.random() * 2, face: 0 }; k = 'stretch'; }
     slot.busy = a; a.slot = slot; a.task = k; a.mode = 'walk';
-    a.tagSub(TASKS[k].label);
+    a.tagSub((a.temp === k ? '📣 ' : a.order === k ? '👑 ' : '') + TASKS[k].label);
   }
   /* ================= 🏠 각자 짐 + 메모판 ================= */
   const MEMO_COL = { y: '#ffe36e', p: '#ffb3d1', g: '#b8f0a8', b: '#a8d8ff' };
@@ -731,7 +734,7 @@ window.stage3d = (() => {
       let tag = null;
       let a = null;
       const setTag = (sub) => { if (tag) { g.remove(tag); tag.material.map.dispose(); } tag = nameTag(m.nick, sub, m.me, m.live); tag.position.y = f.userData.top * 0.82 + 0.6; tag.scale.multiplyScalar(2.1); g.add(tag); if (a) a.tag = tag; };
-      a = { id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, jail: !!m.jail, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
+      a = { order: m.order || null, temp: null, id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, jail: !!m.jail, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
       g.position.set(-1 + (i % 4) * 0.9, 0, 5.2 + Math.floor(i / 4) * 0.8);   // 입구에서 입장
       g.userData.agent = a;
       gymScene.add(g); agents.push(a);
@@ -745,11 +748,11 @@ window.stage3d = (() => {
       if (a.mode === 'photo') { posePhoto(a, s); return; }
       if (a.mode === 'walk') {
         const dx = sl.x - p.x, dz = sl.z - p.z, d = Math.hypot(dx, dz);
-        if (d < 0.06) { p.x = sl.x; p.z = sl.z; a.mode = 'do'; a.timer = 14 + Math.random() * 16; a.g.rotation.y = sl.face; }
+        if (d < 0.06) { p.x = sl.x; p.z = sl.z; a.mode = 'do'; a.timer = a.temp ? Math.max(2, (a.tempUntil - performance.now()) / 1000) : 20; a.g.rotation.y = sl.face; }
         else { const v = Math.min(d, 1.5 * dt); p.x += (dx / d) * v; p.z += (dz / d) * v; a.g.rotation.y = Math.atan2(dx, dz); }
       } else {
         a.timer -= dt;
-        if (a.timer <= 0) goTo(a, pickTask(a));
+        if (a.timer <= 0) { const k = pickTask(a); if (k === a.task && a.slot && a.slot.busy === a) { a.timer = 20; a.tagSub((a.order === k ? '👑 ' : '') + TASKS[k].label); } else goTo(a, k); }
       }
       pose(a, s);
     });
@@ -783,6 +786,7 @@ window.stage3d = (() => {
     else if (cmd === 'reset') { photo.pan = 0; photo.tilt = 0; photo.zoom = 1; }
   }
   function startPhoto() {
+    room = null;
     if (!gymScene || !agents.length) return false;
     const cam = new THREE.PerspectiveCamera(34, 4 / 3, 0.1, 260);
     cam.position.set(0, 1.55, 10.6); cam.lookAt(0, 1.5, 2.2);
@@ -881,13 +885,22 @@ window.stage3d = (() => {
     return url;
   }
   /** 사람 눌러서 시키기 */
-  function assign(id, k) {
+  /** 사람 눌러서 시키기 — own: 주인장(본인)이 시킨 것은 계속, 남이 시킨 건 잠깐 */
+  function assign(id, k, own) {
     const a = agents.find((x) => x.id === id);
-    if (!a || !TASKS[k] || a.jail) return false;
+    if (!a || a.jail) return false;
+    if (own) { a.order = k === 'auto' ? null : k; a.temp = null; goTo(a, pickTask(a)); return true; }
+    if (!TASKS[k]) return false;
+    a.temp = k; a.tempUntil = performance.now() + TEMP_MS;
     goTo(a, k);
     return true;
   }
 
+  /* ================= 🏠 방 구경 (짐 앞으로 카메라 이동, 옆 방 넘기기) ================= */
+  let room = null, flyUntil = 0;
+  let gCamPos = null, gCamLook = null;
+  function viewRoom(id) { room = id && booths[id] ? id : null; flyUntil = performance.now() + 1600; return room; }
+  const roomIds = () => Object.keys(booths);
   let immersive = false;
   /** 산스장 들어가기(전체화면): 위아래 드래그로 높이, 핀치·휠로 줌 */
   function setImmersive(on) {
@@ -901,10 +914,21 @@ window.stage3d = (() => {
     const s = (t - t0) / 1000;
     const dt = Math.min(0.05, s - (tick.last || s)); tick.last = s;
     if (want && want.team && gymScene) {
-      if (!drag && !reduce && performance.now() - gymTouched > 8000) gymYaw += (Math.sin(s * 0.08) * 0.35 + 0.15 - gymYaw) * 0.005;
+      if (!room && !drag && !reduce && performance.now() - gymTouched > 8000) gymYaw += (Math.sin(s * 0.08) * 0.35 + 0.15 - gymYaw) * 0.005;
       const low = Math.max(0, Math.min(1, (14 - gymH) / 11));
-      gymCam.position.set(Math.sin(gymYaw) * gymDist, gymH, Math.cos(gymYaw) * gymDist + 1.5);
-      gymCam.lookAt(0, -0.6 + low * 1.8, 0);
+      let dp, dl;
+      if (room && booths[room]) {
+        const g = booths[room].g, Y = new THREE.Vector3(0, 1, 0);
+        dp = new THREE.Vector3(0, 2.1, 5.6).applyAxisAngle(Y, g.rotation.y).add(g.position);
+        dl = new THREE.Vector3(0, 1.35, -1.0).applyAxisAngle(Y, g.rotation.y).add(g.position);
+      } else {
+        dp = new THREE.Vector3(Math.sin(gymYaw) * gymDist, gymH, Math.cos(gymYaw) * gymDist + 1.5);
+        dl = new THREE.Vector3(0, -0.6 + low * 1.8, 0);
+      }
+      if (!gCamPos) { gCamPos = dp.clone(); gCamLook = dl.clone(); }
+      const kf = room || performance.now() < flyUntil ? 0.09 : 1;
+      gCamPos.lerp(dp, kf); gCamLook.lerp(dl, kf);
+      gymCam.position.copy(gCamPos); gymCam.lookAt(gCamLook);
       updateAgents(dt, s);
       if (photo) {
         const w = box.clientWidth || 300, h = box.clientHeight || 360;
@@ -954,5 +978,5 @@ window.stage3d = (() => {
     if (!raf) { t0 = performance.now(); raf = requestAnimationFrame(tick); }
     return true;
   }
-  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, photoAngle, setImmersive, setMemos, onBooth: (fn) => { onBooth = fn; }, openBooth: (id) => { if (onBooth && booths[id]) onBooth(id); }, inPhoto: () => !!photo, poses: PHOTO_POSES };
+  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, photoAngle, setImmersive, viewRoom, roomIds, inRoom: () => room, setMemos, onBooth: (fn) => { onBooth = fn; }, openBooth: (id) => { if (onBooth && booths[id]) onBooth(id); }, inPhoto: () => !!photo, poses: PHOTO_POSES };
 })();

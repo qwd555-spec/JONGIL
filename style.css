@@ -1248,3 +1248,19 @@ body.gym-full .toast { z-index: 95; }
 .memo-cols button.on { border-color: #fff; transform: scale(1.12); }
 .memo-form input { flex: 1; min-width: 0; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; font-size: 14px; }
 .memo-form [type=submit] { height: 38px; padding: 0 12px; border-radius: 10px; background: #fff; color: #111; font-weight: 800; font-size: 13px; }
+
+/* 🏠 방 구경 */
+.ath-myroom { position: absolute; left: 16px; top: 104px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 800; color: #fff; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.25); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 4; }
+.ath-myroom[hidden] { display: none; }
+.ath-hero.cine.full .ath-myroom { top: calc(env(safe-area-inset-top, 0px) + 54px); }
+.room-bar { position: absolute; left: 12px; right: 12px; bottom: 92px; z-index: 3; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.room-bar[hidden] { display: none; }
+.ath-hero.cine.full .room-bar { bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); }
+.room-nav { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 999px; background: rgba(15,15,22,.7); border: 1px solid rgba(255,255,255,.15); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.room-nav button { width: 40px; height: 40px; border-radius: 50%; background: #fff; color: #111; font-size: 24px; font-weight: 800; line-height: 1; }
+.room-name { min-width: 130px; text-align: center; color: #fff; display: flex; flex-direction: column; }
+.room-name b { font-size: 15px; font-weight: 800; }
+.room-name small { font-size: 11px; color: rgba(255,255,255,.65); }
+.room-acts { display: flex; gap: 6px; }
+.room-acts button { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 800; color: #fff; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.22); }
+.order-btns button.on { background: #fff; color: #111; }
