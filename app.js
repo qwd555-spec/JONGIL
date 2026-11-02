@@ -1751,6 +1751,7 @@ const social = (() => {
     if (currentView() === 'rank') render();
     if (openPerson) renderPerson();
     if (!$('#post-modal').hidden) renderPostCmts();
+    try { if (window.athlete && window.athlete.memosChanged) window.athlete.memosChanged(); } catch {}
   }
 
   const myNick = () => (members[myId] && members[myId].nick) || '';
@@ -1926,7 +1927,7 @@ const social = (() => {
   const periodLabel = () => ({ week: '이번 주', month: '이번 달', all: '전체 기간' }[period]);
 
   function allComments() {
-    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal' && c.kind !== 'fcmt').sort((a, b) => b.at - a.at);
+    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal' && c.kind !== 'fcmt' && c.kind !== 'memo').sort((a, b) => b.at - a.at);
   }
   function relTime(t) {
     const s = Math.max(0, (Date.now() - t) / 1000);
@@ -2720,7 +2721,19 @@ const social = (() => {
   }
 
   return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
-    members: () => members, jailed: isJailed, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id),
+    members: () => members, jailed: isJailed,
+    // 🏠 각자 짐 메모: { 주인id: [{id, from, who, text, c, at, mine}] } (최신순)
+    memos: () => {
+      const out = {};
+      for (const c of Object.values(comments).flat()) {
+        if (c.kind !== 'memo' || !members[c.from] || !members[c.to]) continue;
+        (out[c.to] ||= []).push({ id: c.id, from: c.from, who: c.from === myId ? '나' : nickOf(c.from), text: String(c.text || ''), c: c.c || 'y', at: num(c.at), mine: c.from === myId });
+      }
+      Object.values(out).forEach((l) => l.sort((a, b) => b.at - a.at));
+      return out;
+    },
+    addMemo: async (to, text, c) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to, kind: 'memo', text: String(text).slice(0, 40), c, at: Date.now() }); },
+    delMemo: async (id) => { await store.doc(`comments/${myId}/items/${id}`).delete(); }, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id),
     focus: (id) => { try { return todayFocus(id); } catch { return null; } },
     send: async (to, text) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to, text, at: Date.now() }); } };
 })();

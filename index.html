@@ -370,6 +370,17 @@
             <div class="photo-zoom"><button type="button" data-a="out" aria-label="줌 아웃">−</button><button type="button" data-a="reset" aria-label="원래 앵글">↺</button><button type="button" data-a="in" aria-label="줌 인">+</button></div>
           </div>
           <span class="cine-hint" id="cine-hint">드래그해서 돌려보기</span>
+          <div class="order-sheet memo-sheet" id="memo-sheet" hidden>
+            <div class="order-head"><b id="memo-title"></b><button type="button" id="memo-close" aria-label="닫기">✕</button></div>
+            <div class="memo-list" id="memo-list"></div>
+            <form class="memo-form" id="memo-form" autocomplete="off">
+              <div class="memo-cols" id="memo-cols">
+                <button type="button" data-c="y" class="on" aria-label="노랑"></button><button type="button" data-c="p" aria-label="분홍"></button><button type="button" data-c="g" aria-label="초록"></button><button type="button" data-c="b" aria-label="파랑"></button>
+              </div>
+              <input type="text" id="memo-text" maxlength="40" placeholder="📌 메모 붙이기 (40자)" enterkeyhint="send" />
+              <button type="submit">붙이기</button>
+            </form>
+          </div>
           <div class="order-sheet" id="order-sheet" hidden>
             <div class="order-head"><b id="order-title"></b><button type="button" id="order-close" aria-label="닫기">✕</button></div>
             <small id="order-now"></small>

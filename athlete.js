@@ -322,14 +322,15 @@ window.athlete = (() => {
     $('#ath-view').hidden = team.length < 2;
     document.querySelectorAll('#ath-view button').forEach((b) => b.classList.toggle('active', b.dataset.v === view3d));
     $('.ath-hero.cine').classList.toggle('team', view3d === 'team' && team.length >= 2);
-    $('#cine-hint').textContent = view3d === 'team' && team.length >= 2 ? '사람을 누르면 운동을 시킬 수 있어요' : '드래그해서 돌려보기';
+    $('#cine-hint').textContent = view3d === 'team' && team.length >= 2 ? '사람 누르면 운동 시키기 · 짐 누르면 메모' : '드래그해서 돌려보기';
     if (view3d !== 'team') $('#order-sheet').hidden = true;
+    if (view3d !== 'team') { $('#memo-sheet').hidden = true; memoFor = null; }
     $('#ath-photo').hidden = !(view3d === 'team' && team.length >= 2) || (window.stage3d && window.stage3d.inPhoto());
     $('#ath-enter').hidden = !(view3d === 'team' && team.length >= 2);
     if (!(view3d === 'team' && team.length >= 2) && gymFull) setFull(false);
     if (view3d !== 'team' && window.stage3d && window.stage3d.inPhoto()) { window.stage3d.endPhoto(); $('#photo-bar').hidden = true; }
     if (view3d === 'team' && team.length >= 2) scene3d = { team };
-    if (window.stage3d) window.stage3d.show($('#ath-3d'), scene3d).then((ok) => { if (!ok) fallback(); }).catch(fallback);
+    if (window.stage3d) window.stage3d.show($('#ath-3d'), scene3d).then((ok) => { if (!ok) fallback(); else if (scene3d.team) pushMemos(); }).catch(fallback);
     else fallback();
     $('#ath-chapter').textContent = `CHAPTER ${String((T ? G.stage : 0) + 1).padStart(2, '0')}`;
     let nick = '나'; try { nick = social.nick() || '나'; } catch {}
@@ -461,6 +462,43 @@ window.athlete = (() => {
   $('#order-close').addEventListener('click', () => { $('#order-sheet').hidden = true; });
   if (window.stage3d) window.stage3d.onPick(openOrder);
 
+  /* 🏠 각자 짐 메모판 */
+  let memoFor = null, memoCol = 'y';
+  const memoMap = () => { try { return social.memos(); } catch { return {}; } };
+  function pushMemos() { if (window.stage3d && window.stage3d.setMemos) window.stage3d.setMemos(memoMap()); }
+  function renderMemoSheet() {
+    if (!memoFor) return;
+    let nick = ''; try { nick = (social.members()[memoFor] || {}).nick || ''; } catch {}
+    let me = null; try { me = social.id(); } catch {}
+    const list = memoMap()[memoFor] || [];
+    $('#memo-title').textContent = `🏠 ${memoFor === me ? '내' : `${nick}의`} 짐 · 메모 ${list.length}`;
+    $('#memo-list').innerHTML = list.length ? list.slice(0, 30).map((m) => `<div class="memo-item c-${m.c}"><span>${escapeHtml(m.text)}</span><small>${escapeHtml(m.who)}</small>${m.mine || memoFor === me ? `<button type="button" data-del="${escapeHtml(m.id)}" data-mine="${m.mine ? 1 : 0}" aria-label="메모 떼기">✕</button>` : ''}</div>`).join('') : '<p class="memo-empty">아직 붙은 메모가 없어요. 첫 메모를 붙여보세요 📌</p>';
+    $('#memo-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+      if (b.dataset.mine !== '1') { toast('남이 붙인 메모는 붙인 사람만 뗄 수 있어요'); return; }
+      try { await social.delMemo(b.dataset.del); toast('메모를 뗐어요'); } catch { toast('떼지 못했어요'); }
+    }));
+  }
+  function openMemo(id) {
+    memoFor = id;
+    $('#order-sheet').hidden = true;
+    renderMemoSheet();
+    $('#memo-sheet').hidden = false;
+  }
+  $('#memo-close').addEventListener('click', () => { $('#memo-sheet').hidden = true; memoFor = null; });
+  document.querySelectorAll('#memo-cols button').forEach((b) => b.addEventListener('click', () => {
+    memoCol = b.dataset.c; document.querySelectorAll('#memo-cols button').forEach((x) => x.classList.toggle('on', x === b));
+  }));
+  $('#memo-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const t = $('#memo-text').value.trim();
+    if (!t || !memoFor) return;
+    const btn = $('#memo-form [type=submit]'); btn.disabled = true;
+    try { await social.addMemo(memoFor, t, memoCol); $('#memo-text').value = ''; toast('📌 메모를 붙였어요'); }
+    catch { toast('메모를 붙이지 못했어요 (권한 확인)'); }
+    btn.disabled = false;
+  });
+  if (window.stage3d && window.stage3d.onBooth) window.stage3d.onBooth(openMemo);
+
   /* ⛶ 산스장 들어가기 (전체화면) */
   let gymFull = false;
   function setFull(on) {
@@ -472,7 +510,7 @@ window.athlete = (() => {
     hero.classList.toggle('full', on);
     document.body.classList.toggle('gym-full', on);
     $('#ath-enter').textContent = on ? '✕ 나가기' : '⛶ 들어가기';
-    $('#cine-hint').textContent = on ? '드래그: 돌리기·높이 · 두 손가락: 줌 · 사람 누르면 시키기' : '사람을 누르면 운동을 시킬 수 있어요';
+    $('#cine-hint').textContent = on ? '드래그: 돌리기·높이 · 두 손가락: 줌 · 짐 누르면 메모' : '사람 누르면 운동 시키기 · 짐 누르면 메모';
     if (window.stage3d) window.stage3d.setImmersive(on);
   }
   $('#ath-enter').addEventListener('click', () => setFull(!gymFull));
@@ -547,5 +585,5 @@ window.athlete = (() => {
   function summary() { const R = real(); return { t: G.track, st: G.stage, s: { u: R.up, l: R.low } }; }
   const state = () => G;
 
-  return { render, summary, state, restore, draw: drawAthlete };
+  return { render, summary, state, restore, draw: drawAthlete, memosChanged: () => { pushMemos(); renderMemoSheet(); } };
 })();
