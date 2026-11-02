@@ -270,6 +270,7 @@ function stampCardio(set, ex, date) {
   return true;
 }
 function setVolume(set, ex, date) {
+  if (isGolf(ex)) return num(set.r) * GOLF_KG_PER_STROKE;
   const cinfo = cardioInfo(ex);
   if (cinfo) return cardioToVolume(cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW, cardioMode(ex)), cinfo);
   const w = num(set.w), r = num(set.r);
@@ -411,8 +412,8 @@ $('#day-today').addEventListener('click', () => { state.day = todayStr(); render
 function makeEntry(name, fallbackSets) {
   const last = findLastExercise(name, state.day);
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
-  const base = last ? last.sets : fallbackSets && fallbackSets.length ? fallbackSets : [isCardio ? { km: '', min: '' } : { w: '', r: '' }];
-  const sets = base.map((s) => ({ ...s }));
+  const base = last ? last.sets : fallbackSets && fallbackSets.length ? fallbackSets : [isCardio ? { km: '', min: '' } : name === '스크린골프' ? { h: 18, r: '' } : { w: '', r: '' }];
+  const sets = name === '스크린골프' ? [{ h: num(base[0] && base[0].h) || 18, r: '' }] : base.map((s) => ({ ...s }));
   const entry = { id: uid(), name, sets };
   if (last && last.bw !== undefined) entry.bw = last.bw;
   else if (!isCardio && !EXERCISES.some((e) => e.name === name)) {
@@ -769,6 +770,12 @@ function renderDay() {
       db2.addEventListener('click', () => { ex.detail = !ex.detail; save(); renderDay(); });
       node.querySelector('.card-actions').appendChild(db2);
       node.classList.add('cardio');
+    } else if (isGolf(ex)) {
+      chip.hidden = false; chip.disabled = true; chip.classList.add('on');
+      chip.textContent = `⛳ 1타=${GOLF_KG_PER_STROKE}kg · 적을수록 왕`;
+      const th = node.querySelectorAll('thead th');
+      th[0].textContent = '판'; th[1].textContent = '홀'; th[2].textContent = '타수';
+      node.classList.add('golf');
     } else if (type || !isCatalog) {
       chip.hidden = false;
       const bw = bodyweightOn(state.day);
@@ -832,6 +839,9 @@ function renderDay() {
         <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.wkcal ?? ''}" data-k="wkcal" placeholder="워치" class="kcal-in" /></td>`
           : `<td><input type="text" autocomplete="off" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
         <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>`)
+        : isGolf(ex)
+        ? `<td><input type="text" autocomplete="off" inputmode="numeric" value="${set.h ?? 18}" data-k="h" placeholder="18" /></td>
+        <td><input type="text" autocomplete="off" inputmode="numeric" value="${set.r ?? ''}" data-k="r" placeholder="타" /></td>`
         : `<td><input type="text" autocomplete="off" inputmode="decimal" min="0" step="0.5" value="${set.w ?? ''}" data-k="w" /></td>
         <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.r ?? ''}" data-k="r" /></td>`;
       tr.innerHTML = `
@@ -883,7 +893,7 @@ function renderDay() {
 
     node.querySelector('.add-set').addEventListener('click', () => {
       const prev = ex.sets[ex.sets.length - 1];
-      ex.sets.push(prev ? { ...prev } : cardioInfo(ex) ? { km: '', min: '' } : { w: '', r: '' });
+      ex.sets.push(isGolf(ex) ? { h: num(prev && prev.h) || 18, r: '' } : prev ? { ...prev } : cardioInfo(ex) ? { km: '', min: '' } : { w: '', r: '' });
       save();
       renderDay();
       // 새로 추가된 세트의 무게 입력칸에 포커스
@@ -1653,6 +1663,11 @@ const social = (() => {
       const t = idHour(ex.id);
       if (t && toStr(new Date(t)) === d) { const h = new Date(t).getHours(); h0 = Math.min(h0, h); h1 = Math.max(h1, h); }
       for (const st of ex.sets) {
+        if (isGolf(ex)) {
+          const h = num(st.h) || 18, r = num(st.r);
+          if (r > 0 && h >= 9) { const per18 = Math.round((r * 18) / h); out.golf = out.golf ? Math.min(out.golf, per18) : per18; }
+          continue;
+        }
         if (info) {
           if (RUN_NAMES.includes(ex.name) && num(st.km) > 0) { out.km += num(st.km); out.rmin += num(st.min); }
           out.goals += num(st.goals);
@@ -1680,6 +1695,7 @@ const social = (() => {
   function describeSets(ex) {
     const sets = ex.sets.filter((st) => num(st.r) > 0 || num(st.km) > 0 || num(st.min) > 0 || num(st.wkcal) > 0);
     if (!sets.length) return '';
+    if (isGolf(ex)) return sets.map((st) => `⛳ ${num(st.h) || 18}홀 ${num(st.r)}타`).join(' / ');
     if (cardioInfo(ex)) {
       return sets.map((st) => [
         num(st.km) ? `${num(st.km)}km` : '',
@@ -1906,6 +1922,7 @@ const social = (() => {
       for (const [k, v] of Object.entries(x.p || {})) S.p[k] = (S.p[k] || 0) + num(v);
       S.km += num(x.km); S.rmin += num(x.rmin); S.goals += num(x.goals); S.reps += num(x.reps);
       S.maxW = Math.max(S.maxW, num(x.maxW)); S.top = Math.max(S.top, num(x.top));
+      if (num(x.golf) > 0) S.golf = S.golf ? Math.min(S.golf, num(x.golf)) : num(x.golf);
       (x.n || []).forEach((n) => S.names.add(n));
       const dow = parse(d).getDay();
       if (dow === 0 || dow === 6) S.weekend += num(x.v);
@@ -1930,6 +1947,7 @@ const social = (() => {
     { icon: '💪', name: '팔왕', desc: '팔 볼륨 (이두·삼두·전완)', get: (S) => num(S.p['팔']), fmt: fmtKg },
     { icon: '🏃', name: '이봉주', desc: '러닝 거리', get: (S) => S.km, fmt: (v) => `${+v.toFixed(1)}km` },
     { icon: '⚽', name: '득점왕', desc: '풋살·축구 골', get: (S) => S.goals, fmt: (v) => `${v}골` },
+    { icon: '⛳', name: '골프왕', desc: '스크린골프 최저타 (18홀 기준)', get: (S) => num(S.golf), fmt: (v) => `${v}타`, low: true },
     { icon: '📅', name: '출석왕', desc: '운동한 날 수', get: (S) => S.dates.size, fmt: (v) => `${v}일` },
     { icon: '🏅', name: '개근상', desc: '하루도 안 빠진 사람 전원', all: (S) => S.perfect, sub: (S) => `${S.dates.size}일째 개근`, none: '하루도 안 빠지면 받아요', meWin: '나도 받음 🎉' },
     { icon: '🛋️', name: '휴식왕', desc: '가장 많이 쉰 사람', get: (S) => S.rest, fmt: (v) => `${v}일 쉼`, ties: true, meWin: '나… 😅' },
@@ -1995,7 +2013,7 @@ const social = (() => {
     const rows = awardRows(a, awPeople);
     $('#award-icon').textContent = a.icon;
     $('#award-title').textContent = `${periodPrefix()} ${a.name}`;
-    $('#award-desc').textContent = a.desc + (a.low ? ' · 낮을수록 빠름' : '');
+    $('#award-desc').textContent = a.desc + (a.low ? ' · 낮을수록 좋아요' : '');
     const medal = ['🥇', '🥈', '🥉'];
     $('#award-list').innerHTML = rows.length ? rows.map((x, k) => {
       const rank = a.all ? 0 : a.ties ? rows.findIndex((y) => y.v === x.v) : k;

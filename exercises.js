@@ -243,6 +243,7 @@ const EXERCISE_DATA = `
 유산소|수영|Swimming|
 유산소|크로스핏|CrossFit WOD|크핏,와드,WOD,crossfit
 유산소|하이록스|HYROX|하록,hyrox,하이록
+스포츠|스크린골프|Screen Golf|골프,스크골,스크린 골프,screengolf
 유산소|에어 바이크|Air Bike|어썰트바이크
 유산소|스키 에르그|Ski Erg|
 유산소|등산|Hiking|하이킹
@@ -378,3 +379,7 @@ const DUMBBELL_EXTRA = ['사이드 레터럴 레이즈', '린 어웨이 레터�
 function isDumbbellExercise(name) {
   return /덤벨/.test(name || '') || DUMBBELL_EXTRA.includes(name);
 }
+
+/* ⛳ 스크린골프: 1타 = 10kg 볼륨, 타수가 적을수록 잘 친 것 */
+const GOLF_KG_PER_STROKE = 10;
+function isGolf(ex) { return !!ex && ex.name === '스크린골프'; }
