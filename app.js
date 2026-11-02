@@ -2825,6 +2825,7 @@ const social = (() => {
     $('#meal-box').hidden = feedKind !== 'meal';
     $('#photo-feed').hidden = feedKind !== 'body';
     $('#chat-box').hidden = feedKind !== 'chat';
+    if (feedKind !== 'chat') { markFeedSeen(feedKind); feedBadges(); }
     if (feedKind === 'chat') { renderChat(chatJump || window.scrollY < 40); chatJump = false; return; }
     chatJump = true;
     if (feedKind === 'body') { renderPhotoFeed(); return; }
@@ -2895,23 +2896,56 @@ const social = (() => {
     if (inChat()) { renderChat(false); return; }
     const seen = chatSeen();
     const fresh = list.filter((c) => c.from !== myId && num(c.at) > seen);
-    chatBadge(fresh.length);
+    feedBadges();
     const pop = fresh.filter((c) => num(c.at) > chatBoot - 5000 && !chatToasted.has(c.id));
     pop.forEach((c) => chatToasted.add(c.id));
     const last = pop[pop.length - 1];
     if (last) toast(`💬 ${nickOf(last.from)}: ${last.text.slice(0, 40)}`);
   }
   const inChat = () => currentView() === 'feed' && feedKind === 'chat';
-  /** 안 읽은 톡 개수 → 피드 탭 + 톡 버튼 숫자 (보면 사라짐) */
-  function chatBadge(n) {
-    const t = n > 99 ? '99+' : String(n);
-    for (const id of ['#feed-badge', '#chat-badge']) { const el = $(id); el.textContent = t; el.hidden = !n; }
+  /* 🔔 피드 알림: 안 읽은 개수 → 피드 탭 + 식단/톡/눈바디 버튼 숫자 (그 칸을 보면 사라지고, 안 보면 쌓임)
+   * 식단 = 친구가 새로 올린 식단 + 내 식단에 달린 댓글 · 눈바디 = 친구가 공유한 눈바디 + 내 눈바디에 달린 댓글 · 톡 = 새 메시지 */
+  const FEED_SEEN_KEY = 'gymlog.feedAlertSeen';
+  function feedSeenMap() {
+    let m = null; try { m = JSON.parse(localStorage.getItem(FEED_SEEN_KEY) || 'null'); } catch { /* 없음 */ }
+    if (!m) { m = { meal: Date.now() - 864e5, body: Date.now() - 864e5 }; try { localStorage.setItem(FEED_SEEN_KEY, JSON.stringify(m)); } catch { /* 없음 */ } }
+    return m;
+  }
+  function markFeedSeen(k) {
+    const m = feedSeenMap(); m[k] = Date.now();
+    try { localStorage.setItem(FEED_SEEN_KEY, JSON.stringify(m)); } catch { /* 없음 */ }
+  }
+  function feedCounts() {
+    const seen = feedSeenMap(), cs = chatSeen();
+    const all = Object.values(comments).flat().filter((c) => members[c.from] && c.from !== myId);
+    const hasImg = (c) => typeof c.img === 'string' && c.img.startsWith('data:image/');
+    const mineMeal = new Set((comments[myId] || []).filter((c) => c.kind === 'meal').map((c) => `${myId}/${c.id}`));
+    const mineBody = new Set((comments[myId] || []).filter((c) => c.kind === 'share' && hasImg(c)).map((c) => `${myId}/${c.id}`));
+    let meal = 0, body = 0, chat = 0;
+    for (const c of all) {
+      const at = num(c.at);
+      if (c.kind === 'chat') { if (at > cs) chat++; }
+      else if (c.kind === 'meal' && hasImg(c)) { if (at > num(seen.meal)) meal++; }
+      else if (c.kind === 'share' && hasImg(c)) { if (at > num(seen.body)) body++; }
+      else if (c.kind === 'fcmt' && c.to === myId) {
+        if (mineMeal.has(c.ref) && at > num(seen.meal)) meal++;
+        else if (mineBody.has(c.ref) && at > num(seen.body)) body++;
+      }
+    }
+    return { meal, body, chat };
+  }
+  function feedBadges() {
+    if (!store || !myId) return;
+    const n = feedCounts();
+    const set = (id, v) => { const el = $(id); if (!el) return; el.textContent = v > 99 ? '99+' : String(v); el.hidden = !v; };
+    set('#meal-badge', n.meal); set('#body-badge', n.body); set('#chat-badge', n.chat);
+    set('#feed-badge', n.meal + n.body + n.chat);
   }
   function renderChat(jump) {
     if (!store || !myId || !ready || !myNick()) return;
     const list = chatMsgs();
     try { localStorage.setItem(CHAT_SEEN_KEY, String(Date.now())); } catch { /* 없음 */ }
-    chatBadge(0);
+    feedBadges();
     list.forEach((c) => chatToasted.add(c.id));
     $('#chat-count').textContent = `${Object.values(members).filter((m) => m && m.nick).length}명`;
     const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
