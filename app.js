@@ -2241,6 +2241,7 @@ const social = (() => {
   function checkCongrats() {
     if (!store || !myId || !ready || !myNick()) return;
     if (!$('#welcome-modal').hidden || !$('#congrats-modal').hidden) return;
+    if (!comments[myId]) return;   // 내가 보낸 댓글을 불러온 뒤에 판단 (이미 반응한 친구는 건너뜀)
     congratsArmed = false;
     const t = todayStr(), y = addDays(t, -1), done = congratsDone();
     congratsQ = [];
@@ -2250,7 +2251,11 @@ const social = (() => {
         const x = friendDay(members[id], d);
         if (!x || !(num(x.v) > 0)) continue;
         if (!(members[id].closed || {})[d]) break;   // 운동 마감한 기록만 팝업
-        if (!done[`${id}|${d}`]) congratsQ.push({ id, d, x });
+        // 한 번만: 이 기기에서 반응했거나, 이미 그날(마감 이후) 그 친구에게 댓글·축하를 보냈으면 안 띄움
+        const since = new Date(`${d}T00:00:00`).getTime();
+        const reacted = (comments[myId] || []).some((c) => c.to === id && num(c.at) >= since);
+        if (reacted) { if (!done[`${id}|${d}`]) markCongrats(`${id}|${d}`); }
+        else if (!done[`${id}|${d}`]) congratsQ.push({ id, d, x });
         break;   // 가장 최근 날 하나만
       }
     }
@@ -2316,6 +2321,7 @@ const social = (() => {
     const c = congratsCur; if (!c) return;
     const btns = $('#congrats-modal').querySelectorAll('button');
     btns.forEach((b) => (b.disabled = true));
+    markCongrats(`${c.id}|${c.d}`);   // 보내기 전에 먼저 '반응함' 표시 → 다시 안 뜸
     try {
       await store.collection(`comments/${myId}/items`).add({ to: c.id, text, at: Date.now() });
       toast(`${nickOf(c.id)}님에게 보냈어요 🎉`);
