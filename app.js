@@ -356,6 +356,7 @@ function caretToEnd(el) {
 document.addEventListener('focusin', (e) => {
   const el = e.target;
   if (!(el instanceof HTMLInputElement) || !el.hasAttribute('inputmode')) return;
+  if (el.classList.contains('iv-in')) { setTimeout(() => el.select(), 0); setTimeout(() => el.select(), 60); return; }   // 인터벌 칸: 눌러서 바로 덮어쓰기
   el.dataset.fresh = '1';
   setTimeout(() => caretToEnd(el), 0);
   setTimeout(() => caretToEnd(el), 60);   // iOS는 탭한 위치로 커서를 늦게 옮김
@@ -812,6 +813,53 @@ function renderDay() {
         renderDay();
       }));
       if (!cinfo.kcalOnly) node.querySelector('.exercise-head').after(toggle);
+      if (['러닝', '트레드밀', '인터벌 러닝'].includes(ex.name) && cardioMode(ex) !== 'watch') {
+        // ⚡ 인터벌 · 속도로 적기 — 러닝머신 속도(km/h)와 분만 알면 km·시간 자동
+        let iv = { rs: 10, rm: 1, ws: 5, wm: 1, n: 8 };
+        try { iv = { ...iv, ...JSON.parse(localStorage.getItem('gymlog.interval') || '{}') }; } catch { /* 없음 */ }
+        const box = document.createElement('details');
+        box.className = 'iv-box';
+        if (ex.ivOpen) box.open = true;
+        const f = (k, ph, step) => `<input class="iv-in" data-iv="${k}" type="text" inputmode="decimal" value="${iv[k]}" placeholder="${ph}" data-step="${step}">`;
+        box.innerHTML = `<summary>⚡ 인터벌 · 속도로 적기 <small>km 몰라도 OK</small></summary>
+          <div class="iv-grid">
+            <span class="iv-l">🏃 뛰기</span>${f('rs', '속도', 0.5)}<span class="iv-u">km/h</span>${f('rm', '분', 0.5)}<span class="iv-u">분</span>
+            <span class="iv-l">🚶 쉬기</span>${f('ws', '속도', 0.5)}<span class="iv-u">km/h</span>${f('wm', '분', 0.5)}<span class="iv-u">분</span>
+            <span class="iv-l">🔁 반복</span>${f('n', '회', 1)}<span class="iv-u">회</span><span></span><span></span>
+          </div>
+          <p class="iv-sum"></p>
+          <button type="button" class="iv-apply">기록에 넣기</button>
+          <p class="iv-tip">쉬지 않고 쭉 뛰었으면 쉬기 0분, 반복 1회 · 쉬는 동안 멈춰 섰으면 속도 0</p>`;
+        const calc = () => {
+          const g = (k) => Math.max(0, num(box.querySelector(`[data-iv="${k}"]`).value));
+          const v = { rs: g('rs'), rm: g('rm'), ws: g('ws'), wm: g('wm'), n: Math.max(1, Math.round(g('n')) || 1) };
+          const min = (v.rm + v.wm) * v.n;
+          const km = ((v.rs * v.rm + v.ws * v.wm) * v.n) / 60;
+          return { v, min: Math.round(min * 10) / 10, km: Math.round(km * 100) / 100 };
+        };
+        const show = () => {
+          const c = calc();
+          box.querySelector('.iv-sum').innerHTML = c.min > 0 ? `총 <b>${c.min}분 · ${c.km}km</b>${c.km > 0 ? ` · ${paceText(ex.name, c.km, c.min) || ''}` : ''}` : '속도와 분을 적어주세요';
+        };
+        box.addEventListener('toggle', () => { ex.ivOpen = box.open; });
+        box.querySelectorAll('.iv-in').forEach((i) => i.addEventListener('input', show));
+        box.querySelector('.iv-apply').addEventListener('click', () => {
+          const c = calc();
+          if (!(c.min > 0 && c.km > 0)) { toast('뛴 속도와 시간을 적어주세요'); return; }
+          try { localStorage.setItem('gymlog.interval', JSON.stringify(c.v)); } catch { /* 없음 */ }
+          const v = c.v;
+          const tag = v.wm > 0 && v.n > 1 ? `인터벌 ${v.rs}km/h ${v.rm}분 + ${v.ws}km/h ${v.wm}분 × ${v.n}` : `${v.rs}km/h × ${v.rm * v.n}분`;
+          const last = ex.sets[ex.sets.length - 1];
+          const empty = last && !num(last.km) && !num(last.min);
+          const set = { km: c.km, min: c.min, iv: tag };
+          if (empty) Object.assign(last, set); else ex.sets.push(set);
+          ex.ivOpen = false;
+          save(); renderDay();
+          toast(`⚡ ${c.km}km · ${c.min}분 기록했어요`);
+        });
+        show();
+        toggle.after(box);
+      }
       if (cinfo.hyrox) {
         const g = document.createElement('details');
         g.className = 'hyrox-guide';
@@ -1885,6 +1933,7 @@ const social = (() => {
         num(st.km) ? `${num(st.km)}km` : '',
         num(st.min) ? `${num(st.min)}분` : '',
         paceText(ex.name, num(st.km), num(st.min)),
+        st.iv ? `⚡${String(st.iv).slice(0, 50)}` : '',
         cardioMode(ex) === 'watch' && num(st.wkcal) ? `⌚${num(st.wkcal)}kcal` : '',
         num(st.goals) ? `⚽${num(st.goals)}골` : '',
         num(st.hr) ? `♥${num(st.hr)}` : '',
