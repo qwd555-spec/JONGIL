@@ -317,7 +317,7 @@ window.athlete = (() => {
     const rest = restDays();
     // 3D 무대 (안 되면 2D 그림으로)
     const fallback = () => { $('#ath-3d').hidden = true; $('#ath-figure').hidden = false; $('#ath-figure').innerHTML = drawAthlete({ up: R.up, low: R.low, track: G.track, mood: rest <= 1 ? 'happy' : rest <= 3 ? 'ok' : 'sad', size: 170 }); };
-    let scene3d = { up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42' };
+    let scene3d = { up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', stage: T ? G.stage : 0 };
     const team = teamList();
     $('#ath-view').hidden = team.length < 2;
     document.querySelectorAll('#ath-view button').forEach((b) => b.classList.toggle('active', b.dataset.v === view3d));
@@ -453,10 +453,10 @@ window.athlete = (() => {
     try { members = social.members(); myId = social.id(); live = social.live; } catch {}
     return Object.keys(members).map((id) => {
       const m = members[id];
-      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus() }; }
+      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus() }; }
       const c = m.char || {}, t = TRACKS[c.t] ? c.t : '';
       let fc = null; try { fc = social.focus(id); } catch {}
-      return { id, today: !!fc, focus: fc ? fc.key : '', nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id) };
+      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id) };
     }).slice(0, 12);
   }
   document.querySelectorAll('#ath-view button').forEach((b) => b.addEventListener('click', () => { view3d = b.dataset.v; render(); }));
