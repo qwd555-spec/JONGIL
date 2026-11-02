@@ -3040,7 +3040,7 @@ setTimeout(() => {
 (() => {
   const KEY = 'gymlog.eventBg';
   // 하루 한정 이벤트 배경 (날짜 → 사진) — 그날만 적용, 다음 날 원래 디자인
-  const EVENTS = { '2026-11-02': 'event-bg.jpg', '2026-11-03': 'event-bg2.jpg' };
+  const EVENTS = { '2026-11-02': 'event-bg.jpg', '2026-11-03': 'event-bg2.jpg', '2026-11-04': 'event-bg3.jpg' };
   let on = true;
   try { on = localStorage.getItem(KEY + '.' + todayStr()) !== 'off'; } catch {}
   const live = () => !!EVENTS[todayStr()];

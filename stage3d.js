@@ -407,9 +407,13 @@ window.stage3d = (() => {
     const signM = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.9), new THREE.MeshStandardMaterial({ map: st, roughness: 0.6, emissive: 0x222222 }));
     signM.position.set(0, 2.05, -10.2); gymScene.add(signM);
     // 📢 뒤쪽 대형 광고판 (가로로 길게) — 11/3부터 새 모델
-    const BB = (typeof todayStr === 'function' && todayStr() >= '2026-11-03')
-      ? { src: 'billboard2.jpg', l1: '단백질은', l2: '배신하지 않는다', sub: '오늘의 식단: 치킨 🍗 — 해발 1,000m' }
-      : { src: 'billboard.jpg', l1: '볼륨은', l2: '배신하지 않는다', sub: '오늘도 한 세트 더 — 해발 1,000m' };
+    const BBS = [   // 날짜부터 바뀌는 광고판 모델 (가장 최근 것)
+      { from: '', src: 'billboard.jpg', l1: '볼륨은', l2: '배신하지 않는다', sub: '오늘도 한 세트 더 — 해발 1,000m' },
+      { from: '2026-11-03', src: 'billboard2.jpg', l1: '단백질은', l2: '배신하지 않는다', sub: '오늘의 식단: 치킨 🍗 — 해발 1,000m' },
+      { from: '2026-11-04', src: 'billboard3.jpg', l1: '당 충전도', l2: '훈련이다', sub: '오늘의 보충제: 사탕 🍭 — 해발 1,000m' },
+    ];
+    const today = typeof todayStr === 'function' ? todayStr() : '';
+    const BB = BBS.filter((b) => b.from <= today).pop();
     (() => {
       const W = 1400, H = 520, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const cx = cv.getContext('2d'); cx.fillStyle = '#111'; cx.fillRect(0, 0, W, H);
