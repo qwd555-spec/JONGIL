@@ -406,7 +406,10 @@ window.stage3d = (() => {
     const st = new THREE.CanvasTexture(sign); st.encoding = THREE.sRGBEncoding;
     const signM = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.9), new THREE.MeshStandardMaterial({ map: st, roughness: 0.6, emissive: 0x222222 }));
     signM.position.set(0, 2.05, -10.2); gymScene.add(signM);
-    // 📢 뒤쪽 대형 광고판 (가로로 길게)
+    // 📢 뒤쪽 대형 광고판 (가로로 길게) — 11/3부터 새 모델
+    const BB = (typeof todayStr === 'function' && todayStr() >= '2026-11-03')
+      ? { src: 'billboard2.jpg', l1: '단백질은', l2: '배신하지 않는다', sub: '오늘의 식단: 치킨 🍗 — 해발 1,000m' }
+      : { src: 'billboard.jpg', l1: '볼륨은', l2: '배신하지 않는다', sub: '오늘도 한 세트 더 — 해발 1,000m' };
     (() => {
       const W = 1400, H = 520, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const cx = cv.getContext('2d'); cx.fillStyle = '#111'; cx.fillRect(0, 0, W, H);
@@ -419,11 +422,11 @@ window.stage3d = (() => {
         cx.textAlign = 'left'; cx.textBaseline = 'alphabetic';
         cx.fillStyle = '#e8b923'; cx.font = '800 34px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText('VOLUMER 산스장 공식 모델', 56, 150);
         cx.fillStyle = '#fff'; cx.font = '900 76px -apple-system, "Apple SD Gothic Neo", sans-serif';
-        cx.fillText('볼륨은', 52, 260); cx.fillText('배신하지 않는다', 52, 350);
-        cx.fillStyle = 'rgba(255,255,255,.75)'; cx.font = '600 30px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText('오늘도 한 세트 더 — 해발 1,000m', 56, 420);
+        cx.fillText(BB.l1, 52, 260); cx.fillText(BB.l2, 52, 350);
+        cx.fillStyle = 'rgba(255,255,255,.75)'; cx.font = '600 30px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText(BB.sub, 56, 420);
         tex.needsUpdate = true;
       };
-      img.src = 'billboard.jpg';
+      img.src = BB.src;
       const bw = 9.6, bh = bw * H / W, by = 4.5, bz = -10.4;
       const board = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
       board.position.set(0, by, bz + 0.09); gymScene.add(board);
@@ -926,7 +929,8 @@ window.stage3d = (() => {
         dl = new THREE.Vector3(0, -0.6 + low * 1.8, 0);
       }
       if (!gCamPos) { gCamPos = dp.clone(); gCamLook = dl.clone(); }
-      const kf = room || performance.now() < flyUntil ? 0.09 : 1;
+      const nowT = performance.now(), dtc = Math.min(0.5, (nowT - (tick.camT || nowT)) / 1000); tick.camT = nowT;
+      const kf = room || nowT < flyUntil ? 1 - Math.exp(-Math.max(dtc, 0.016) * 4) : 1;
       gCamPos.lerp(dp, kf); gCamLook.lerp(dl, kf);
       gymCam.position.copy(gCamPos); gymCam.lookAt(gCamLook);
       updateAgents(dt, s);

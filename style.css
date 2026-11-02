@@ -826,10 +826,10 @@ body.event-bg {
   --shadow-sheet: 0 30px 60px -30px rgba(0,0,0,.6);
   --shadow-layer: 0 6px 18px -8px rgba(0,0,0,.5);
   --shadow-raised: 0 10px 24px -12px rgba(0,0,0,.5);
-  background: #0b0812 url("event-bg.jpg") center top / cover no-repeat fixed;
+  background: #0b0812 var(--event-img, url("event-bg.jpg")) center top / cover no-repeat fixed;
   color: var(--text);
 }
-@supports (-webkit-touch-callout: none) { body.event-bg { background-attachment: scroll; } body.event-bg::before { content: ""; position: fixed; inset: 0; z-index: -1; background: #0b0812 url("event-bg.jpg") center top / cover no-repeat; } }
+@supports (-webkit-touch-callout: none) { body.event-bg { background-attachment: scroll; } body.event-bg::before { content: ""; position: fixed; inset: 0; z-index: -1; background: #0b0812 var(--event-img, url("event-bg.jpg")) center top / cover no-repeat; } }
 body.event-bg .app-header, body.event-bg main { background: var(--sheet); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: none; }
 body.event-bg .app-header { box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
 body.event-bg .brand, body.event-bg .brand-mark, body.event-bg #page-title, body.event-bg h3, body.event-bg h4,

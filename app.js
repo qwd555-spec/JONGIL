@@ -3039,11 +3039,13 @@ setTimeout(() => {
 /* ---------- 🎉 이벤트 배경 ---------- */
 (() => {
   const KEY = 'gymlog.eventBg';
-  const EVENT_DAY = '2026-11-02'; // 하루 한정 이벤트 — 다음 날부터 원래 디자인
+  // 하루 한정 이벤트 배경 (날짜 → 사진) — 그날만 적용, 다음 날 원래 디자인
+  const EVENTS = { '2026-11-02': 'event-bg.jpg', '2026-11-03': 'event-bg2.jpg' };
   let on = true;
-  try { on = localStorage.getItem(KEY) !== 'off'; } catch {}
-  const live = () => todayStr() === EVENT_DAY;
+  try { on = localStorage.getItem(KEY + '.' + todayStr()) !== 'off'; } catch {}
+  const live = () => !!EVENTS[todayStr()];
   const apply = () => {
+    if (live()) document.body.style.setProperty('--event-img', `url("${EVENTS[todayStr()]}")`);
     document.body.classList.toggle('event-bg', on && live());
     $('#event-on').checked = on;
     $('#event-on').closest('.panel').hidden = !live();
@@ -3051,7 +3053,7 @@ setTimeout(() => {
   setInterval(() => { if (document.body.classList.contains('event-bg') && !live()) apply(); }, 60000);
   $('#event-on').addEventListener('change', (e) => {
     on = e.target.checked;
-    try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch {}
+    try { localStorage.setItem(KEY + '.' + todayStr(), on ? 'on' : 'off'); } catch {}
     apply();
   });
   apply();
