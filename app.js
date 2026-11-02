@@ -270,7 +270,12 @@ function stampCardio(set, ex, date) {
   return true;
 }
 function setVolume(set, ex, date) {
-  if (isGolf(ex)) return num(set.r) * GOLF_KG_PER_STROKE;
+  if (isGolf(ex)) {
+    let v = num(set.r) * GOLF_KG_PER_STROKE;
+    // 필드골프: 걷기 6km(18홀) 볼륨 추가 — 타수를 적은 판만
+    if (isFieldGolf(ex) && num(set.r) > 0) v += cardioToVolume(cardioKcal({ km: FIELD_GOLF_KM * ((num(set.h) || 18) / 18) }, CARDIO['걷기'], bodyweightOn(date) || DEFAULT_BW), CARDIO['걷기']);
+    return v;
+  }
   const cinfo = cardioInfo(ex);
   if (cinfo) return cardioToVolume(cardioKcal(set, cinfo, bodyweightOn(date) || DEFAULT_BW, cardioMode(ex)), cinfo);
   const w = num(set.w), r = num(set.r);
@@ -412,8 +417,8 @@ $('#day-today').addEventListener('click', () => { state.day = todayStr(); render
 function makeEntry(name, fallbackSets) {
   const last = findLastExercise(name, state.day);
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
-  const base = last ? last.sets : fallbackSets && fallbackSets.length ? fallbackSets : [isCardio ? { km: '', min: '' } : name === '스크린골프' ? { h: 18, r: '' } : { w: '', r: '' }];
-  const sets = name === '스크린골프' ? [{ h: num(base[0] && base[0].h) || 18, r: '' }] : base.map((s) => ({ ...s }));
+  const base = last ? last.sets : fallbackSets && fallbackSets.length ? fallbackSets : [isCardio ? { km: '', min: '' } : (name === '스크린골프' || name === '필드골프') ? { h: 18, r: '' } : { w: '', r: '' }];
+  const sets = (name === '스크린골프' || name === '필드골프') ? [{ h: num(base[0] && base[0].h) || 18, r: '' }] : base.map((s) => ({ ...s }));
   const entry = { id: uid(), name, sets };
   if (last && last.bw !== undefined) entry.bw = last.bw;
   else if (!isCardio && !EXERCISES.some((e) => e.name === name)) {
@@ -772,7 +777,7 @@ function renderDay() {
       node.classList.add('cardio');
     } else if (isGolf(ex)) {
       chip.hidden = false; chip.disabled = true; chip.classList.add('on');
-      chip.textContent = `⛳ 1타=${GOLF_KG_PER_STROKE}kg · 적을수록 왕`;
+      chip.textContent = isFieldGolf(ex) ? `⛳ 1타=${GOLF_KG_PER_STROKE}kg + 걷기 ${FIELD_GOLF_KM}km` : `⛳ 1타=${GOLF_KG_PER_STROKE}kg · 적을수록 왕`;
       const th = node.querySelectorAll('thead th');
       th[0].textContent = '판'; th[1].textContent = '홀'; th[2].textContent = '타수';
       node.classList.add('golf');
@@ -1695,7 +1700,7 @@ const social = (() => {
   function describeSets(ex) {
     const sets = ex.sets.filter((st) => num(st.r) > 0 || num(st.km) > 0 || num(st.min) > 0 || num(st.wkcal) > 0);
     if (!sets.length) return '';
-    if (isGolf(ex)) return sets.map((st) => `⛳ ${num(st.h) || 18}홀 ${num(st.r)}타`).join(' / ');
+    if (isGolf(ex)) return sets.map((st) => `⛳ ${num(st.h) || 18}홀 ${num(st.r)}타${isFieldGolf(ex) ? ` · 걷기 ${+(FIELD_GOLF_KM * ((num(st.h) || 18) / 18)).toFixed(1)}km` : ''}`).join(' / ');
     if (cardioInfo(ex)) {
       return sets.map((st) => [
         num(st.km) ? `${num(st.km)}km` : '',
@@ -1947,7 +1952,7 @@ const social = (() => {
     { icon: '💪', name: '팔왕', desc: '팔 볼륨 (이두·삼두·전완)', get: (S) => num(S.p['팔']), fmt: fmtKg },
     { icon: '🏃', name: '이봉주', desc: '러닝 거리', get: (S) => S.km, fmt: (v) => `${+v.toFixed(1)}km` },
     { icon: '⚽', name: '득점왕', desc: '풋살·축구 골', get: (S) => S.goals, fmt: (v) => `${v}골` },
-    { icon: '⛳', name: '골프왕', desc: '스크린골프 최저타 (18홀 기준)', get: (S) => num(S.golf), fmt: (v) => `${v}타`, low: true },
+    { icon: '⛳', name: '골프왕', desc: '스크린·필드골프 최저타 (18홀 기준)', get: (S) => num(S.golf), fmt: (v) => `${v}타`, low: true },
     { icon: '📅', name: '출석왕', desc: '운동한 날 수', get: (S) => S.dates.size, fmt: (v) => `${v}일` },
     { icon: '🏅', name: '개근상', desc: '하루도 안 빠진 사람 전원', all: (S) => S.perfect, sub: (S) => `${S.dates.size}일째 개근`, none: '하루도 안 빠지면 받아요', meWin: '나도 받음 🎉' },
     { icon: '🛋️', name: '휴식왕', desc: '가장 많이 쉰 사람', get: (S) => S.rest, fmt: (v) => `${v}일 쉼`, ties: true, meWin: '나… 😅' },

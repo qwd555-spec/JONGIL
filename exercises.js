@@ -243,7 +243,7 @@ const EXERCISE_DATA = `
 유산소|수영|Swimming|
 유산소|크로스핏|CrossFit WOD|크핏,와드,WOD,crossfit
 유산소|하이록스|HYROX|하록,hyrox,하이록
-스포츠|스크린골프|Screen Golf|골프,스크골,스크린 골프,screengolf
+스포츠|스크린골프|Screen Golf|스크골,스크린 골프,screengolf
 유산소|에어 바이크|Air Bike|어썰트바이크
 유산소|스키 에르그|Ski Erg|
 유산소|등산|Hiking|하이킹
@@ -260,7 +260,7 @@ const EXERCISE_DATA = `
 스포츠|복싱|Boxing|권투,스파링
 스포츠|주짓수|Jiu-Jitsu|
 스포츠|스쿼시|Squash|
-스포츠|골프|Golf|
+스포츠|필드골프|Field Golf|골프,라운딩,필드,golf
 스포츠|요가|Yoga|
 스포츠|필라테스|Pilates|
 `;
@@ -380,6 +380,9 @@ function isDumbbellExercise(name) {
   return /덤벨/.test(name || '') || DUMBBELL_EXTRA.includes(name);
 }
 
-/* ⛳ 스크린골프: 1타 = 10kg 볼륨, 타수가 적을수록 잘 친 것 */
+/* ⛳ 골프: 1타 = 10kg 볼륨, 타수가 적을수록 잘 친 것
+ * 필드골프는 18홀 기준 걷기 6km를 더함 (홀 수에 비례) */
 const GOLF_KG_PER_STROKE = 10;
-function isGolf(ex) { return !!ex && ex.name === '스크린골프'; }
+const FIELD_GOLF_KM = 6;
+function isGolf(ex) { return !!ex && (ex.name === '스크린골프' || ex.name === '필드골프'); }
+function isFieldGolf(ex) { return !!ex && ex.name === '필드골프'; }
