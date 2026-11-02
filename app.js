@@ -1677,6 +1677,12 @@ const social = (() => {
   const nickOf = (id) => (members[id] && members[id].nick) || '알 수 없음';
 
   /* ---- 내 요약 올리기 ---- */
+  // 최근 3일 운동 마감 시각 (친구 축하 팝업용)
+  function recentClosed() {
+    const cut = addDays(todayStr(), -2), out = {};
+    for (const [d, t] of Object.entries(closedMap)) if (d >= cut && dayVolume(d) > 0) out[d] = t;
+    return out;
+  }
   function mySummary() {
     const days = {}, best = {}, cdays = {};
     for (const d of Object.keys(db)) {
@@ -1691,7 +1697,7 @@ const social = (() => {
         }
       }
     }
-    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), dsum: daySums(40), char: (() => { try { return window.athlete ? window.athlete.summary() : null; } catch { return null; } })(), live: myLive() };
+    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), dsum: daySums(40), char: (() => { try { return window.athlete ? window.athlete.summary() : null; } catch { return null; } })(), live: myLive(), closed: recentClosed() };
   }
   /* ---- 하루 요약 (왕 계산용, 최근 40일) ---- */
   const RUN_NAMES = ['러닝', '트레드밀', '인터벌 러닝'];
@@ -1780,10 +1786,10 @@ const social = (() => {
     if (!store || !myId) return;
     const nick = nickOverride || myNick();
     if (!nick) return;                       // 참가 전에는 올리지 않음
-    const { days, best, cdays, log, custom, dsum, char, live } = mySummary();
-    const key = JSON.stringify({ nick, days, best, cdays, log, custom, dsum, char, live });
+    const { days, best, cdays, log, custom, dsum, char, live, closed } = mySummary();
+    const key = JSON.stringify({ nick, days, best, cdays, log, custom, dsum, char, live, closed });
     if (key === lastPublished) return;
-    const doc = { nick, days, best, cdays, log, custom, dsum, updatedAt: Date.now() };
+    const doc = { nick, days, best, cdays, log, custom, dsum, closed, updatedAt: Date.now() };
     if (char) doc.char = char;
     if (live) doc.live = live;
     await store.doc('board/' + myId).set(doc);
@@ -1957,7 +1963,7 @@ const social = (() => {
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { congratsArmed = true; setTimeout(checkCongrats, 1200); } });
   function checkCongrats() {
-    if (!congratsArmed || !store || !myId || !ready || !myNick()) return;
+    if (!store || !myId || !ready || !myNick()) return;
     if (!$('#welcome-modal').hidden || !$('#congrats-modal').hidden) return;
     congratsArmed = false;
     const t = todayStr(), y = addDays(t, -1), done = congratsDone();
@@ -1967,6 +1973,7 @@ const social = (() => {
       for (const d of [t, y]) {
         const x = friendDay(members[id], d);
         if (!x || !(num(x.v) > 0)) continue;
+        if (!(members[id].closed || {})[d]) break;   // 운동 마감한 기록만 팝업
         if (!done[`${id}|${d}`]) congratsQ.push({ id, d, x });
         break;   // 가장 최근 날 하나만
       }
@@ -1984,7 +1991,7 @@ const social = (() => {
     const top = parts[0] ? parts[0][0] : '';
     const key = /풋살|축구/.test((c.x.n || []).join(' ')) ? '축구' : (CHEERS[armPart(top)] ? armPart(top) : '기타');
     c.focus = top ? `${top} ` : '';
-    $('#congrats-title').textContent = `${nk}님이 ${when} 운동 기록을 남겼어요!`;
+    $('#congrats-title').textContent = `${nk}님이 ${when} 운동을 마감했어요!`;
     $('#congrats-sub').textContent = `총 ${fmtKg(num(c.x.v))}${(c.x.n || []).length ? ` · ${(c.x.n || []).slice(0, 3).join(', ')}${c.x.n.length > 3 ? ` 외 ${c.x.n.length - 3}개` : ''}` : ''}`;
     $('#congrats-parts').innerHTML = parts.slice(0, 4).map(([p, v]) => `<span>${escapeHtml(p)} <b>${fmtKg(num(v))}</b></span>`).join('');
     $('#congrats-count').textContent = congratsQ.length ? `🎉 축하할 기록 ${congratsQ.length + 1}개` : '🎉 새 기록';
