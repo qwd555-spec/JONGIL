@@ -549,6 +549,23 @@ window.athlete = (() => {
   $('#room-exit').addEventListener('click', closeRoom);
   $('#room-memo').addEventListener('click', () => { if (roomId) openMemo(roomId); });
   $('#ath-myroom').addEventListener('click', () => { try { openRoom(social.id()); } catch {} });
+  /** 📌 메모 팝업 → 산스장 내 방 메모판으로 바로 가기 */
+  function goMemo() {
+    let me = null; try { me = social.id(); } catch {}
+    if (!me) return;
+    const nav = document.querySelector('[data-view=career]');
+    if (nav) nav.click();
+    view3d = 'team'; render();
+    let tries = 0;
+    const go = () => {
+      const S = window.stage3d;
+      if (S && S.viewRoom && S.roomIds && S.roomIds().includes(me)) { openRoom(me); openMemo(me); }
+      else if (++tries < 25) { setTimeout(go, 200); return; }
+      else openMemo(me);
+      const h = document.querySelector('.ath-hero'); if (h) h.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    };
+    go();
+  }
   if (window.stage3d && window.stage3d.onBooth) window.stage3d.onBooth((id) => (roomId === id ? openMemo(id) : openRoom(id)));
 
   /* 🙏 스쿼트 대불 기도 */
@@ -675,5 +692,5 @@ window.athlete = (() => {
   function summary() { const R = real(); const o = { t: G.track, st: G.stage, s: { u: R.up, l: R.low } }; if (G.order) o.o = G.order; if (G.pw > Date.now()) o.pw = G.pw; return o; }
   const state = () => G;
 
-  return { render, summary, state, restore, draw: drawAthlete, memosChanged: () => { pushMemos(); renderMemoSheet(); if (roomId) roomLabel(roomId); if (!$('#pray-sheet').hidden) renderPray(); } };
+  return { render, summary, state, restore, draw: drawAthlete, goMemo, memosChanged: () => { pushMemos(); renderMemoSheet(); if (roomId) roomLabel(roomId); if (!$('#pray-sheet').hidden) renderPray(); } };
 })();

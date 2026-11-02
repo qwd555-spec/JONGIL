@@ -1421,3 +1421,11 @@ body.gym-full .toast { z-index: 95; }
 .part-btns{display:flex;gap:8px;margin-top:18px}
 .part-btns button{flex:1;height:46px;border-radius:999px;background:var(--layer);font-weight:700}
 .part-btns #part-ok{flex:1.6;background:#7c3aed;color:#fff}
+/* 📌 메모 도착 팝업 */
+.memo-pop{max-width:360px;width:100%;text-align:center}
+.memo-pop-pin{font-size:40px;line-height:1;margin-bottom:6px;animation:pinDrop .5s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes pinDrop{from{transform:translateY(-24px) rotate(-25deg);opacity:0}to{transform:none;opacity:1}}
+.memo-pop h3{margin:0 0 12px;font-size:17px;word-break:keep-all}
+.memo-pop-list{display:flex;flex-direction:column;gap:8px;text-align:left}
+.memo-pop-more{margin:2px 0 0;font-size:12px;opacity:.6;text-align:center}
+.memo-pop #memo-pop-go{flex:1.8;background:#7c3aed;color:#fff}

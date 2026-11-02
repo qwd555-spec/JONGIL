@@ -1917,6 +1917,7 @@ const social = (() => {
     checkWelcome();
     checkIncoming();
     checkCongrats();
+    checkMemoPop();
     cleanOldMeals();
     if (store && myId) { const lb = document.getElementById('login-banner'); if (lb) lb.hidden = true; }
     if (currentView() === 'feed') renderFeed();
@@ -2254,10 +2255,42 @@ const social = (() => {
     congratsQ.sort((a, b) => (b.d > a.d) - (b.d < a.d) || num(b.x.v) - num(a.x.v));
     if (congratsQ.length) showCongrats();
   }
+  /* 📌 누가 내 방 메모판에 메모를 붙이면 바로가기 팝업 */
+  const MEMO_SEEN_KEY = 'gymlog.memoSeen';
+  const memoSeen = () => { try { return +localStorage.getItem(MEMO_SEEN_KEY) || 0; } catch { return 0; } };
+  let memoPopList = [];
+  function checkMemoPop() {
+    if (!store || !myId || !ready || !myNick()) return;
+    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal'].some((q) => { const e = $(q); return e && !e.hidden; });
+    if (busy) return;
+    const from = Math.max(memoSeen(), Date.now() - 3 * 86400000);
+    memoPopList = Object.values(comments).flat()
+      .filter((c) => c.kind === 'memo' && c.to === myId && c.from !== myId && members[c.from] && num(c.at) > from)
+      .sort((a, b) => num(b.at) - num(a.at));
+    if (!memoPopList.length) return;
+    const who = [...new Set(memoPopList.map((c) => nickOf(c.from)))];
+    $('#memo-pop-title').textContent = `${who.slice(0, 2).join(', ')}${who.length > 2 ? ` 외 ${who.length - 2}명` : ''}님이 내 방에 메모를 붙였어요!`;
+    $('#memo-pop-list').innerHTML = memoPopList.slice(0, 3).map((c) => `<div class="memo-item c-${escapeHtml(c.c || 'y')}"><span>${escapeHtml(String(c.text || ''))}</span><small>${escapeHtml(nickOf(c.from))}</small></div>`).join('')
+      + (memoPopList.length > 3 ? `<p class="memo-pop-more">외 ${memoPopList.length - 3}장 더</p>` : '');
+    $('#memo-pop').hidden = false;
+    document.body.classList.add('modal-open');
+  }
+  function closeMemoPop() {
+    const top = memoPopList.reduce((a, c) => Math.max(a, num(c.at)), 0);
+    try { localStorage.setItem(MEMO_SEEN_KEY, String(Math.max(top, memoSeen()))); } catch { /* 없음 */ }
+    $('#memo-pop').hidden = true;
+    document.body.classList.remove('modal-open');
+  }
+  $('#memo-pop-later').addEventListener('click', closeMemoPop);
+  $('#memo-pop .rest-backdrop').addEventListener('click', closeMemoPop);
+  $('#memo-pop-go').addEventListener('click', () => {
+    closeMemoPop();
+    if (window.athlete && window.athlete.goMemo) window.athlete.goMemo();
+  });
   function showCongrats() {
     const c = congratsQ.shift();
     const el = $('#congrats-modal');
-    if (!c) { el.hidden = true; document.body.classList.remove('modal-open'); congratsCur = null; return; }
+    if (!c) { el.hidden = true; document.body.classList.remove('modal-open'); congratsCur = null; setTimeout(checkMemoPop, 300); return; }
     congratsCur = c;
     const nk = nickOf(c.id), when = c.d === todayStr() ? '오늘' : '어제';
     const parts = Object.entries(c.x.p || {}).filter(([, v]) => num(v) > 0).sort((a, b) => b[1] - a[1]);
