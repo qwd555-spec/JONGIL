@@ -467,9 +467,11 @@ window.athlete = (() => {
     $('#photo-bar').hidden = !on; $('#ath-photo').hidden = on; $('#ath-view').hidden = on;
     $('#order-sheet').hidden = true;
     $('#cine-hint').hidden = on;
+    $('.ath-hero.cine').classList.toggle('photo', on);
   }
   $('#ath-photo').addEventListener('click', () => photoMode(true));
   $('#photo-cancel').addEventListener('click', () => photoMode(false));
+  document.querySelectorAll('.photo-zoom button').forEach((b) => b.addEventListener('click', () => window.stage3d.photoAngle(b.dataset.a)));
   let lastPhoto = null;
   $('#photo-shoot').addEventListener('click', () => {
     const url = window.stage3d.snap();

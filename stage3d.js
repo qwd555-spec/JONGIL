@@ -96,9 +96,28 @@ window.stage3d = (() => {
     // 손가락으로 돌리기
     const dom = renderer.domElement;
     dom.style.touchAction = 'pan-y';
-    dom.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw, gy: gymYaw, moved: false }; dom.setPointerCapture(e.pointerId); });
+    const ptrs = new Map();   // 📸 단체사진: 핀치 줌용
+    dom.addEventListener('pointerdown', (e) => {
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (photo && ptrs.size === 2) { const [a, b] = [...ptrs.values()]; photo.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: photo.zoom }; drag = null; return; }
+      drag = { x: e.clientX, y: e.clientY, yaw, gy: gymYaw, moved: false, pan: photo ? photo.pan : 0, tilt: photo ? photo.tilt : 0 };
+      dom.setPointerCapture(e.pointerId);
+    });
     dom.addEventListener('pointermove', (e) => {
+      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (photo && photo.pinch && ptrs.size >= 2) {
+        const [a, b] = [...ptrs.values()];
+        photoZoom(photo.pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / Math.max(20, photo.pinch.d));
+        return;
+      }
       if (!drag) return;
+      if (photo) {   // 한 손가락: 패닝(좌우) · 틸트(위아래)
+        const h = dom.clientHeight || 400, k = (photo.cam.fov * Math.PI / 180) / h;
+        photo.pan = Math.max(-0.7, Math.min(0.7, drag.pan + (e.clientX - drag.x) * k));
+        photo.tilt = Math.max(-0.45, Math.min(0.45, drag.tilt + (e.clientY - drag.y) * k));
+        drag.moved = true;
+        return;
+      }
       if (Math.abs(e.clientX - drag.x) > 6) drag.moved = true;
       if (want && want.team) gymYaw = drag.gy - (e.clientX - drag.x) * 0.008; else { yaw = drag.yaw - (e.clientX - drag.x) * 0.012; yawV = 0; }
     });
@@ -111,8 +130,11 @@ window.stage3d = (() => {
         if (hit) { let o = hit.object; while (o && !o.userData.agent) o = o.parent; if (o) onPick(o.userData.agent); }
       }
       drag = null;
+      if (e && e.pointerId !== undefined) ptrs.delete(e.pointerId);
+      if (photo && ptrs.size < 2) photo.pinch = null;
     };
     dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+    dom.addEventListener('wheel', (e) => { if (!photo) return; e.preventDefault(); photoZoom(photo.zoom * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
     new ResizeObserver(resize).observe(el);
     resize();
     ready = true;
@@ -642,11 +664,29 @@ window.stage3d = (() => {
     a.slot.busy = null; const br = a.slot.bar; if (br && br.position) br.position.y = a.slot.barX !== undefined ? 1.3 : 1.55;
     a.slot = null;
   }
+  // 📸 앵글: 카메라 위치는 고정, 고개만 좌우(패닝)·위아래(틸트), 줌은 화각
+  const PHOTO_EYE = [0, 1.55, 10.6], PHOTO_PITCH0 = Math.atan2(1.5 - 1.55, 10.6 - 2.2);
+  function aimPhoto() {
+    if (!photo) return;
+    const c = photo.cam, yawA = -photo.pan, pitch = PHOTO_PITCH0 + photo.tilt;
+    c.position.set(...PHOTO_EYE);
+    c.lookAt(PHOTO_EYE[0] + Math.sin(yawA) * Math.cos(pitch), PHOTO_EYE[1] + Math.sin(pitch), PHOTO_EYE[2] - Math.cos(yawA) * Math.cos(pitch));
+    c.fov = 34 / photo.zoom; c.updateProjectionMatrix();
+  }
+  function photoZoom(z) { if (!photo) return; photo.zoom = Math.max(0.6, Math.min(3, z)); }
+  function photoAngle(cmd) {
+    if (!photo) return;
+    if (cmd === 'in') photoZoom(photo.zoom * 1.25);
+    else if (cmd === 'out') photoZoom(photo.zoom / 1.25);
+    else if (cmd === 'reset') { photo.pan = 0; photo.tilt = 0; photo.zoom = 1; }
+  }
   function startPhoto() {
     if (!gymScene || !agents.length) return false;
     const cam = new THREE.PerspectiveCamera(34, 4 / 3, 0.1, 260);
     cam.position.set(0, 1.55, 10.6); cam.lookAt(0, 1.5, 2.2);
-    photo = { cam };
+    photo = { cam, pan: 0, tilt: 0, zoom: 1 };
+    aimPhoto();
+    if (renderer) renderer.domElement.style.touchAction = 'none';
     const crew = agents.filter((a) => !a.jail).sort((a, b) => (b.me - a.me) || (b.today - a.today));
     const stand = crew.filter((a) => a.today), sit = crew.filter((a) => !a.today);   // 쉬었음 청년들은 맨 앞 바닥에
     const n = stand.length, frontN = n > 5 ? Math.ceil(n / 2) : n, backN = n - frontN, gap = 1.2;
@@ -673,6 +713,7 @@ window.stage3d = (() => {
   function endPhoto() {
     if (!photo) return;
     photo = null;
+    if (renderer) renderer.domElement.style.touchAction = 'pan-y';
     if (gymScene && gymScene.userData.riser) gymScene.userData.riser.visible = false;
     agents.forEach((a) => { if (a.mode === 'photo') { a.g.position.set(a.g.position.x, 0, a.g.position.z + 0.6); goTo(a, pickTask(a)); } });
   }
@@ -757,6 +798,7 @@ window.stage3d = (() => {
       updateAgents(dt, s);
       if (photo) {
         const w = box.clientWidth || 300, h = box.clientHeight || 360;
+        aimPhoto();
         photo.cam.aspect = w / h; photo.cam.updateProjectionMatrix();
         renderer.render(gymScene, photo.cam);
         return;
@@ -802,5 +844,5 @@ window.stage3d = (() => {
     if (!raf) { t0 = performance.now(); raf = requestAnimationFrame(tick); }
     return true;
   }
-  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, inPhoto: () => !!photo, poses: PHOTO_POSES };
+  return { show, assign, onPick: (fn) => { onPick = fn; }, tasks: TASKS, supported: () => !failed, startPhoto, endPhoto, snap, photoAngle, inPhoto: () => !!photo, poses: PHOTO_POSES };
 })();
