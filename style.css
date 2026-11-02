@@ -1466,3 +1466,9 @@ body.event-bg .chat-bubble.share { box-shadow: inset 3px 0 0 #a855f7, inset 0 0 
 body.event-bg .chat-bar { background: rgba(14,10,24,.86); box-shadow: 0 18px 40px -16px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.08); }
 body.event-bg .chat-share { background: rgba(255,255,255,.08); }
 @media (max-width: 400px) { .tabbar .tab { padding: 0 4px; gap: 4px; } .tabbar .tab-text { font-size: 12px; } }
+/* 안 읽은 톡 개수 */
+.tab-badge { position: absolute; top: -9px; right: -9px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px !important; line-height: 16px !important; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; font-style: normal; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--nav-bg, #fff); }
+body.event-bg .tab-badge { box-shadow: 0 0 0 2px #120d1f; }
+.tab-badge[hidden], .seg-badge[hidden] { display: none; }
+.seg-badge { display: inline-block; margin-left: 5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; font-style: normal; line-height: 18px; text-align: center; vertical-align: 1px; }
+#chat-box[hidden] { display: none; }

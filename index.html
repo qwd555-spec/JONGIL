@@ -319,6 +319,7 @@
         <div id="feed-main" hidden>
           <div class="segmented" id="feed-kind">
             <button data-k="meal" class="active">🍱 식단</button>
+            <button data-k="chat">💬 톡<i class="seg-badge" id="chat-badge" hidden></i></button>
             <button data-k="body">눈바디</button>
           </div>
           <div id="meal-box">
@@ -333,6 +334,17 @@
             </div>
             <div id="meal-grid"></div>
           </div>
+          <div id="chat-box" hidden>
+            <div class="chat-room">
+              <div class="chat-head"><b>💬 운동톡방</b><small id="chat-count"></small></div>
+              <div class="chat-list" id="chat-list"></div>
+            </div>
+            <form class="chat-bar" id="chat-form" autocomplete="off">
+              <button type="button" id="chat-share" class="chat-share" aria-label="오늘 운동 공유" title="오늘 운동 공유">💪</button>
+              <input type="text" id="chat-text" maxlength="300" placeholder="메시지 입력" enterkeyhint="send" />
+              <button type="submit" class="chat-send" aria-label="보내기"><svg class="i"><use href="#i-send"/></svg></button>
+            </form>
+          </div>
           <div id="photo-feed" hidden>
             <div class="part-chips feed-chips" id="feed-chips">
               <button class="chip active" data-src="friends">친구 공유</button>
@@ -341,24 +353,6 @@
             <div class="photo-feed-grid" id="photo-feed-grid"></div>
             <p class="hint center" id="photo-feed-hint"></p>
           </div>
-        </div>
-      </section>
-
-      <!-- 💬 운동톡방 -->
-      <section id="view-chat" class="view">
-        <div class="panel" id="chat-off" hidden>
-          <p class="hint">운동톡방은 닉네임을 등록하고 로그인한 상태에서 쓸 수 있어요.</p>
-        </div>
-        <div id="chat-main" hidden>
-          <div class="chat-room">
-            <div class="chat-head"><b>💬 운동톡방</b><small id="chat-count"></small></div>
-            <div class="chat-list" id="chat-list"></div>
-          </div>
-          <form class="chat-bar" id="chat-form" autocomplete="off">
-            <button type="button" id="chat-share" class="chat-share" aria-label="오늘 운동 공유" title="오늘 운동 공유">💪</button>
-            <input type="text" id="chat-text" maxlength="300" placeholder="메시지 입력" enterkeyhint="send" />
-            <button type="submit" class="chat-send" aria-label="보내기"><svg class="i"><use href="#i-send"/></svg></button>
-          </form>
         </div>
       </section>
 
@@ -865,9 +859,8 @@
   <nav class="tabbar" role="tablist">
     <button class="tab active" data-view="workout" aria-label="운동"><span class="tab-icon"><svg class="i"><use href="#i-day"/></svg><i class="dot" id="day-dot"></i></span><span class="tab-text">운동</span></button>
     <button class="tab" data-view="rank" aria-label="랭킹"><span class="tab-icon"><svg class="i"><use href="#i-trophy"/></svg><i class="dot" id="rank-dot"></i></span><span class="tab-text">랭킹</span></button>
-    <button class="tab" data-view="feed" aria-label="피드"><span class="tab-icon"><svg class="i"><use href="#i-grid"/></svg></span><span class="tab-text">피드</span></button>
+    <button class="tab" data-view="feed" aria-label="피드"><span class="tab-icon"><svg class="i"><use href="#i-grid"/></svg><i class="tab-badge" id="feed-badge" hidden></i></span><span class="tab-text">피드</span></button>
     <button class="tab" data-view="career" aria-label="선수"><span class="tab-icon"><svg class="i"><use href="#i-body"/></svg></span><span class="tab-text">선수</span></button>
-    <button class="tab" data-view="chat" aria-label="운동톡"><span class="tab-icon"><svg class="i"><use href="#i-chat"/></svg><i class="dot" id="chat-dot"></i></span><span class="tab-text">톡</span></button>
   </nav>
 
   <template id="exercise-template">

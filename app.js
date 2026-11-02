@@ -1619,7 +1619,6 @@ function render() {
   else if (v === 'rank') social.render();
   else if (v === 'career' && window.athlete) window.athlete.render();
   else if (v === 'feed') social.renderFeed();
-  else if (v === 'chat') social.renderChat(true);
   else if (v === 'settings') updateGoalNote();
 }
 
@@ -2807,7 +2806,7 @@ const social = (() => {
 
   /* ---- 🍱 식단 피드 · 눈바디 피드 (피드 탭) ---- */
   const MEAL_KEEP_DAYS = 14;
-  let feedKind = 'meal', mealRows = [];
+  let feedKind = 'meal', mealRows = [], chatJump = true;
   function allMeals() {
     return Object.values(comments).flat().filter((c) => c.kind === 'meal' && members[c.from] && typeof c.img === 'string' && c.img.startsWith('data:image/')).sort((a, b) => b.at - a.at);
   }
@@ -2819,6 +2818,9 @@ const social = (() => {
     document.querySelectorAll('#feed-kind button').forEach((b) => b.classList.toggle('active', b.dataset.k === feedKind));
     $('#meal-box').hidden = feedKind !== 'meal';
     $('#photo-feed').hidden = feedKind !== 'body';
+    $('#chat-box').hidden = feedKind !== 'chat';
+    if (feedKind === 'chat') { renderChat(chatJump || window.scrollY < 40); chatJump = false; return; }
+    chatJump = true;
     if (feedKind === 'body') { renderPhotoFeed(); return; }
     // 사람별로 묶고, 가장 최근에 올린 사람이 맨 위 · 사진은 옆으로 쌓이게
     const byWho = new Map();
@@ -2884,24 +2886,26 @@ const social = (() => {
   /** 새 메시지 → 탭 점 + (톡방 밖이면) 토스트 */
   function chatTick() {
     const list = chatMsgs();
-    const inChat = currentView() === 'chat';
-    if (inChat) { renderChat(false); return; }
+    if (inChat()) { renderChat(false); return; }
     const seen = chatSeen();
     const fresh = list.filter((c) => c.from !== myId && num(c.at) > seen);
-    $('#chat-dot').classList.toggle('on', fresh.length > 0);
+    chatBadge(fresh.length);
     const pop = fresh.filter((c) => num(c.at) > chatBoot - 5000 && !chatToasted.has(c.id));
     pop.forEach((c) => chatToasted.add(c.id));
     const last = pop[pop.length - 1];
     if (last) toast(`💬 ${nickOf(last.from)}: ${last.text.slice(0, 40)}`);
   }
+  const inChat = () => currentView() === 'feed' && feedKind === 'chat';
+  /** 안 읽은 톡 개수 → 피드 탭 + 톡 버튼 숫자 (보면 사라짐) */
+  function chatBadge(n) {
+    const t = n > 99 ? '99+' : String(n);
+    for (const id of ['#feed-badge', '#chat-badge']) { const el = $(id); el.textContent = t; el.hidden = !n; }
+  }
   function renderChat(jump) {
-    const off = !store || !myId || !ready || !myNick();
-    $('#chat-off').hidden = !off;
-    $('#chat-main').hidden = off;
-    if (off) return;
+    if (!store || !myId || !ready || !myNick()) return;
     const list = chatMsgs();
     try { localStorage.setItem(CHAT_SEEN_KEY, String(Date.now())); } catch { /* 없음 */ }
-    $('#chat-dot').classList.remove('on');
+    chatBadge(0);
     list.forEach((c) => chatToasted.add(c.id));
     $('#chat-count').textContent = `${Object.values(members).filter((m) => m && m.nick).length}명`;
     const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
