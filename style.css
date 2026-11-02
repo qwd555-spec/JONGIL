@@ -1197,3 +1197,21 @@ body.event-bg .past-banner b { color: #7a4a00; }
 .photo-zoom button { width: 30px; height: 30px; border-radius: 50%; color: #fff; font-size: 17px; font-weight: 800; line-height: 1; }
 .photo-zoom button:active { background: rgba(255,255,255,.2); }
 .ath-hero.cine.photo .cine-bottom, .ath-hero.cine.photo #ath-chapter { opacity: 0; pointer-events: none; }
+/* ⚡ 세트 빠른 입력 · 🔗 슈퍼세트 */
+.set-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
+.set-tools span { font-size: 11.5px; font-weight: 700; color: var(--muted); margin-right: 2px; }
+.set-tools button { height: 30px; padding: 0 10px; border-radius: 999px; background: var(--raised); box-shadow: var(--shadow-raised); font-size: 12.5px; font-weight: 700; }
+.set-tools button:active { transform: scale(.95); }
+.is-closed .set-tools, .is-closed .ss-pick { display: none; }
+.ss-btn { flex: none; padding: 0 12px; border-radius: 12px; background: var(--raised); box-shadow: var(--shadow-raised); font-size: 12.5px; font-weight: 700; }
+.ss-btn.on { color: var(--muted); }
+.ss-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding: 10px; border-radius: 12px; background: var(--raised); }
+.ss-pick small { width: 100%; font-size: 12px; color: var(--muted); }
+.ss-pick button { height: 32px; padding: 0 12px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12.5px; font-weight: 700; }
+.exercise-card.ss { position: relative; border-left: 4px solid var(--ssc, #8b5cf6); }
+.exercise-card.ss-0 { --ssc: #8b5cf6; } .exercise-card.ss-1 { --ssc: #f59e0b; } .exercise-card.ss-2 { --ssc: #10b981; } .exercise-card.ss-3 { --ssc: #ef4444; }
+.exercise-card.ss-more { margin-bottom: 4px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+.exercise-card.ss-cont { margin-top: 0; border-top-left-radius: 6px; border-top-right-radius: 6px; }
+.ss-tag { font-size: 11px; font-weight: 800; color: #fff; background: var(--ssc, #8b5cf6); padding: 2px 7px; border-radius: 999px; }
+.card-actions .rest-btn { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.set-tools .ss-btn { height: 30px; border-radius: 999px; margin-left: auto; }

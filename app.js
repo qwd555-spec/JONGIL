@@ -927,9 +927,11 @@ function renderDay() {
       }
     });
 
+    const strength = !cinfo && !isGolf(ex);
+    const group = ex.ss ? list.filter((e) => e.ss === ex.ss) : [ex];
+    const copyLast = (e) => { const prev = e.sets[e.sets.length - 1]; e.sets.push(isGolf(e) ? { h: num(prev && prev.h) || 18, r: '' } : prev ? { ...prev } : cardioInfo(e) ? { km: '', min: '' } : { w: '', r: '' }); };
     node.querySelector('.add-set').addEventListener('click', () => {
-      const prev = ex.sets[ex.sets.length - 1];
-      ex.sets.push(isGolf(ex) ? { h: num(prev && prev.h) || 18, r: '' } : prev ? { ...prev } : cardioInfo(ex) ? { km: '', min: '' } : { w: '', r: '' });
+      group.forEach(copyLast);   // 슈퍼세트면 묶인 운동 모두 한 세트씩
       save();
       renderDay();
       // 새로 추가된 세트의 무게 입력칸에 포커스
@@ -942,9 +944,104 @@ function renderDay() {
       // 입력 중인 값까지 확실히 저장 후 휴식 타이머 시작
       if (document.activeElement && node.contains(document.activeElement)) document.activeElement.blur();
       save();
+      if (group.length > 1) {   // 🔗 슈퍼세트: 묶음의 마지막 운동을 끝냈을 때만 휴식
+        const at = group.indexOf(ex);
+        if (at < group.length - 1) {
+          const nx = group[at + 1];
+          const card = container.querySelectorAll('.exercise-card')[list.indexOf(nx)];
+          const round = Math.max(1, Math.min(nx.sets.length, ex.sets.filter((x) => num(x.r) > 0).length));
+          toast(`🔗 바로 이어서 ${nx.name} ${round}세트`);
+          card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const row = card?.querySelectorAll('tbody tr')[round - 1];
+          setTimeout(() => row?.querySelector('input[data-k=r]')?.focus({ preventScroll: true }), 350);
+          return;
+        }
+        const round = Math.min(...group.map((e) => e.sets.filter((x) => num(x.r) > 0).length));
+        restTimer.start(`🔗 슈퍼세트 ${round}라운드 완료 · 휴식 중`);
+        return;
+      }
       const done = ex.sets.filter((s) => num(s.r) > 0).length;
       restTimer.start(`${ex.name} ${done}세트 기록 완료 · 휴식 중`);
     });
+
+    if (strength && ex.sets.length) {
+      // ⚡ 빠른 입력: 세트 복사 · 무게 일괄 조정
+      const tools = document.createElement('div');
+      tools.className = 'set-tools';
+      tools.innerHTML = `<span>전체 kg</span>
+        <button type="button" data-w="-2.5">−2.5</button><button type="button" data-w="2.5">+2.5</button><button type="button" data-w="5">+5</button>
+        <button type="button" data-ramp="2.5" title="첫 세트부터 세트마다 +2.5kg">↗ 계단</button>
+        <button type="button" data-copy="3" title="마지막 세트를 3개 더 복사">⧉ +3세트</button>`;
+      tools.querySelectorAll('[data-w]').forEach((b) => b.addEventListener('click', () => {
+        const d = +b.dataset.w;
+        ex.sets.forEach((x) => { if (x.w !== '' && x.w !== undefined || d > 0) x.w = Math.max(0, Math.round((num(x.w) + d) * 100) / 100); });
+        save(); renderDay();
+        toast(`${ex.name} 전체 ${d > 0 ? '+' : ''}${d}kg`);
+      }));
+      tools.querySelector('[data-ramp]').addEventListener('click', () => {
+        const base = num(ex.sets[0].w), st = +tools.querySelector('[data-ramp]').dataset.ramp;
+        ex.sets.forEach((x, i) => { x.w = Math.round((base + st * i) * 100) / 100; });
+        save(); renderDay();
+        toast(`세트마다 +${st}kg (${base} → ${base + st * (ex.sets.length - 1)}kg)`);
+      });
+      tools.querySelector('[data-copy]').addEventListener('click', () => {
+        for (let k = 0; k < 3; k++) group.forEach(copyLast);
+        save(); renderDay();
+        toast(group.length > 1 ? '슈퍼세트 3라운드 추가' : '마지막 세트를 3개 복사했어요');
+      });
+      node.querySelector('.card-actions').before(tools);
+
+      // 🔗 슈퍼세트 묶기 / 풀기
+      const ssBtn = document.createElement('button');
+      ssBtn.type = 'button'; ssBtn.className = 'ss-btn' + (ex.ss ? ' on' : '');
+      ssBtn.textContent = ex.ss ? '🔗 풀기' : '🔗 슈퍼세트';
+      ssBtn.addEventListener('click', () => {
+        if (ex.ss) {
+          const rest = list.filter((e) => e.ss === ex.ss && e !== ex);
+          delete ex.ss;
+          if (rest.length === 1) delete rest[0].ss;
+          save(); renderDay(); return;
+        }
+        const others = list.filter((e) => e !== ex && !cardioInfo(e) && !isGolf(e));
+        if (!others.length) { toast('같이 묶을 운동을 먼저 추가하세요'); return; }
+        let pick = node.querySelector('.ss-pick');
+        if (pick) { pick.remove(); return; }
+        pick = document.createElement('div');
+        pick.className = 'ss-pick';
+        pick.innerHTML = '<small>누구랑 묶을까요? (번갈아 하는 운동)</small>' + others.map((e) => `<button type="button" data-i="${list.indexOf(e)}">${escapeHtml(e.name)}</button>`).join('');
+        pick.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+          const other = list[+b.dataset.i];
+          const joinOther = !!other.ss && !ex.ss;
+          const id = other.ss || ex.ss || uid();
+          // 묶음은 붙어 있게: 상대(또는 나)를 묶음 마지막 바로 뒤로 이동
+          const mover = joinOther ? ex : other;
+          if (!joinOther) ex.ss = id;
+          list.splice(list.indexOf(mover), 1);
+          const lastIdx = list.reduce((m, e, i) => (e.ss === id ? i : m), -1);
+          mover.ss = id;
+          list.splice(lastIdx + 1, 0, mover);
+          // 세트 수 맞추기 (모자란 쪽은 마지막 세트 복사)
+          const mates = list.filter((e) => e.ss === id), n = Math.max(...mates.map((e) => e.sets.length));
+          mates.forEach((e) => { while (e.sets.length < n) copyLast(e); });
+          save(); renderDay();
+          toast(`🔗 ${mates.map((e) => e.name).join(' + ')} 슈퍼세트`);
+        }));
+        node.querySelector('.card-actions').after(pick);
+      });
+      tools.appendChild(ssBtn);
+    }
+    if (ex.ss && group.length > 1) {
+      const groups = [...new Set(list.filter((e) => e.ss).map((e) => e.ss))].filter((g) => list.filter((e) => e.ss === g).length > 1);
+      const letter = String.fromCharCode(65 + Math.max(0, groups.indexOf(ex.ss)));
+      const at = group.indexOf(ex);
+      node.classList.add('ss', `ss-${groups.indexOf(ex.ss) % 4}`);
+      if (at > 0) node.classList.add('ss-cont');
+      if (at < group.length - 1) node.classList.add('ss-more');
+      const tag = document.createElement('span');
+      tag.className = 'ss-tag'; tag.textContent = `🔗 ${letter}${at + 1}`;
+      node.querySelector('.exercise-meta').prepend(tag);
+      node.querySelector('.rest-btn').lastChild.textContent = at < group.length - 1 ? `기록 → ${group[at + 1].name}` : '기록하고 라운드 휴식';
+    }
 
     node.querySelector('.delete-exercise').addEventListener('click', async () => {
       if (!(await askConfirm(`"${ex.name}" 운동을 삭제할까요?`, { okText: '삭제', danger: true }))) return;
