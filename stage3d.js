@@ -413,6 +413,7 @@ window.stage3d = (() => {
       { from: '2026-11-04', src: 'billboard3.jpg', l1: '당 충전도', l2: '훈련이다', sub: '오늘의 보충제: 사탕 🍭 — 해발 1,000m' },
       { from: '2026-11-05', src: 'billboard4.jpg', l1: '관리도', l2: '운동이다', sub: '오늘의 셀프케어 🧖 — 해발 1,000m' },
       { from: '2026-11-06', src: 'billboard5.jpg', l1: '포즈도', l2: '근력이다', sub: '오늘의 브이 ✌️ — 해발 1,000m' },
+      { from: '2026-11-07', src: 'billboard6.jpg', l1: '무표정도', l2: '집중이다', sub: '오늘의 출근길 🚇 — 해발 1,000m' },
     ];
     const today = typeof todayStr === 'function' ? todayStr() : '';
     const BB = BBS.filter((b) => b.from <= today).pop();
