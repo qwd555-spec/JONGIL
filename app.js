@@ -444,6 +444,18 @@ $('#move-day-date').addEventListener('change', async (e) => {
 });
 
 /** 운동 하나를 기본 세트(지난번 기록 → 없으면 fallback)로 만들기 */
+/** 🙏 기도 스쿼트를 오늘 운동에 기록 (맨몸 스쿼트 한 세트) */
+function addPrayerSquats(n) {
+  const d = todayStr();
+  if (isClosed(d) || !(n > 0)) return false;
+  db[d] = db[d] || [];
+  let ex = db[d].find((e) => e.name === '맨몸 스쿼트' && e.pray);
+  if (!ex) { ex = { id: uid(), name: '맨몸 스쿼트', sets: [], pray: true }; db[d].push(ex); }
+  ex.sets.push({ w: '', r: n });
+  save();
+  if (state.day === d) renderDay();
+  return true;
+}
 function makeEntry(name, fallbackSets) {
   const last = findLastExercise(name, state.day);
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
@@ -1927,7 +1939,7 @@ const social = (() => {
   const periodLabel = () => ({ week: '이번 주', month: '이번 달', all: '전체 기간' }[period]);
 
   function allComments() {
-    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal' && c.kind !== 'fcmt' && c.kind !== 'memo').sort((a, b) => b.at - a.at);
+    return Object.values(comments).flat().filter((c) => members[c.from] && c.kind !== 'meal' && c.kind !== 'fcmt' && c.kind !== 'memo' && c.kind !== 'pray').sort((a, b) => b.at - a.at);
   }
   function relTime(t) {
     const s = Math.max(0, (Date.now() - t) / 1000);
@@ -2732,6 +2744,10 @@ const social = (() => {
       Object.values(out).forEach((l) => l.sort((a, b) => b.at - a.at));
       return out;
     },
+    // 🙏 스쿼트 대불 기도: [{who, text, n, at, mine}] 최신순
+    prayers: () => Object.values(comments).flat().filter((c) => c.kind === 'pray' && members[c.from])
+      .map((c) => ({ id: c.id, who: c.from === myId ? '나' : nickOf(c.from), text: String(c.text || ''), n: num(c.n), at: num(c.at), mine: c.from === myId })).sort((a, b) => b.at - a.at),
+    addPrayer: async (text, n) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to: '__pray', kind: 'pray', text: String(text).slice(0, 40), n, at: Date.now() }); },
     addMemo: async (to, text, c) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to, kind: 'memo', text: String(text).slice(0, 40), c, at: Date.now() }); },
     delMemo: async (id) => { await store.doc(`comments/${myId}/items/${id}`).delete(); }, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id),
     focus: (id) => { try { return todayFocus(id); } catch { return null; } },

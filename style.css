@@ -1264,3 +1264,27 @@ body.gym-full .toast { z-index: 95; }
 .room-acts { display: flex; gap: 6px; }
 .room-acts button { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 800; color: #fff; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.22); }
 .order-btns button.on { background: #fff; color: #111; }
+
+/* 🙏 스쿼트 대불 기도 */
+.ath-pray { position: absolute; left: 16px; top: 144px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 800; color: #1a1205; background: linear-gradient(135deg, #f7d774, #d9ab3c); box-shadow: 0 4px 14px rgba(217,171,60,.45); z-index: 4; }
+.ath-pray[hidden] { display: none; }
+.ath-hero.cine.full .ath-pray { top: calc(env(safe-area-inset-top, 0px) + 94px); }
+.pray-sheet .pray-rule { display: block; margin: 4px 0 10px; font-size: 12px; color: rgba(255,255,255,.65); }
+.pray-sheet input { width: 100%; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; font-size: 14px; }
+.pray-goal { display: flex; gap: 6px; margin: 10px 0; }
+.pray-goal button { flex: 1; height: 32px; border-radius: 999px; background: rgba(255,255,255,.1); color: #fff; font-weight: 700; font-size: 12.5px; }
+.pray-goal button.on { background: #f7d774; color: #1a1205; }
+.pray-tap { width: 100%; height: 96px; border-radius: 20px; background: linear-gradient(135deg, #f7d774, #d9ab3c); color: #1a1205; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.pray-tap b { font-size: 40px; font-weight: 900; line-height: 1; }
+.pray-tap small { font-size: 12px; font-weight: 700; opacity: .75; margin-top: 4px; }
+.pray-tap:active { transform: scale(.97); }
+.pray-tap.done { box-shadow: 0 0 0 3px #fff, 0 0 26px rgba(247,215,116,.9); }
+.pray-row { display: flex; gap: 6px; margin-top: 8px; }
+.pray-row button { height: 38px; padding: 0 12px; border-radius: 10px; background: rgba(255,255,255,.1); color: #fff; font-weight: 700; }
+.pray-row .primary { flex: 1; background: #fff; color: #111; font-weight: 800; }
+.pray-list { margin-top: 10px; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.pray-sum { margin: 0 0 4px; font-size: 12.5px; color: rgba(255,255,255,.75); }
+.pray-sum b { color: #f7d774; }
+.pray-item { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; color: #fff; }
+.pray-item span { flex: 1; min-width: 0; color: rgba(255,255,255,.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pray-item small { color: #f7d774; font-weight: 800; }

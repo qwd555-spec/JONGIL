@@ -363,6 +363,16 @@
           </div>
           <button type="button" class="ath-enter" id="ath-enter" hidden>⛶ 들어가기</button>
           <button type="button" class="ath-myroom" id="ath-myroom" hidden>🏠 내 방</button>
+          <button type="button" class="ath-pray" id="ath-pray" hidden>🙏 기도</button>
+          <div class="order-sheet pray-sheet" id="pray-sheet" hidden>
+            <div class="order-head"><b>🙏 스쿼트 대불께 기도</b><button type="button" id="pray-close" aria-label="닫기">✕</button></div>
+            <small class="pray-rule">기도는 스쿼트로 올려요 · 한 번 앉을 때마다 한 배</small>
+            <input type="text" id="pray-wish" maxlength="40" placeholder="소원 한 줄 (예: 벤치 100 가게 해주세요)" />
+            <div class="pray-goal" id="pray-goal"><button type="button" data-g="10">10배</button><button type="button" data-g="30">30배</button><button type="button" data-g="108" class="on">108배</button></div>
+            <button type="button" class="pray-tap" id="pray-tap"><b id="pray-n">0</b><small id="pray-of">/ 108 · 앉았다 일어나면 누르기</small></button>
+            <div class="pray-row"><button type="button" id="pray-minus">−1</button><button type="button" id="pray-plus10">+10</button><button type="button" id="pray-done" class="primary">기도 올리기</button></div>
+            <div class="pray-list" id="pray-list"></div>
+          </div>
           <div class="room-bar" id="room-bar" hidden>
             <div class="room-acts"><button type="button" id="room-memo">📌 메모 보기·붙이기</button><button type="button" id="room-exit">✕ 나오기</button></div>
             <div class="room-nav">

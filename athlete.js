@@ -328,6 +328,8 @@ window.athlete = (() => {
     $('#ath-photo').hidden = !(view3d === 'team' && team.length >= 2) || (window.stage3d && window.stage3d.inPhoto());
     $('#ath-enter').hidden = !(view3d === 'team' && team.length >= 2);
     $('#ath-myroom').hidden = !(view3d === 'team' && team.length >= 2) || !!roomId;
+    $('#ath-pray').hidden = !(view3d === 'team' && team.length >= 2) || !!roomId;
+    if (view3d !== 'team') $('#pray-sheet').hidden = true;
     if (roomId && view3d !== 'team') closeRoom();
     if (roomId) { $('#ath-view').hidden = true; $('#ath-photo').hidden = true; }
     if (!(view3d === 'team' && team.length >= 2) && gymFull) setFull(false);
@@ -522,7 +524,7 @@ window.athlete = (() => {
     if (!S.viewRoom(id)) return;
     roomId = id; roomLabel(id);
     $('#order-sheet').hidden = true; $('#memo-sheet').hidden = true; memoFor = null;
-    $('#room-bar').hidden = false; $('#ath-view').hidden = true; $('#ath-photo').hidden = true; $('#ath-myroom').hidden = true;
+    $('#room-bar').hidden = false; $('#ath-view').hidden = true; $('#ath-photo').hidden = true; $('#ath-myroom').hidden = true; $('#ath-pray').hidden = true; $('#pray-sheet').hidden = true;
   }
   function closeRoom() {
     if (!roomId) return;
@@ -542,6 +544,39 @@ window.athlete = (() => {
   $('#room-memo').addEventListener('click', () => { if (roomId) openMemo(roomId); });
   $('#ath-myroom').addEventListener('click', () => { try { openRoom(social.id()); } catch {} });
   if (window.stage3d && window.stage3d.onBooth) window.stage3d.onBooth((id) => (roomId === id ? openMemo(id) : openRoom(id)));
+
+  /* 🙏 스쿼트 대불 기도 */
+  let prayN = 0, prayGoal = 108;
+  function renderPray() {
+    $('#pray-n').textContent = prayN;
+    $('#pray-of').textContent = `/ ${prayGoal} · 앉았다 일어나면 누르기`;
+    $('#pray-tap').classList.toggle('done', prayN >= prayGoal);
+    let list = []; try { list = social.prayers(); } catch {}
+    const today = todayStr(), tToday = list.filter((p) => toStr(new Date(p.at)) === today).reduce((a, p) => a + p.n, 0);
+    $('#pray-list').innerHTML = `<p class="pray-sum">오늘 산스장 기도 <b>${tToday.toLocaleString()}배</b></p>` + (list.slice(0, 8).map((p) => `<div class="pray-item"><b>${escapeHtml(p.who)}</b><span>${escapeHtml(p.text || '(무언의 기도)')}</span><small>${p.n}배</small></div>`).join('') || '<p class="memo-empty">아직 아무도 기도하지 않았어요</p>');
+  }
+  function openPray() {
+    $('#order-sheet').hidden = true; $('#memo-sheet').hidden = true;
+    renderPray(); $('#pray-sheet').hidden = false;
+  }
+  $('#ath-pray').addEventListener('click', openPray);
+  $('#pray-close').addEventListener('click', () => { $('#pray-sheet').hidden = true; });
+  document.querySelectorAll('#pray-goal button').forEach((b) => b.addEventListener('click', () => {
+    prayGoal = +b.dataset.g; document.querySelectorAll('#pray-goal button').forEach((x) => x.classList.toggle('on', x === b)); renderPray();
+  }));
+  $('#pray-tap').addEventListener('click', () => { prayN++; renderPray(); if (prayN === prayGoal) toast(`🙏 ${prayGoal}배 완성! 기도 올리기를 눌러요`); });
+  $('#pray-minus').addEventListener('click', () => { prayN = Math.max(0, prayN - 1); renderPray(); });
+  $('#pray-plus10').addEventListener('click', () => { prayN += 10; renderPray(); });
+  $('#pray-done').addEventListener('click', async () => {
+    if (!prayN) { toast('스쿼트를 한 번 이상 해야 기도가 올라가요'); return; }
+    const wish = $('#pray-wish').value.trim(), n = prayN;
+    const logged = typeof addPrayerSquats === 'function' && addPrayerSquats(n);
+    try { await social.addPrayer(wish, n); } catch {}
+    try { const me = social.id(); if (window.stage3d) window.stage3d.assign(me, 'pray', false); } catch {}
+    toast(`🙏 ${n}배 올렸어요${logged ? ' · 오늘 운동에 맨몸 스쿼트로 기록' : ''}`);
+    prayN = 0; $('#pray-wish').value = ''; renderPray();
+  });
+  if (window.stage3d && window.stage3d.onStatue) window.stage3d.onStatue(openPray);
 
   /* ⛶ 산스장 들어가기 (전체화면) */
   let gymFull = false;
@@ -566,7 +601,7 @@ window.athlete = (() => {
     const S = window.stage3d; if (!S) return;
     if (on) { if (!S.startPhoto()) { toast('산스장이 아직 준비 중이에요'); return; } }
     else S.endPhoto();
-    $('#photo-bar').hidden = !on; $('#ath-photo').hidden = on; $('#ath-view').hidden = on; $('#ath-myroom').hidden = on;
+    $('#photo-bar').hidden = !on; $('#ath-photo').hidden = on; $('#ath-view').hidden = on; $('#ath-myroom').hidden = on; $('#ath-pray').hidden = on; $('#pray-sheet').hidden = true;
     $('#order-sheet').hidden = true;
     $('#cine-hint').hidden = on;
     $('.ath-hero.cine').classList.toggle('photo', on);
@@ -629,5 +664,5 @@ window.athlete = (() => {
   function summary() { const R = real(); const o = { t: G.track, st: G.stage, s: { u: R.up, l: R.low } }; if (G.order) o.o = G.order; return o; }
   const state = () => G;
 
-  return { render, summary, state, restore, draw: drawAthlete, memosChanged: () => { pushMemos(); renderMemoSheet(); if (roomId) roomLabel(roomId); } };
+  return { render, summary, state, restore, draw: drawAthlete, memosChanged: () => { pushMemos(); renderMemoSheet(); if (roomId) roomLabel(roomId); if (!$('#pray-sheet').hidden) renderPray(); } };
 })();
