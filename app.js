@@ -2332,3 +2332,17 @@ const nightly = (() => {
 })();
 
 cloud.init();
+
+/* ---------- 🎉 이벤트 배경 ---------- */
+(() => {
+  const KEY = 'gymlog.eventBg';
+  let on = true;
+  try { on = localStorage.getItem(KEY) !== 'off'; } catch {}
+  const apply = () => { document.body.classList.toggle('event-bg', on); $('#event-on').checked = on; };
+  $('#event-on').addEventListener('change', (e) => {
+    on = e.target.checked;
+    try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch {}
+    apply();
+  });
+  apply();
+})();
