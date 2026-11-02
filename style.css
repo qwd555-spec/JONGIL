@@ -1127,3 +1127,25 @@ body.event-bg .past-banner b { color: #7a4a00; }
 .order-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .order-btns button { height: 44px; border-radius: 14px; background: rgba(255,255,255,.1); color: #fff; font-size: 12.5px; font-weight: 700; }
 .order-btns button:active { background: var(--pink); }
+
+/* 🎉 친구 기록 축하 팝업 */
+.congrats { z-index: 60; }
+.congrats .rest-backdrop { background: rgba(20,16,30,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.congrats-sheet { text-align: center; padding: 26px 20px 20px; width: min(360px, 100%); }
+.congrats-sheet.pop { animation: congratsPop .45s cubic-bezier(.2,1.4,.4,1); }
+@keyframes congratsPop { from { transform: scale(.85) translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+.congrats-burst { font-size: 46px; line-height: 1; animation: congratsWiggle 1.2s ease-in-out infinite; }
+@keyframes congratsWiggle { 0%,100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.12); } }
+.congrats-count { display: block; margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.congrats-sheet h3 { margin: 6px 0 4px; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; word-break: keep-all; }
+.congrats-sub { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+.congrats-parts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 16px; }
+.congrats-parts span { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--raised); box-shadow: var(--shadow-raised); }
+.congrats-main { width: 100%; height: 50px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 16px; font-weight: 800; }
+.congrats-or { margin: 14px 0 8px; font-size: 12px; color: var(--muted); }
+.congrats-chips { display: flex; flex-direction: column; gap: 6px; }
+.congrats-chips button { padding: 10px 12px; border-radius: 12px; background: var(--raised); box-shadow: var(--shadow-raised); font-size: 13.5px; text-align: left; }
+.congrats-form { display: flex; gap: 6px; margin-top: 8px; }
+.congrats-form input { flex: 1; min-width: 0; height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line, rgba(0,0,0,.12)); background: var(--raised); font-size: 14px; color: inherit; }
+.congrats-form button { padding: 0 14px; border-radius: 12px; background: var(--raised); box-shadow: var(--shadow-raised); font-weight: 700; font-size: 13.5px; }
+.congrats button:disabled { opacity: .5; }

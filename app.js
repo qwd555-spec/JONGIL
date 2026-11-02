@@ -1645,6 +1645,7 @@ const social = (() => {
     updateDot();
     checkWelcome();
     checkIncoming();
+    checkCongrats();
     cleanOldMeals();
     if (store && myId) { const lb = document.getElementById('login-banner'); if (lb) lb.hidden = true; }
     if (currentView() === 'feed') renderFeed();
@@ -1928,6 +1929,83 @@ const social = (() => {
     try { localStorage.setItem(CHEER_SEEN, String(cheerSeen)); } catch {}
     toast(`${nickOf(last.from)}: ${String(last.text).slice(0, 40)}${fresh.length > 1 ? ` 외 ${fresh.length - 1}개` : ''}`);
   }
+
+  /* ---- 🎉 친구가 운동 기록 남기면 첫 화면에 축하 팝업 (축하/피드백해야 닫힘) ---- */
+  const CONGRATS_KEY = 'gymlog.congrats';
+  let congratsArmed = true, congratsQ = [], congratsCur = null;
+  const congratsDone = () => { try { return JSON.parse(localStorage.getItem(CONGRATS_KEY) || '{}') || {}; } catch { return {}; } };
+  function markCongrats(key) {
+    const d = congratsDone(); d[key] = Date.now();
+    const cut = Date.now() - 5 * 864e5;
+    for (const k of Object.keys(d)) if (d[k] < cut) delete d[k];
+    try { localStorage.setItem(CONGRATS_KEY, JSON.stringify(d)); } catch {}
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { congratsArmed = true; setTimeout(checkCongrats, 1200); } });
+  function checkCongrats() {
+    if (!congratsArmed || !store || !myId || !ready || !myNick()) return;
+    if (!$('#welcome-modal').hidden || !$('#congrats-modal').hidden) return;
+    congratsArmed = false;
+    const t = todayStr(), y = addDays(t, -1), done = congratsDone();
+    congratsQ = [];
+    for (const id of Object.keys(members)) {
+      if (id === myId || !members[id].nick) continue;
+      for (const d of [t, y]) {
+        const x = friendDay(members[id], d);
+        if (!x || !(num(x.v) > 0)) continue;
+        if (!done[`${id}|${d}`]) congratsQ.push({ id, d, x });
+        break;   // 가장 최근 날 하나만
+      }
+    }
+    congratsQ.sort((a, b) => (b.d > a.d) - (b.d < a.d) || num(b.x.v) - num(a.x.v));
+    if (congratsQ.length) showCongrats();
+  }
+  function showCongrats() {
+    const c = congratsQ.shift();
+    const el = $('#congrats-modal');
+    if (!c) { el.hidden = true; document.body.classList.remove('modal-open'); congratsCur = null; return; }
+    congratsCur = c;
+    const nk = nickOf(c.id), when = c.d === todayStr() ? '오늘' : '어제';
+    const parts = Object.entries(c.x.p || {}).filter(([, v]) => num(v) > 0).sort((a, b) => b[1] - a[1]);
+    const top = parts[0] ? parts[0][0] : '';
+    const key = /풋살|축구/.test((c.x.n || []).join(' ')) ? '축구' : (CHEERS[armPart(top)] ? armPart(top) : '기타');
+    c.focus = top ? `${top} ` : '';
+    $('#congrats-title').textContent = `${nk}님이 ${when} 운동 기록을 남겼어요!`;
+    $('#congrats-sub').textContent = `총 ${fmtKg(num(c.x.v))}${(c.x.n || []).length ? ` · ${(c.x.n || []).slice(0, 3).join(', ')}${c.x.n.length > 3 ? ` 외 ${c.x.n.length - 3}개` : ''}` : ''}`;
+    $('#congrats-parts').innerHTML = parts.slice(0, 4).map(([p, v]) => `<span>${escapeHtml(p)} <b>${fmtKg(num(v))}</b></span>`).join('');
+    $('#congrats-count').textContent = congratsQ.length ? `🎉 축하할 기록 ${congratsQ.length + 1}개` : '🎉 새 기록';
+    const pool = CHEERS[key] || CHEERS['기타'];
+    const start = hashStr(c.id + c.d) % pool.length;
+    $('#congrats-chips').innerHTML = [0, 1, 2].map((i) => pool[(start + i) % pool.length]).filter((v, i, a) => a.indexOf(v) === i)
+      .map((m) => `<button type="button" data-msg="${escapeHtml(m)}">“${escapeHtml(m)}”</button>`).join('');
+    $('#congrats-chips').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => sendCongrats(`👍 ${b.dataset.msg}`)));
+    $('#congrats-text').value = '';
+    el.querySelector('.congrats-sheet').classList.remove('pop'); void el.offsetWidth; el.querySelector('.congrats-sheet').classList.add('pop');
+    el.hidden = false; document.body.classList.add('modal-open');
+  }
+  async function sendCongrats(text) {
+    const c = congratsCur; if (!c) return;
+    const btns = $('#congrats-modal').querySelectorAll('button');
+    btns.forEach((b) => (b.disabled = true));
+    try {
+      await store.collection(`comments/${myId}/items`).add({ to: c.id, text, at: Date.now() });
+      toast(`${nickOf(c.id)}님에게 보냈어요 🎉`);
+    } catch (e) {
+      toast(e && e.code === 'invalid_argument' ? '보낼 권한이 없어요 (편집자로 초대받아야 해요)' : '보내지 못했어요');
+    }
+    markCongrats(`${c.id}|${c.d}`);
+    btns.forEach((b) => (b.disabled = false));
+    showCongrats();
+  }
+  $('#congrats-go').addEventListener('click', () => {
+    const c = congratsCur; if (!c) return;
+    sendCongrats(`🎉 축하해! ${c.d === todayStr() ? '오늘' : '어제'} 총 ${fmtKg(num(c.x.v))} 미쳤다 👏`);
+  });
+  $('#congrats-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = $('#congrats-text').value.trim();
+    if (!v) { $('#congrats-text').focus(); return; }
+    sendCongrats(`💬 ${v}`);
+  });
 
   /* ---- 주간 · 월간 왕 ---- */
   let awPeriod = 'week';

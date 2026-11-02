@@ -602,6 +602,25 @@
     </div>
   </div>
 
+  <!-- 친구 운동 기록 축하 팝업 (첫 진입) -->
+  <div id="congrats-modal" class="rest-modal congrats" hidden role="dialog" aria-modal="true" aria-labelledby="congrats-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet congrats-sheet">
+      <div class="congrats-burst" aria-hidden="true">🎉</div>
+      <small class="congrats-count" id="congrats-count"></small>
+      <h3 id="congrats-title"></h3>
+      <p class="congrats-sub" id="congrats-sub"></p>
+      <div class="congrats-parts" id="congrats-parts"></div>
+      <button type="button" class="congrats-main" id="congrats-go">🎉 축하하기</button>
+      <p class="congrats-or">또는 한마디 피드백</p>
+      <div class="congrats-chips" id="congrats-chips"></div>
+      <form class="congrats-form" id="congrats-form" autocomplete="off">
+        <input type="text" id="congrats-text" maxlength="80" placeholder="직접 한마디 남기기" enterkeyhint="send" />
+        <button type="submit">보내기</button>
+      </form>
+    </div>
+  </div>
+
   <div id="routine-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="routine-title">
     <div class="rest-backdrop"></div>
     <div class="rest-sheet routine-sheet">
