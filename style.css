@@ -954,3 +954,42 @@ body.event-bg .ath-mate, body.event-bg .track-opt { background: rgba(255,255,255
 .rank-name .live-dot { margin-right: 0; }
 body.event-bg .cheer-card { background: rgba(255,255,255,.08); }
 body.event-bg .cheer-msg, body.event-bg .cheer-btns button { background: rgba(255,255,255,.08); color: var(--text); }
+/* 선수 키우기 v2 — 선택지 */
+.ath-vp { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; padding: 12px 16px; margin-bottom: 12px; border-radius: 18px; background: var(--ink); color: #fff; font-size: 13px; }
+.ath-vp b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.ath-vp small { flex-basis: 100%; font-size: 11.5px; color: rgba(255,255,255,.6); }
+.ath-choices { display: flex; flex-direction: column; gap: 8px; }
+.ath-opt { position: relative; display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 14px 92px 14px 16px; border-radius: 18px; background: var(--raised); box-shadow: var(--shadow-raised); }
+.ath-opt:active { transform: scale(.98); }
+.ath-opt:disabled { opacity: .5; }
+.ath-opt-t { font-size: 15.5px; font-weight: 800; letter-spacing: -0.02em; }
+.ath-opt-d { font-size: 12.5px; color: var(--muted); }
+.ath-opt-fx { font-size: 12px; font-weight: 700; color: #1f7a3a; margin-top: 2px; }
+.ath-opt-cost { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 11.5px; font-weight: 800; padding: 6px 10px; border-radius: 999px; background: var(--layer); }
+.ath-opt.gate { background: var(--ink); color: #fff; }
+.ath-opt.gate .ath-opt-d { color: rgba(255,255,255,.65); }
+.ath-opt.gate .ath-opt-fx { color: var(--pink); }
+.ath-opt.gate .ath-opt-cost { background: rgba(255,255,255,.15); color: #fff; }
+.ath-opt.event .ath-opt-fx { color: #b45309; }
+.ath-result { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; margin-bottom: 12px; border-radius: 18px; background: #f0fdf4; box-shadow: inset 0 0 0 1.5px #86efac; }
+.ath-result b { font-size: 15px; }
+.ath-result span { font-size: 12.5px; color: #166534; font-weight: 700; }
+.ath-result.pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+@keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+.ath-stat { grid-template-columns: 64px 1fr 44px; }
+.ath-stat-bar { position: relative; overflow: visible; }
+.ath-stat-bar > span { background: var(--ink) !important; }
+.ath-stat.ok .ath-stat-bar > span { background: #16a34a !important; }
+.ath-stat-bar i { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--pink); }
+.ath-stat-lv small { font-size: 10px; color: #16a34a; margin-left: 2px; }
+.ath-fans { margin: 4px 2px 0; font-size: 12px; color: var(--muted); }
+.ath-log { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.ath-log div { display: flex; flex-direction: column; font-size: 12.5px; }
+.ath-log b { font-weight: 700; }
+.ath-log span { color: var(--muted); font-size: 11.5px; }
+.ath-legend { text-align: center; font-weight: 700; margin: 8px 0; }
+.ath-team { grid-template-columns: repeat(4, 1fr); }
+body.event-bg .ath-opt { background: rgba(255,255,255,.08); color: var(--text); }
+body.event-bg .ath-opt.gate, body.event-bg .ath-vp { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+body.event-bg .ath-result { background: rgba(34,197,94,.12); }
+body.event-bg .ath-result b { color: var(--text); }
