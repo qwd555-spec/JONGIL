@@ -635,7 +635,7 @@ window.stage3d = (() => {
   let photo = null;
   const PHOTO_POSES = {
     '가슴': '💪 갑빠 자랑', '등': '🦅 광배 펼치기', '하체': '🦵 허벅지 자랑', '어깨': '🙌 어깨 만세',
-    '팔': '💪 더블 바이셉스', '유산소': '🏃 질주 포즈', '축구': '⚽ 슈팅 포즈', '': '✌️ 브이',
+    '팔': '💪 더블 바이셉스', '유산소': '🏃 질주 포즈', '축구': '⚽ 슈팅 포즈', '': '✌️ 브이', rest: '🫠 쉬었음 청년',
   };
   function release(a) {
     if (!a.slot) return;
@@ -648,26 +648,26 @@ window.stage3d = (() => {
     cam.position.set(0, 1.55, 10.6); cam.lookAt(0, 1.5, 2.2);
     photo = { cam };
     const crew = agents.filter((a) => !a.jail).sort((a, b) => (b.me - a.me) || (b.today - a.today));
-    const n = crew.length, frontN = n > 5 ? Math.ceil(n / 2) : n, backN = n - frontN, gap = 1.2;
-    // 가운데부터 좌우로 채우기 (나는 맨 앞 가운데)
-    const row = (cnt) => { const xs = []; for (let i = 0; i < cnt; i++) xs.push((i - (cnt - 1) / 2) * gap); return xs.sort((a, b) => Math.abs(a) - Math.abs(b)); };
-    const fx = row(frontN), bx = row(backN).map((x) => x + (backN === frontN ? gap / 2 : 0));
+    const stand = crew.filter((a) => a.today), sit = crew.filter((a) => !a.today);   // 쉬었음 청년들은 맨 앞 바닥에
+    const n = stand.length, frontN = n > 5 ? Math.ceil(n / 2) : n, backN = n - frontN, gap = 1.2;
+    // 가운데부터 좌우로 채우기 (나는 가운데)
+    const row = (cnt, g = gap) => { const xs = []; for (let i = 0; i < cnt; i++) xs.push((i - (cnt - 1) / 2) * g); return xs.sort((a, b) => Math.abs(a) - Math.abs(b)); };
+    const fx = row(frontN), bx = row(backN).map((x) => x + (backN === frontN ? gap / 2 : 0)), sx = row(sit.length, 1.05);
     if (!gymScene.userData.riser) {
       const r = new THREE.Mesh(new THREE.BoxGeometry(7, 0.6, 1.0), new THREE.MeshStandardMaterial({ color: 0x8a5a34, roughness: 0.85 }));
       r.position.set(0, 0.3, 1.45); r.castShadow = true; r.receiveShadow = true; gymScene.add(r); gymScene.userData.riser = r;
     }
     gymScene.userData.riser.visible = backN > 0;
     if (backN > 0) { gymScene.userData.riser.scale.x = Math.max(0.4, (backN * gap + 0.8) / 7); gymScene.userData.riser.position.x = backN === frontN ? gap / 2 : 0; }
-    crew.forEach((a, i) => {
+    const place = (a, x, y, z, pk) => {
       release(a);
-      const back = i >= frontN;
-      a.g.position.set(back ? bx[i - frontN] : fx[i], back ? 0.6 : 0, back ? 1.45 : 2.95);
-      a.g.rotation.y = 0;
-      a.mode = 'photo';
-      a.pk = PHOTO_POSES[a.focus] && a.today ? a.focus : '';
-      a.tagSub(PHOTO_POSES[a.pk]);
-      if (a.tag) { a.tag.scale.multiplyScalar(0.5); a.tag.position.y = a.fig.userData.top * 0.82 + 0.32; }
-    });
+      a.g.position.set(x, y, z); a.g.rotation.y = 0;
+      a.mode = 'photo'; a.pk = pk;
+      a.tagSub(PHOTO_POSES[pk]);
+      if (a.tag) { a.tag.scale.multiplyScalar(0.5); a.tag.position.y = a.fig.userData.top * 0.82 + (pk === 'rest' ? -0.7 : 0.32); }
+    };
+    stand.forEach((a, i) => { const back = i >= frontN; place(a, back ? bx[i - frontN] : fx[i], back ? 0.6 : 0, back ? 1.45 : 2.95, PHOTO_POSES[a.focus] ? a.focus : ''); });
+    sit.forEach((a, i) => place(a, sx[i], 0, 4.15, 'rest'));
     return true;
   }
   function endPhoto() {
@@ -713,6 +713,14 @@ window.stage3d = (() => {
         rig.legs[0].rotation.x = -1.15 - flex * 2; rig.arms.forEach((r) => { r.rotation.z = side(r) * 1.1; });
         f.rotation.x = -0.12;
         break;
+      case 'rest': {  // 🫠 운동 쉬었음 청년: 바닥에 주저앉아 축 처짐
+        const sigh = Math.sin(t * 0.8) * 0.04;
+        f.position.y = -0.74; f.position.z = -0.1;
+        f.rotation.x = 0.42 + sigh;
+        rig.legs.forEach((l, i) => { l.rotation.x = -1.35; l.rotation.z = (i ? 1 : -1) * 0.12; });
+        rig.arms.forEach((r) => { r.rotation.x = -0.55; r.rotation.z = -side(r) * 0.15; });
+        break;
+      }
       default:     // ✌️ 한 손 브이 흔들기
         Rr.rotation.x = Math.PI - 0.25; Rr.rotation.z = -side(Rr) * (0.3 + Math.sin(t * 4) * 0.15);
     }

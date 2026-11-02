@@ -482,13 +482,13 @@ window.athlete = (() => {
       const x = c.getContext('2d');
       x.fillStyle = '#fbfaf7'; x.fillRect(0, 0, c.width, c.height);
       x.drawImage(img, pad, pad);
-      const team = teamList(), inJail = team.filter((m) => m.jail).length, here = team.length - inJail;
+      const team = teamList(), inJail = team.filter((m) => m.jail).length, did = team.filter((m) => !m.jail && m.today).length, rested = team.length - inJail - did;
       x.fillStyle = '#16171b'; x.textAlign = 'left'; x.textBaseline = 'alphabetic';
       x.font = '900 52px -apple-system, "Apple SD Gothic Neo", sans-serif';
       x.fillText('⛰ 볼류머 산스장 단체사진', pad + 6, H + pad + 74);
       x.fillStyle = '#6b6b75'; x.font = '600 32px -apple-system, "Apple SD Gothic Neo", sans-serif';
       const d = todayStr().replace(/-/g, '.');
-      x.fillText(`${d} · ${here}명 출석${inJail ? ` · 🔒 수감 ${inJail}명 불참` : ''}`, pad + 8, H + pad + 122);
+      x.fillText(`${d} · 💪 운동 ${did}명${rested ? ` · 🫠 쉬었음 ${rested}명` : ''}${inJail ? ` · 🔒 수감 ${inJail}명 불참` : ''}`, pad + 8, H + pad + 122);
       lastPhoto = c.toDataURL('image/jpeg', 0.9);
       $('#gphoto-img').src = lastPhoto;
       $('#gphoto-modal').hidden = false; document.body.classList.add('modal-open');
