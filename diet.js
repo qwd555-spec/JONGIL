@@ -3,7 +3,7 @@ window.diet = (() => {
   const KEY = 'gymlog.diet';
   const SLOTS = ['아침', '점심', '저녁', '간식'];
   const SLOT_ICON = { '아침': '🌅', '점심': '☀️', '저녁': '🌙', '간식': '🍪' };
-  // 이름|1인분 기준|kcal|탄수(g)|단백질(g)|지방(g) — 일반적인 대략값 (정확히는 포장지 보고 직접 추가)
+  // 이름|1인분 기준|kcal|탄수(g)|단백질(g)|지방(g) — 식약처 식품영양성분DB 기준 평균값을 정리한 칼로리표 등 참고 (±10~15%)
   const FOODS = `흰쌀밥|1공기 210g|315|69|6|1
 현미밥|1공기 210g|305|64|7|2
 잡곡밥|1공기 210g|310|66|7|2
@@ -45,15 +45,15 @@ window.diet = (() => {
 샐러드(드레싱 포함)|1접시|150|10|3|11
 닭가슴살 샐러드|1접시|250|12|25|11
 김치|1접시 50g|15|2|1|0
-김밥|1줄|320|50|9|9
+김밥|1줄 230g|480|75|13|13
 참치김밥|1줄|450|55|14|19
-라면|1봉|500|79|10|16
-짜장면|1그릇|670|110|18|17
-짬뽕|1그릇|690|98|30|19
+라면|1봉 120g|500|79|10|16
+짜장면|1그릇 700g|700|115|19|18
+짬뽕|1그릇 700g|600|85|26|17
 탕수육|1인분 200g|500|52|18|24
-비빔밥|1그릇|560|85|17|15
+비빔밥|1그릇 500g|580|88|18|16
 돌솥비빔밥|1그릇|600|88|18|18
-김치찌개|1인분|220|10|15|13
+김치찌개|1인분 450g|290|13|20|17
 된장찌개|1인분|150|11|11|7
 순두부찌개|1인분|240|11|17|14
 부대찌개|1인분|450|35|20|25
@@ -67,11 +67,11 @@ window.diet = (() => {
 냉면|1그릇|560|110|15|5
 칼국수|1그릇|520|90|17|9
 우동|1그릇|430|80|12|5
-떡볶이|1인분 200g|380|80|8|3
+떡볶이|1인분 300g|510|107|11|4
 순대|1인분 150g|300|40|12|10
 어묵|2꼬치|110|13|8|3
 튀김(모둠)|3개|300|30|5|18
-돈까스|1인분|750|60|30|42
+돈까스|1인분 200g|520|42|21|29
 치즈돈까스|1인분|850|62|36|50
 카레라이스|1그릇|650|100|15|20
 오므라이스|1그릇|700|95|20|25
@@ -82,6 +82,8 @@ window.diet = (() => {
 양념치킨|1마리|2200|130|120|130
 후라이드치킨 1조각|1조각|250|9|17|16
 허니콤보(교촌)|1마리|1920|84|114|126
+허니콤보(교촌) 100g|100g|320|14|19|21
+삼겹살 1인분|200g|660|0|34|58
 치킨너겟|5조각|250|15|12|16
 피자|1조각|300|33|13|13
 햄버거|1개|500|45|25|25
@@ -182,7 +184,7 @@ window.diet = (() => {
       const k = list.reduce((a, it) => a + it.k * it.q, 0);
       return `<div class="dmeal">
         <div class="dmeal-head"><span class="dmeal-ic">${SLOT_ICON[s]}</span><b>${s}</b><small>${k ? `${Math.round(k).toLocaleString()} kcal` : ''}</small><button type="button" data-add="${s}" aria-label="${s} 추가">＋</button></div>
-        ${list.map((it, i) => `<div class="dfood"><span>${escapeHtml(it.n)} <small>${it.q !== 1 ? `×${it.q}` : ''}</small></span><em>${Math.round(it.k * it.q)} kcal</em><button type="button" data-del="${s}|${i}" aria-label="삭제">✕</button></div>`).join('')}
+        ${list.map((it, i) => `<div class="dfood"><span>${escapeHtml(it.n)} <small>${it.q !== 1 ? `×${it.q}` : ''}${it.ai ? ' 📷AI' : ''}</small></span><em>${Math.round(it.k * it.q)} kcal</em><button type="button" data-del="${s}|${i}" aria-label="삭제">✕</button></div>`).join('')}
       </div>`;
     }).join('');
     $d('#diet-meals').querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => openAdd(b.dataset.add)));
@@ -196,7 +198,7 @@ window.diet = (() => {
   function openAdd(slot) {
     addSlot = slot; pick = null;
     $d('#diet-add').hidden = false; $d('#diet-add-title').textContent = `${SLOT_ICON[slot]} ${slot}에 추가`;
-    $d('#diet-q').value = ''; $d('#diet-qty').hidden = true; $d('#diet-custom').hidden = true;
+    $d('#diet-q').value = ''; $d('#diet-qty').hidden = true; $d('#diet-custom').hidden = true; $d('#diet-ai').hidden = true; aiItems = [];
     ['#dc-n', '#dc-u', '#dc-k', '#dc-c', '#dc-p', '#dc-f'].forEach((k) => { $d(k).value = ''; });
     search(); setTimeout(() => $d('#diet-q').focus(), 200);
   }
@@ -235,6 +237,71 @@ window.diet = (() => {
     closeAdd(); render();
   }
 
+  /* ---------- 📷 사진으로 음식·칼로리 추정 (Claude) ---------- */
+  let sampler = null, aiItems = [];
+  (async () => {
+    try {
+      if (!window.claude || typeof window.claude.use !== 'function') return;
+      sampler = await window.claude.use('sample');
+      const caps = sampler ? await sampler.limits().catch(() => null) : null;
+      if (caps && caps.images) {
+        $d('#diet-ai-btn').hidden = false;
+        if (caps.images.mediaTypes) $d('#diet-ai-file').accept = caps.images.mediaTypes.join(',');
+      }
+    } catch {}
+  })();
+  const AI_ERR = {
+    not_granted: 'Claude 사용을 허락해야 사진 분석을 할 수 있어요', rate_limited: '잠시 후 다시 해주세요 (요청이 많아요)',
+    image_rejected: '이 사진은 분석할 수 없어요 (형식·크기)', refused: '이 사진은 분석할 수 없어요', invalid_json: '분석 결과를 읽지 못했어요. 다시 해보세요',
+    sampling_disabled: '지금은 AI 분석을 쓸 수 없어요', capability_disabled: '지금은 AI 분석을 쓸 수 없어요', session_expired: '다시 로그인한 뒤 해주세요',
+  };
+  function toBlob(file) {
+    return new Promise((res) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => {
+        const s = Math.min(1, 1024 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        c.toBlob((b) => res(b || file), 'image/jpeg', 0.85);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); res(file); };
+      img.src = url;
+    });
+  }
+  async function analyze(file) {
+    if (!sampler) return;
+    const box = $d('#diet-ai'); box.hidden = false;
+    $d('#diet-ai-img').src = URL.createObjectURL(file);
+    $d('#diet-ai-list').innerHTML = ''; $d('#diet-ai-save').hidden = true;
+    $d('#diet-ai-msg').textContent = '🔍 사진 속 음식을 보고 칼로리를 계산하는 중…';
+    try {
+      const blob = await toBlob(file);
+      const out = await sampler.json(
+        '첨부한 사진은 사용자가 먹은(먹을) 음식 사진이다. 사진 속 음식을 하나하나 식별하고, 사진에 보이는 양을 기준으로 대략적인 열량(kcal)과 탄수화물·단백질·지방(g)을 추정하라. ' +
+        '음식 이름은 한국어로, 보이는 양은 "1공기 210g", "치킨 3조각" 처럼 적는다. 한국 식품영양성분 DB 평균값 수준으로 현실적으로 추정한다. ' +
+        '음식이 아니면 items를 빈 배열로. JSON만 답한다: {"items":[{"n":"음식명","u":"보이는 양","k":0,"c":0,"p":0,"f":0}],"note":"한 줄 코멘트(헬스하는 친구 말투)"}',
+        { images: [blob], modelTier: 'default' });
+      aiItems = (out && Array.isArray(out.items) ? out.items : []).map((x) => ({ n: String(x.n || '음식').slice(0, 30), u: String(x.u || '사진 속 양').slice(0, 20), k: Math.round(num(x.k)), c: r1(num(x.c)), p: r1(num(x.p)), f: r1(num(x.f)), on: true }))
+        .filter((x) => x.k > 0);
+      if (!aiItems.length) { $d('#diet-ai-msg').textContent = '음식을 찾지 못했어요. 다른 사진으로 해보거나 검색해주세요'; return; }
+      const tot = aiItems.reduce((a, x) => a + x.k, 0);
+      $d('#diet-ai-msg').textContent = `${out.note ? `${String(out.note).slice(0, 60)} · ` : ''}총 약 ${tot.toLocaleString()} kcal (AI 추정)`;
+      $d('#diet-ai-list').innerHTML = aiItems.map((x, i) => `<label class="dai"><input type="checkbox" data-i="${i}" checked /><span><b>${escapeHtml(x.n)}</b><small>${escapeHtml(x.u)} · 탄${x.c} 단${x.p} 지${x.f}</small></span><em>${x.k} kcal</em></label>`).join('');
+      $d('#diet-ai-list').querySelectorAll('input').forEach((c) => c.addEventListener('change', () => { aiItems[+c.dataset.i].on = c.checked; }));
+      $d('#diet-ai-save').hidden = false;
+    } catch (e) {
+      $d('#diet-ai-msg').textContent = AI_ERR[e && e.code] || '분석하지 못했어요. 잠시 후 다시 해보세요';
+    }
+  }
+  function saveAi() {
+    const list = aiItems.filter((x) => x.on);
+    if (!list.length || !addSlot) return;
+    const dd = (D.days[day] ||= {});
+    list.forEach((x) => (dd[addSlot] ||= []).push({ n: x.n, k: x.k, c: x.c, p: x.p, f: x.f, q: 1, ai: 1 }));
+    persist(); toast(`📷 ${list.length}개 · ${list.reduce((a, x) => a + x.k, 0).toLocaleString()} kcal 추가`);
+    closeAdd(); render();
+  }
+
   /* ---------- 이벤트 ---------- */
   $d('#diet-open').addEventListener('click', open);
   $d('#diet-close').addEventListener('click', close);
@@ -255,6 +322,9 @@ window.diet = (() => {
     D.on = false; persist(); render();
   });
   $d('#diet-q').addEventListener('input', search);
+  $d('#diet-ai-btn').addEventListener('click', () => $d('#diet-ai-file').click());
+  $d('#diet-ai-file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) analyze(f); });
+  $d('#diet-ai-save').addEventListener('click', saveAi);
   $d('#diet-add-close').addEventListener('click', closeAdd);
   $d('#diet-minus').addEventListener('click', () => { qty = Math.max(0.5, Math.round((qty - 0.5) * 10) / 10); showQty(); });
   $d('#diet-plus').addEventListener('click', () => { qty = Math.round((qty + 0.5) * 10) / 10; showQty(); });
