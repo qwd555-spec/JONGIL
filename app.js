@@ -276,6 +276,7 @@ function stampCardio(set, ex, date) {
   return true;
 }
 function setVolume(set, ex, date) {
+  if (isPenalty(ex)) return num(set.r) > 0 ? PENALTY_KG[ex.name] : 0;
   if (isGolf(ex)) {
     let v = num(set.r) * GOLF_KG_PER_STROKE;
     // 필드골프: 걷기 6km(18홀) 볼륨 추가 — 타수를 적은 판만
@@ -824,6 +825,11 @@ function renderDay() {
       const th = node.querySelectorAll('thead th');
       th[0].textContent = '판'; th[1].textContent = '홀'; th[2].textContent = '타수';
       node.classList.add('golf');
+    } else if (isPenalty(ex)) {
+      chip.hidden = false; chip.disabled = true; chip.classList.add('on');
+      chip.textContent = `🫣 세트당 ${PENALTY_KG[ex.name]}kg`;
+      const th = node.querySelectorAll('thead th');
+      th[1].textContent = '분'; th[2].textContent = '횟수';
     } else if (type || !isCatalog) {
       chip.hidden = false;
       const bw = bodyweightOn(state.day);
@@ -888,6 +894,9 @@ function renderDay() {
         <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.wkcal ?? ''}" data-k="wkcal" placeholder="워치" class="kcal-in" /></td>`
           : `<td><input type="text" autocomplete="off" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
         <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>`)
+ : isPenalty(ex)
+        ? `<td><input type="text" autocomplete="off" inputmode="numeric" value="${set.min ?? ''}" data-k="min" placeholder="-" /></td>
+        <td><input type="text" autocomplete="off" inputmode="numeric" value="${set.r ?? ''}" data-k="r" placeholder="회" /></td>`
         : isGolf(ex)
         ? `<td><input type="text" autocomplete="off" inputmode="numeric" value="${set.h ?? 18}" data-k="h" placeholder="18" /></td>
         <td><input type="text" autocomplete="off" inputmode="numeric" value="${set.r ?? ''}" data-k="r" placeholder="타" /></td>`
@@ -940,9 +949,9 @@ function renderDay() {
       }
     });
 
-    const strength = !cinfo && !isGolf(ex);
+    const strength = !cinfo && !isGolf(ex) && !isPenalty(ex);
     const group = ex.ss ? list.filter((e) => e.ss === ex.ss) : [ex];
-    const copyLast = (e) => { const prev = e.sets[e.sets.length - 1]; e.sets.push(isGolf(e) ? { h: num(prev && prev.h) || 18, r: '' } : prev ? { ...prev } : cardioInfo(e) ? { km: '', min: '' } : { w: '', r: '' }); };
+    const copyLast = (e) => { const prev = e.sets[e.sets.length - 1]; e.sets.push(isGolf(e) ? { h: num(prev && prev.h) || 18, r: '' } : isPenalty(e) ? { min: '', r: '' } : prev ? { ...prev } : cardioInfo(e) ? { km: '', min: '' } : { w: '', r: '' }); };
     node.querySelector('.add-set').addEventListener('click', () => {
       group.forEach(copyLast);   // 슈퍼세트면 묶인 운동 모두 한 세트씩
       save();
@@ -1015,7 +1024,7 @@ function renderDay() {
           if (rest.length === 1) delete rest[0].ss;
           save(); renderDay(); return;
         }
-        const others = list.filter((e) => e !== ex && !cardioInfo(e) && !isGolf(e));
+        const others = list.filter((e) => e !== ex && !cardioInfo(e) && !isGolf(e) && !isPenalty(e));
         if (!others.length) { toast('같이 묶을 운동을 먼저 추가하세요'); return; }
         let pick = node.querySelector('.ss-pick');
         if (pick) { pick.remove(); return; }
@@ -1837,6 +1846,7 @@ const social = (() => {
           if (RUN_NAMES.includes(ex.name) && num(st.km) > 0) { out.km += num(st.km); out.rmin += num(st.min); }
           out.goals += num(st.goals);
         } else if (num(st.r) > 0) {
+          if (isPenalty(ex)) continue;
           out.sets++; out.reps += num(st.r);
           if (!bwType(ex)) out.maxW = Math.max(out.maxW, num(st.w));
         }
@@ -1860,6 +1870,7 @@ const social = (() => {
   function describeSets(ex) {
     const sets = ex.sets.filter((st) => num(st.r) > 0 || num(st.km) > 0 || num(st.min) > 0 || num(st.wkcal) > 0);
     if (!sets.length) return '';
+    if (isPenalty(ex)) return sets.map((st) => `🫣 ${num(st.r)}회${num(st.min) ? ` ${num(st.min)}분` : ''} (${PENALTY_KG[ex.name]}kg)`).join(' / ');
     if (isGolf(ex)) return sets.map((st) => `⛳ ${num(st.h) || 18}홀 ${num(st.r)}타${isFieldGolf(ex) ? ` · 걷기 ${+(FIELD_GOLF_KM * ((num(st.h) || 18) / 18)).toFixed(1)}km` : ''}`).join(' / ');
     if (cardioInfo(ex)) {
       return sets.map((st) => [

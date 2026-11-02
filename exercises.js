@@ -231,6 +231,7 @@ const EXERCISE_DATA = `
 전신|월볼|Wall Ball|
 전신|박스 점프|Box Jump|
 전신|메디신볼 슬램|Medicine Ball Slam|볼슬램
+전신|자위행위|Self Care|딸,딸딸이,자위,ㅈㅇ
 유산소|트레드밀|Treadmill|러닝머신,런닝머신,걷기
 유산소|인클라인 워킹|Incline Walking|경사걷기
 유산소|러닝|Running|달리기,조깅
@@ -388,3 +389,7 @@ const GOLF_KG_PER_STROKE = 10;
 const FIELD_GOLF_KM = 6;
 function isGolf(ex) { return !!ex && (ex.name === '스크린골프' || ex.name === '필드골프'); }
 function isFieldGolf(ex) { return !!ex && ex.name === '필드골프'; }
+
+/* 🫣 벌칙 운동: 횟수를 적은 세트마다 볼륨 −50kg */
+const PENALTY_KG = { '자위행위': -50 };
+function isPenalty(ex) { return !!ex && PENALTY_KG[ex.name] !== undefined; }
