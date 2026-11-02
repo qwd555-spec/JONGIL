@@ -652,6 +652,23 @@
   </div>
 
   <!-- 친구 운동 기록 축하 팝업 (첫 진입) -->
+  <div id="part-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="part-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet part-sheet">
+      <h3 id="part-title"></h3>
+      <p class="part-sub">어디 운동이에요</p>
+      <div class="part-grid" id="part-grid"></div>
+      <div id="part-types-wrap">
+        <p class="part-sub">어떻게 기록해요</p>
+        <div class="part-types" id="part-types">
+          <button type="button" data-ty="w"><b>🏋️ 무게</b><small>무게 × 횟수</small></button>
+          <button type="button" data-ty="bw"><b>🤸 맨몸</b><small>몸무게 × 횟수</small></button>
+          <button type="button" data-ty="c"><b>⏱ 시간</b><small>분 · km</small></button>
+        </div>
+      </div>
+      <div class="part-btns"><button type="button" id="part-cancel">취소</button><button type="button" id="part-ok">등록하기</button></div>
+    </div>
+  </div>
   <div id="congrats-modal" class="rest-modal congrats" hidden role="dialog" aria-modal="true" aria-labelledby="congrats-title">
     <div class="rest-backdrop"></div>
     <div class="rest-sheet congrats-sheet">

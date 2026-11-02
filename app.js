@@ -63,6 +63,13 @@ function bodyweightOn(date) {
   for (const k of keys) { if (k <= date) pick = k; else break; }
   return num(bwMap[pick]);
 }
+/* 운동 부위 직접 지정 { 운동 이름: 부위 } — 새로 등록한 운동 + 바꾼 부위 */
+const PARTS_KEY = 'gymlog.parts';
+let partMap = (() => { try { return JSON.parse(localStorage.getItem(PARTS_KEY) || '{}') || {}; } catch { return {}; } })();
+function setPart(name, part) {
+  partMap[name] = part;
+  try { localStorage.setItem(PARTS_KEY, JSON.stringify(partMap)); } catch { /* 없음 */ }
+}
 let liveAt = (() => { try { return +localStorage.getItem('gymlog.liveAt') || 0; } catch { return 0; } })();
 function save() {
   // 지금 운동 중 표시용: 오늘 기록을 고친 시각
@@ -141,7 +148,8 @@ const cloud = (() => {
           if (body.game && window.athlete) window.athlete.restore(body.game);
           if (Array.isArray(body.routines)) routines.restore(body.routines);
           if (body.diet && window.diet) window.diet.restore(body.diet);
-          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {}, photoDates: body.photoDates || [], game: body.game || null, routines: body.routines || [], diet: body.diet || null });
+          if (body.parts && typeof body.parts === 'object') { partMap = { ...partMap, ...body.parts }; try { localStorage.setItem(PARTS_KEY, JSON.stringify(partMap)); } catch { /* 없음 */ } }
+          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {}, photoDates: body.photoDates || [], game: body.game || null, routines: body.routines || [], diet: body.diet || null, parts: body.parts || {} });
         }
       }
       for (const [k, v] of Object.entries(remote)) synced[k] = JSON.stringify(v);
@@ -179,7 +187,7 @@ const cloud = (() => {
         if (cur === null) { await col.doc(k).delete(); delete synced[k]; }
         else { await col.doc(k).set({ list: JSON.parse(cur), updatedAt: Date.now() }); synced[k] = cur; }
       }
-      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap, photoDates: photos.dates(), game: window.athlete ? window.athlete.state() : null, routines: routines.list(), diet: window.diet ? window.diet.state() : null });
+      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap, photoDates: photos.dates(), game: window.athlete ? window.athlete.state() : null, routines: routines.list(), diet: window.diet ? window.diet.state() : null, parts: partMap });
       if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
       try { await social.publish(); } catch { /* 순위 참가 권한 없음 → 개인 기록만 저장 */ }
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
@@ -470,6 +478,7 @@ function makeEntry(name, fallbackSets) {
     const fc = friendCustoms.find((f) => f.name === name);
     if (fc && fc.bw) entry.bw = 'bw';
   }
+  if (!isCardio && last && last.cardio) { entry.cardio = last.cardio; entry.mode = last.mode || 'calc'; }
   if (isCardio && CARDIO[name].goals) entry.detail = true;
   if (isCardio) entry.mode = CARDIO[name].kcalOnly ? 'watch' : last && last.mode ? last.mode : CARDIO[name].hyrox ? 'calc' : preferredCardioMode();
   // 하이록스: 공식 코스(러닝 8km)를 미리 채움 — 완주 시간만 적으면 끝
@@ -497,7 +506,8 @@ const searchInput = $('#exercise-search');
 const resultsEl = $('#search-results');
 
 function partOf(name) {
-  return EXERCISES.find((e) => e.name === name)?.part || '내 운동';
+  if (partMap[name]) return partMap[name];
+  return EXERCISES.find((e) => e.name === name)?.part || friendCustoms.find((f) => f.name === name)?.p || '내 운동';
 }
 
 function renderPartChips() {
@@ -536,11 +546,11 @@ function renderResults() {
   // 카탈로그 + 직접 추가했던 운동
   const custom = Object.keys(usage)
     .filter((n) => !EXERCISES.some((e) => e.name === n))
-    .map((n) => ({ part: '내 운동', name: n, en: '', alias: [], custom: true }));
+    .map((n) => ({ part: partMap[n] || '내 운동', name: n, en: '', alias: [], custom: true }));
   const friends = friendCustoms
     .filter((f) => !usage[f.name] && !EXERCISES.some((e) => e.name === f.name))
-    .map((f) => ({ part: '친구 운동', name: f.name, en: `${f.by} 님이 추가${f.bw ? ' · 맨몸' : ''}`, alias: [], custom: true, friend: true }));
-  let pool = [...EXERCISES, ...custom, ...friends];
+    .map((f) => ({ part: f.p || '친구 운동', name: f.name, en: `${f.by} 님이 추가${f.bw ? ' · 맨몸' : ''}`, alias: [], custom: true, friend: true }));
+  let pool = [...EXERCISES.map((e) => (partMap[e.name] && partMap[e.name] !== e.part ? { ...e, part: partMap[e.name] } : e)), ...custom, ...friends];
 
   if (picker.part === '최근') pool = pool.filter((e) => usage[e.name]);
   else if (picker.part === '내 운동') pool = pool.filter((e) => e.custom && !e.friend);
@@ -581,14 +591,14 @@ function renderResults() {
   if (q && !items.some((x) => x.score >= 90)) {
     html += `<button type="button" class="result-item custom-add" data-name="${escapeHtml(q)}">
       <span class="result-icon"><svg class="i"><use href="#i-plus"/></svg></span>
-      <span class="result-main"><span class="result-name">"${escapeHtml(q)}" 직접 추가</span>
-      <span class="result-sub">목록에 없는 운동을 새로 기록해요</span></span></button>`;
+      <span class="result-main"><span class="result-name">"${escapeHtml(q)}" 새 운동으로 등록</span>
+      <span class="result-sub">부위랑 기록 방식을 골라서 등록해요</span></span></button>`;
   }
 
   resultsEl.innerHTML = html;
   resultsEl.hidden = false;
   resultsEl.querySelectorAll('.result-item').forEach((b) =>
-    b.addEventListener('click', () => pickExercise(b.dataset.name))
+    b.addEventListener('click', () => (b.classList.contains('custom-add') ? registerExercise(b.dataset.name) : pickExercise(b.dataset.name)))
   );
 }
 
@@ -607,6 +617,8 @@ function highlight(name, q) {
 }
 
 function pickExercise(name) {
+  const fc = friendCustoms.find((f) => f.name === name);
+  if (fc && fc.p && !partMap[name] && !EXERCISES.some((e) => e.name === name)) setPart(name, fc.p);
   searchInput.value = '';
   picker.open = false;
   updateToggle();
@@ -614,6 +626,80 @@ function pickExercise(name) {
   searchInput.blur();
   addExercise(name);
 }
+
+/* ---------- 새 운동 등록 · 부위 바꾸기 ---------- */
+const partSheet = { name: '', ex: null, part: '', ty: 'w' };
+function exType(ex) { return ex && ex.cardio && !CARDIO[ex.name] ? 'c' : bwType(ex) === 'bw' ? 'bw' : 'w'; }
+function openPartSheet(name, ex) {
+  const isNew = !ex;
+  const isCatalog = EXERCISES.some((e) => e.name === name);
+  Object.assign(partSheet, { name, ex, part: isNew ? (EXERCISE_PARTS.includes(picker.part) ? picker.part : '') : partOf(name), ty: isNew ? 'w' : exType(ex) });
+  $('#part-title').textContent = isNew ? `"${name}" 새 운동 등록` : `${name}`;
+  $('#part-ok').textContent = isNew ? '등록하기' : '바꾸기';
+  $('#part-types-wrap').hidden = isCatalog;
+  const draw = () => {
+    $('#part-grid').innerHTML = EXERCISE_PARTS.map((p) => `<button type="button" data-p="${p}" class="${p === partSheet.part ? 'on' : ''}">${p}</button>`).join('');
+    $('#part-types').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.ty === partSheet.ty));
+  };
+  partSheet.draw = draw;
+  draw();
+  $('#part-modal').hidden = false;
+  document.body.classList.add('modal-open');
+}
+function closePartSheet() { $('#part-modal').hidden = true; document.body.classList.remove('modal-open'); }
+function registerExercise(name) {
+  name = name.trim().slice(0, 40);
+  if (!name) return;
+  searchInput.value = ''; picker.open = false; updateToggle(); resultsEl.hidden = true; searchInput.blur();
+  openPartSheet(name, null);
+}
+/** 기록 방식 적용 (w 무게 · bw 맨몸 · c 시간·거리) */
+function applyType(entry, ty, part) {
+  const was = !!entry.cardio;
+  if (ty === 'c') {
+    entry.cardio = { met: part === '스포츠' ? 7 : 6 }; entry.mode = 'calc'; delete entry.bw;
+    if (!was) entry.sets = [{ km: '', min: '' }];
+  } else {
+    delete entry.cardio; delete entry.mode;
+    entry.bw = ty === 'bw' ? 'bw' : null;
+    if (was) entry.sets = [{ w: '', r: '' }];
+  }
+}
+$('#part-grid').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-p]'); if (!b) return;
+  partSheet.part = b.dataset.p;
+  if (!EXERCISES.some((x) => x.name === partSheet.name)) {
+    if (partSheet.part === '유산소' || partSheet.part === '스포츠') partSheet.ty = 'c';
+    else if (partSheet.ty === 'c') partSheet.ty = 'w';
+  }
+  partSheet.draw();
+});
+$('#part-types').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-ty]'); if (!b) return;
+  partSheet.ty = b.dataset.ty; partSheet.draw();
+});
+$('#part-cancel').addEventListener('click', closePartSheet);
+$('#part-modal .rest-backdrop').addEventListener('click', closePartSheet);
+$('#part-ok').addEventListener('click', () => {
+  const { name, ex, part, ty } = partSheet;
+  if (!part) { toast('어디 운동인지 골라주세요'); return; }
+  const isCatalog = EXERCISES.some((e) => e.name === name);
+  setPart(name, part);
+  closePartSheet();
+  if (!ex) {
+    if (isClosed(state.day)) { toast('마감된 날이에요. 다시 열기를 눌러주세요'); return; }
+    addExercise(name);
+    const list = db[state.day] || [];
+    const entry = list[list.length - 1];
+    if (entry && entry.name === name && !isCatalog) applyType(entry, ty, part);
+    toast(`✅ "${name}" ${part} 운동으로 등록했어요`);
+  } else {
+    if (!isCatalog && exType(ex) !== ty) applyType(ex, ty, part);
+    toast(`${name} → ${part} 운동으로 바꿨어요`);
+  }
+  save();
+  renderDay();
+});
 
 function updateToggle() {
   const t = $('#picker-toggle');
@@ -785,7 +871,13 @@ function renderDay() {
   list.forEach((ex) => {
     const node = tpl.content.firstElementChild.cloneNode(true);
     node.querySelector('.exercise-name').textContent = ex.name;
-    node.querySelector('.part-badge').textContent = partOf(ex.name);
+    const pb = node.querySelector('.part-badge');
+    pb.textContent = partOf(ex.name);
+    if (!isPenalty(ex) && !isGolf(ex)) {
+      pb.classList.add('editable');
+      pb.title = '눌러서 부위 바꾸기';
+      pb.addEventListener('click', () => openPartSheet(ex.name, ex));
+    }
     const volEl = node.querySelector('.exercise-volume');
     const type = bwType(ex);
     const cinfo = cardioInfo(ex);
@@ -891,8 +983,8 @@ function renderDay() {
       const bw = bodyweightOn(state.day);
       chip.classList.toggle('on', !!type);
       const nerf = type === 'bw' && typeof BW_SCALE !== 'undefined' && BW_SCALE[ex.name] ? ` · 볼륨 ×${Math.round(BW_SCALE[ex.name] * 100)}%` : '';
-      chip.textContent = (!type ? '맨몸 운동?' : bw ? `맨몸 +${bw}kg` : '맨몸 · 몸무게 미입력') + nerf;
-      chip.title = isCatalog ? '' : '눌러서 맨몸 운동으로 설정/해제';
+      chip.textContent = (!type ? '🏋️ 무게 운동' : bw ? `맨몸 +${bw}kg` : '맨몸 · 몸무게 미입력') + nerf;
+      chip.title = isCatalog ? '' : '눌러서 무게 ↔ 맨몸 바꾸기';
       if (!isCatalog) {
         chip.addEventListener('click', () => {
           ex.bw = type ? null : 'bw';
@@ -1775,7 +1867,7 @@ const social = (() => {
       for (const it of items) {
         const name = String(it && it.n || '').trim().slice(0, 40);
         if (!name || map.has(name)) continue;
-        map.set(name, { name, bw: !!it.bw, by: (members[uid] && members[uid].nick) || '친구' });
+        map.set(name, { name, bw: !!it.bw, p: EXERCISE_PARTS.includes(it.p) ? it.p : '', by: (members[uid] && members[uid].nick) || '친구' });
       }
     }
     friendCustoms = [...map.values()];
@@ -1788,7 +1880,7 @@ const social = (() => {
       if (EXERCISES.some((e) => e.name === ex.name)) continue;
       seen.set(ex.name, bwType(ex) === 'bw' ? 1 : 0);
     }
-    return [...seen.entries()].sort((a, b) => a[0].localeCompare(b[0], 'ko')).map(([n, bw]) => (bw ? { n, bw } : { n }));
+    return [...seen.entries()].sort((a, b) => a[0].localeCompare(b[0], 'ko')).map(([n, bw]) => ({ n, ...(bw ? { bw } : {}), ...(partMap[n] ? { p: partMap[n] } : {}) }));
   }
   const SEEN_KEY = 'gymlog.feedSeen';
 

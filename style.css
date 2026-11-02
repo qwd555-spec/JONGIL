@@ -1405,3 +1405,19 @@ body.gym-full .toast { z-index: 95; }
 .iv-sum{margin:10px 0 6px;text-align:center}
 .iv-apply{width:100%;height:40px;border-radius:999px;background:#7c3aed;color:#fff;font-weight:700}
 .iv-tip{margin:6px 0 0;font-size:11px;opacity:.6;text-align:center}
+/* 새 운동 등록 · 부위 바꾸기 */
+.part-badge.editable{cursor:pointer}
+.part-badge.editable::after{content:' ✎';opacity:.6;font-size:.9em}
+.part-sheet{max-width:380px;width:100%}
+.part-sheet h3{margin:0 0 6px;font-size:18px;word-break:keep-all}
+.part-sub{margin:14px 0 8px;font-size:13px;opacity:.65;font-weight:600}
+.part-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.part-grid button{height:40px;border-radius:12px;background:var(--layer);font-weight:600;font-size:14px}
+.part-grid button.on,.part-types button.on{background:var(--ink);color:#fff}
+.part-types{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.part-types button{padding:10px 4px;border-radius:12px;background:var(--layer);display:flex;flex-direction:column;gap:2px;align-items:center}
+.part-types small{font-size:11px;opacity:.7}
+.part-types-wrap[hidden],#part-types-wrap[hidden]{display:none}
+.part-btns{display:flex;gap:8px;margin-top:18px}
+.part-btns button{flex:1;height:46px;border-radius:999px;background:var(--layer);font-weight:700}
+.part-btns #part-ok{flex:1.6;background:#7c3aed;color:#fff}
