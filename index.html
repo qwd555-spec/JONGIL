@@ -304,6 +304,45 @@
         </div>
       </section>
 
+      <!-- 선수 키우기 -->
+      <section id="view-career" class="view">
+        <div class="ath-hero">
+          <div class="ath-stage-bg"></div>
+          <div class="ath-top">
+            <span class="ath-track" id="ath-track"></span>
+            <span class="ath-hulk" id="ath-hulk" hidden>💚 헐크 모드</span>
+          </div>
+          <div class="ath-figure" id="ath-figure"></div>
+          <div class="ath-id"><b id="ath-name"></b><span id="ath-stage"></span></div>
+        </div>
+
+        <div class="ath-today" id="ath-today"></div>
+
+        <div class="panel">
+          <div class="panel-head"><span>진학 · 커리어</span><svg class="i"><use href="#i-trophy"/></svg></div>
+          <div class="ath-next" id="ath-next"></div>
+          <button type="button" class="ath-pick" id="ath-pick" hidden>🎓 체육고 종목 고르기</button>
+          <p class="hint" id="ath-locked"></p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>능력치 <small>평생 운동 기록으로 계산</small></span><svg class="i"><use href="#i-chart"/></svg></div>
+          <div class="ath-stats" id="ath-stats"></div>
+          <p class="hint">상체 = 가슴·등·어깨·팔 볼륨 · 하체 = 하체 볼륨 · 지구력 = 유산소·스포츠 · 꾸준함 = 운동한 날 수<br />볼륨 포인트(VP) = 총 볼륨 100kg당 1점. 몸은 상체·하체 레벨만큼 커져요.</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>커리어 로드맵</span><svg class="i"><use href="#i-list"/></svg></div>
+          <div class="ath-career" id="ath-career"></div>
+          <button type="button" class="list-btn" id="ath-change" hidden><svg class="i"><use href="#i-settings"/></svg><span>종목 바꾸기</span></button>
+        </div>
+
+        <div class="panel" id="ath-team-panel" hidden>
+          <div class="panel-head"><span>우리 선수단 <small>친구들 선수</small></span><svg class="i"><use href="#i-grid"/></svg></div>
+          <div class="ath-team" id="ath-team"></div>
+        </div>
+      </section>
+
       <!-- 설정 -->
       <section id="view-settings" class="view">
         <div class="panel">
@@ -506,6 +545,18 @@
     </div>
   </div>
 
+  <div id="track-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="track-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet track-sheet">
+      <div class="rest-head">
+        <span class="rest-chip" id="track-title">🎓 체육고 진학 · 종목 선택</span>
+        <button id="track-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <p class="hint">종목마다 핵심 능력치가 달라요. 핵심 능력치가 진학 시험 기준이에요.</p>
+      <div class="track-list" id="track-list"></div>
+    </div>
+  </div>
+
   <div id="award-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="award-title">
     <div class="rest-backdrop"></div>
     <div class="rest-sheet award-sheet">
@@ -547,6 +598,7 @@
   <!-- 하단 탭 -->
   <nav class="tabbar" role="tablist">
     <button class="tab active" data-view="workout" aria-label="운동"><span class="tab-icon"><svg class="i"><use href="#i-day"/></svg><i class="dot" id="day-dot"></i></span><span class="tab-text">운동</span></button>
+    <button class="tab" data-view="career" aria-label="선수"><span class="tab-icon"><svg class="i"><use href="#i-body"/></svg></span><span class="tab-text">선수</span></button>
     <button class="tab" data-view="rank" aria-label="랭킹"><span class="tab-icon"><svg class="i"><use href="#i-trophy"/></svg><i class="dot" id="rank-dot"></i></span><span class="tab-text">랭킹</span></button>
   </nav>
 
@@ -572,5 +624,6 @@
 
   <script src="exercises.js"></script>
   <script src="app.js"></script>
+  <script src="athlete.js"></script>
 </body>
 </html>

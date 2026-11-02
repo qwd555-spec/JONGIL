@@ -382,7 +382,7 @@ function showView(view) {
   window.scrollTo({ top: 0 });
   render();
 }
-const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', rank: 'Ranking', settings: 'Settings' };
+const PAGE_TITLES = { day: 'Today', week: 'Weekly', month: 'Monthly', rank: 'Ranking', settings: 'Settings', career: 'Athlete' };
 function updateHeader() {
   const d = new Date();
   $('#header-sub').textContent = `${d.getMonth() + 1}.${d.getDate()} ${'일월화수목금토'[d.getDay()]}`;
@@ -1281,6 +1281,7 @@ function render() {
   else if (v === 'week') renderWeek();
   else if (v === 'month') renderMonth();
   else if (v === 'rank') social.render();
+  else if (v === 'career' && window.athlete) window.athlete.render();
   else if (v === 'settings') updateGoalNote();
 }
 
@@ -1616,7 +1617,7 @@ const social = (() => {
         }
       }
     }
-    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), dsum: daySums(40) };
+    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), dsum: daySums(40), char: (() => { try { return window.athlete ? window.athlete.summary() : null; } catch { return null; } })() };
   }
   /* ---- 하루 요약 (왕 계산용, 최근 40일) ---- */
   const RUN_NAMES = ['러닝', '트레드밀', '인터벌 러닝'];
@@ -1699,10 +1700,12 @@ const social = (() => {
     if (!store || !myId) return;
     const nick = nickOverride || myNick();
     if (!nick) return;                       // 참가 전에는 올리지 않음
-    const { days, best, cdays, log, custom, dsum } = mySummary();
-    const key = JSON.stringify({ nick, days, best, cdays, log, custom, dsum });
+    const { days, best, cdays, log, custom, dsum, char } = mySummary();
+    const key = JSON.stringify({ nick, days, best, cdays, log, custom, dsum, char });
     if (key === lastPublished) return;
-    await store.doc('board/' + myId).set({ nick, days, best, cdays, log, custom, dsum, updatedAt: Date.now() });
+    const doc = { nick, days, best, cdays, log, custom, dsum, updatedAt: Date.now() };
+    if (char) doc.char = char;
+    await store.doc('board/' + myId).set(doc);
     lastPublished = key;
   }
 
@@ -2246,7 +2249,8 @@ const social = (() => {
       .sort((a, b) => b.v - a.v);
   }
 
-  return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready };
+  return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
+    members: () => members, me: () => members[myId], nick: () => myNick(), openProfile };
 })();
 
 /* =========================================================

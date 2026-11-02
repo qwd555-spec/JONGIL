@@ -865,3 +865,72 @@ body.event-bg .event-tag { display: inline-flex; }
 .event-tag .i { width: 13px; height: 13px; color: #fff; }
 body.event-bg .search-form input, body.event-bg .bw-field input { background: transparent; }
 body.event-bg .app { padding-top: calc(env(safe-area-inset-top, 0px) + 54px); }
+
+/* ---------- 🏟️ 선수 키우기 ---------- */
+.ath-hero { position: relative; border-radius: 28px; overflow: hidden; padding: 14px 14px 16px; margin-bottom: 12px;
+  background: linear-gradient(180deg, #e9e9ee 0%, #f7f7f9 70%); box-shadow: var(--shadow-layer); text-align: center; }
+.ath-stage-bg { position: absolute; left: -10%; right: -10%; bottom: -40px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(17,17,19,.1), transparent); }
+.ath-top { position: relative; display: flex; justify-content: space-between; align-items: center; min-height: 30px; }
+.ath-track { font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; background: var(--ink); color: #fff; }
+.ath-track.none { background: var(--raised); color: var(--muted); }
+.ath-hulk { font-size: 12px; font-weight: 800; padding: 5px 10px; border-radius: 999px; background: #dcfce7; color: #166534; }
+.ath-figure { position: relative; display: flex; justify-content: center; margin-top: 4px; }
+.athlete-svg { display: block; overflow: visible; animation: flex 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes flex { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025, 1.015); } }
+.ath-id { position: relative; display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.ath-id b { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
+.ath-id span { font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.ath-today { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 20px; background: var(--ink); color: #fff; margin-bottom: 12px; }
+.ath-today b { font-size: 15px; }
+.ath-today span { font-size: 13px; color: rgba(255,255,255,.75); line-height: 1.45; }
+.ath-next-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13.5px; }
+.ath-next-top b { font-weight: 800; }
+.ath-next-top em { font-style: normal; font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.ath-bar { height: 10px; border-radius: 999px; background: #e3e3e8; margin: 8px 0 10px; overflow: hidden; }
+.ath-bar div { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--ink), #4b4b55); }
+.ath-reqs { display: flex; flex-wrap: wrap; gap: 6px; }
+.ath-req { font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: #fde8ec; color: #b4233b; }
+.ath-req.ok { background: #e7f6ec; color: #1f7a3a; }
+.ath-warn { margin: 8px 2px 0; font-size: 12.5px; color: var(--muted); }
+.ath-pick { width: 100%; height: 50px; margin-top: 12px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 700; font-size: 15px; }
+.ath-stats { display: flex; flex-direction: column; gap: 10px; }
+.ath-stat { display: grid; grid-template-columns: 74px 1fr 64px; align-items: center; gap: 10px; }
+.ath-stat-name { font-size: 13.5px; font-weight: 700; }
+.ath-stat-name i { font-style: normal; font-size: 9.5px; padding: 1px 6px; border-radius: 999px; background: var(--pink); color: #fff; vertical-align: 2px; }
+.ath-stat-bar { height: 8px; border-radius: 999px; background: #e3e3e8; overflow: hidden; }
+.ath-stat-bar span { display: block; height: 100%; border-radius: inherit; background: #9a9aa3; }
+.ath-stat.key .ath-stat-bar span { background: var(--ink); }
+.ath-stat-lv { font-size: 13px; font-weight: 800; text-align: right; }
+.ath-stat-lv b { color: #1f7a3a; font-size: 11px; }
+.ath-career { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.ath-step { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 14px; color: var(--muted); }
+.ath-step.done { color: var(--text); }
+.ath-step.now { background: var(--ink); color: #fff; }
+.ath-dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 800; background: var(--raised); color: var(--muted); }
+.ath-step.done .ath-dot { background: #e7f6ec; color: #1f7a3a; }
+.ath-step.now .ath-dot { background: var(--pink); color: #fff; }
+.ath-step-name { font-size: 14px; font-weight: 700; }
+.ath-step-vp { font-size: 11.5px; font-weight: 600; opacity: .75; }
+.ath-team { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ath-mate { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px 10px; border-radius: 18px; background: var(--raised); box-shadow: var(--shadow-raised); min-width: 0; }
+.ath-mate.me { box-shadow: 0 0 0 2px var(--pink) inset, var(--shadow-raised); }
+.ath-mate-fig .athlete-svg { animation: none; }
+.ath-mate b { font-size: 13.5px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ath-mate small { font-size: 10.5px; color: var(--muted); font-weight: 600; text-align: center; line-height: 1.3; }
+.ath-mate em { font-style: normal; font-size: 10.5px; font-weight: 700; margin-top: 2px; }
+.track-sheet { text-align: left; }
+.track-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.track-opt { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 18px; background: var(--layer); text-align: left; box-shadow: inset 4px 0 0 var(--tc); }
+.track-opt:active { transform: scale(.98); }
+.track-icon { font-size: 30px; }
+.track-main { display: flex; flex-direction: column; gap: 2px; }
+.track-main b { font-size: 16px; font-weight: 800; }
+.track-main small { font-size: 12px; color: var(--muted); }
+.tabbar .tab { padding: 0 8px; }
+/* 이벤트 테마에서도 읽히게 */
+body.event-bg .ath-hero { background: rgba(255,255,255,.06); }
+body.event-bg .ath-today, body.event-bg .ath-step.now, body.event-bg .ath-pick { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+body.event-bg .ath-bar, body.event-bg .ath-stat-bar { background: rgba(255,255,255,.12); }
+body.event-bg .ath-bar div, body.event-bg .ath-stat.key .ath-stat-bar span { background: #c4b5fd; }
+body.event-bg .ath-mate, body.event-bg .track-opt { background: rgba(255,255,255,.08); }
+#ath-change[hidden], .ath-pick[hidden] { display: none; }
