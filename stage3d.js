@@ -421,7 +421,7 @@ window.stage3d = (() => {
     });
     // 러닝머신 3대 (오른쪽 뒤, 구름 바다 보면서 달리기)
     [3.1, 4.6, 6.1].forEach((x) => {
-      const z = -4.4;
+      const z = -3.4;
       const fr = new THREE.Group(); fr.position.set(x, 0, z); gymScene.add(fr);
       B(0.8, 0.22, 1.9, black, 0, 0.11, 0, fr);
       B(0.62, 0.02, 1.7, M(0x0e0e10, 0.9), 0, 0.23, 0, fr);
@@ -440,7 +440,7 @@ window.stage3d = (() => {
     });
     // 스트레칭 매트 (가운데 앞)
     const matCols = [0x7a5cff, 0x2fbf8f, 0xff7a59, 0x3aa0ff, 0xf2c14e];
-    [[-0.4, 2.2], [1.2, 2.2], [2.8, 2.2], [0.4, 3.7], [2.0, 3.7]].forEach(([x, z], i) => {
+    [[-1.6, 2.4], [0, 2.4], [1.6, 2.4], [-0.8, 3.9], [0.8, 3.9]].forEach(([x, z], i) => {
       B(0.75, 0.025, 1.6, M(matCols[i], 0.9), x, 0.025, z);
       stations.mat.push({ x, z, face: 0, y: 0.04, busy: null });
     });
@@ -459,8 +459,8 @@ window.stage3d = (() => {
     (() => { const x = -8.3, z = 0.6;    // 덤벨 랙
       B(0.6, 0.06, 2.6, black, x, 0.7, z); B(0.6, 0.06, 2.6, black, x, 0.35, z); [-1.2, 1.2].forEach((dz) => B(0.08, 0.75, 0.5, black, x, 0.37, z + dz));
       for (let i = 0; i < 6; i++) { const dz = -1.05 + i * 0.42; [0.76, 0.41].forEach((y, j) => { const d = Cy(0.02, 0.32, steel, x, y, z + dz, 0, Math.PI / 2); [-0.12, 0.12].forEach((o) => Cy(0.06 + i * 0.008 + j * 0.01, 0.06, plate, 0, o, 0, 0, 0, d)); }); } })();
-    // 🔒 볼류머 교도소 (왼쪽 앞) — 어제 운동 안 한 사람 수감. 천장 없이 위에서 다 보이게
-    const px = -2.7, pz = 5.2, JW = 3.6, JD = 3.0, JH = 2.5;
+    // 🔒 볼류머 교도소 (광고판 옆, 오른쪽 뒤) — 어제 운동 안 한 사람 수감. 천장 없이 위에서 다 보이게
+    const px = 5.0, pz = -6.9, JW = 3.0, JD = 2.4, JH = 2.5;
     const iron = M(0x2c2f36, 0.45, 0.8), ironL = M(0x4a4e57, 0.4, 0.8);
     B(JW + 0.3, 0.16, JD + 0.3, M(0x8d8a84, 0.95), px, 0.08, pz);   // 콘크리트 바닥
     const barRow = (x0, z0, x1, z1, skip) => {
@@ -487,7 +487,7 @@ window.stage3d = (() => {
     plx.textAlign = 'center'; plx.fillStyle = '#fff'; plx.font = '900 104px -apple-system, "Apple SD Gothic Neo", sans-serif'; plx.fillText('🔒 볼류머 교도소', 512, 128);
     plx.fillStyle = '#ffb3b3'; plx.font = '700 46px -apple-system, "Apple SD Gothic Neo", sans-serif'; plx.fillText('죄목: 어제 운동 안 함', 512, 204);
     const plT = new THREE.CanvasTexture(pl); plT.encoding = THREE.sRGBEncoding;
-    const plM = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: plT, toneMapped: false }));
+    const plM = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: plT, toneMapped: false }));
     plM.position.set(px, JH + 0.62, z0 + 0.05); gymScene.add(plM);
     Cy(0.03, 0.5, ironL, px - 1.0, JH + 0.25 + 0.16, z0); Cy(0.03, 0.5, ironL, px + 1.0, JH + 0.25 + 0.16, z0);
     // 감방 안: 2층 철침대 · 변기 · 쇠공
@@ -496,11 +496,11 @@ window.stage3d = (() => {
     [[-0.38, -0.92], [0.38, -0.92], [-0.38, 0.92], [0.38, 0.92]].forEach(([dx, dz]) => B(0.06, 1.6, 0.06, ironL, bx + dx, 0.95, bzz + dz));
     const wc = M(0xf4f4f4, 0.3, 0.1);
     Cy(0.2, 0.36, wc, px - JW / 2 + 0.35, 0.34, pz - JD / 2 + 0.35); B(0.42, 0.42, 0.16, wc, px - JW / 2 + 0.35, 0.6, pz - JD / 2 + 0.16);
-    [[px - 0.9, pz + 0.9], [px + 0.1, pz + 1.0], [px - 0.4, pz - 0.6]].forEach(([x, z]) => {
+    [[px - 0.8, pz + 0.5], [px - 0.1, pz + 0.6], [px - 0.5, pz - 0.6]].forEach(([x, z]) => {
       const ball = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10), M(0x1a1a1e, 0.4, 0.7)); ball.position.set(x + 0.28, 0.33, z + 0.12); ball.castShadow = true; gymScene.add(ball);
     });
     // 수감자 자리: 앞쪽 철창 붙잡는 줄 + 뒤쪽 침대 · 바닥
-    [[px - 1.2, pz + 1.05], [px - 0.4, pz + 1.05], [px + 0.4, pz + 1.05], [px - 1.0, pz - 0.2], [px - 0.1, pz - 0.5], [px + 0.3, pz + 0.3]].forEach(([x, z], i) =>
+    [[px - 1.1, pz + 0.85], [px - 0.4, pz + 0.85], [px + 0.3, pz + 0.85], [px - 0.95, pz - 0.3], [px - 0.3, pz - 0.6], [px + 0.1, pz + 0.1]].forEach(([x, z], i) =>
       stations.jail.push({ x, z, face: 0, y: 0.16, grip: i < 3, busy: null }));
     // 약수터 + 나무 벤치 (쉼터)
     B(0.9, 0.85, 0.6, conc, -8.4, 0.43, 1.9); Cy(0.03, 0.5, steel, -8.05, 0.8, 1.9, 0, Math.PI / 2);
@@ -589,7 +589,7 @@ window.stage3d = (() => {
   function goTo(a, k) {
     if (a.slot) { a.slot.busy = null; const br = a.slot.bar; if (br && br.position) br.position.y = a.slot.barX !== undefined ? 1.3 : 1.55; }
     let slot = freeSlot(TASKS[k].station);
-    if (!slot && k === 'jail') slot = { x: -2.7 + (Math.random() - 0.5) * 2, z: 5.2 + (Math.random() - 0.5) * 1.6, face: 0, y: 0.16 };
+    if (!slot && k === 'jail') slot = { x: 5.0 + (Math.random() - 0.5) * 1.6, z: -6.9 + (Math.random() - 0.5) * 1.6, face: 0, y: 0.16 };
     if (!slot) { k = 'stretch'; slot = freeSlot('mat') || freeSlot('seat'); }
     if (!slot) { slot = { x: (Math.random() - 0.5) * 6, z: 1 + Math.random() * 2, face: 0 }; k = 'stretch'; }
     slot.busy = a; a.slot = slot; a.task = k; a.mode = 'walk';
