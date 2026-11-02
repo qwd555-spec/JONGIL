@@ -241,6 +241,8 @@ const EXERCISE_DATA = `
 유산소|로잉 머신|Rowing Machine|로잉,조정
 유산소|줄넘기|Jump Rope|
 유산소|수영|Swimming|
+유산소|크로스핏|CrossFit WOD|크핏,와드,WOD,crossfit
+유산소|하이록스|HYROX|하록,hyrox,하이록
 유산소|에어 바이크|Air Bike|어썰트바이크
 유산소|스키 에르그|Ski Erg|
 유산소|등산|Hiking|하이킹
@@ -326,7 +328,7 @@ EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
  *    (달리기는 속도와 상관없이 약 1kcal/kg/km 소모 — 운동생리학 일반식)
  * 2) 시간 기준(그 외):            소모 kcal ≈ (MET − 1) × 몸무게 × 시간(h)
  *    (MET: 2024 Compendium of Physical Activities 기준, 쉬는 상태 1MET는 뺀 순수 운동량)
- * kcalOnly: 칼로리 입력 방식만 사용 (수영)
+ * kcalOnly: 칼로리 입력 방식만 사용 (수영 · 크로스핏 · 하이록스)
  * timeScale: 시간 기준 계산일 때만 보정 (풋살 0.7)
  * scale: 그룹 합의 보정 — 근력 볼륨과 체감 난이도를 맞춤 (러닝류 70%, 풋살 50%)
  * 환산 볼륨 = 소모 kcal × 25
@@ -350,6 +352,8 @@ const CARDIO = {
   '스키 에르그': { met: 8.0 },
   '줄넘기': { met: 11.0 },
   '수영': { met: 7.0, kcalOnly: true },   // 칼로리 입력만 (워치 칼로리 × 25)
+  '크로스핏': { met: 8.0, kcalOnly: true }, // 칼로리 입력만
+  '하이록스': { met: 9.0, kcalOnly: true }, // 칼로리 입력만
   '풋살': { met: 8.0, perKm: 1.0, timeScale: 0.7, scale: 0.5, goals: true },   // 시간만 입력 시 30% 낮춤, 전체 50%
   '축구': { met: 7.0, perKm: 1.0, goals: true },
   '농구': { met: 6.5 },
