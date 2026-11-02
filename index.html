@@ -66,6 +66,10 @@
       </div>
     </header>
 
+    <div class="login-banner" id="login-banner" hidden>
+      <b>⚠️ 아직 친구 순위에 참가하지 않았어요</b>
+      <span>카톡에서 바로 열면 로그인이 안 돼서 등록이 안 돼요. 오른쪽 위 ⋯ → <b>다른 브라우저로 열기</b>(Safari·크롬) → claude.ai 로그인 후 다시 열어주세요.</span>
+    </div>
     <main>
       <!-- 일간 -->
       <section id="view-day" class="view active">
@@ -219,7 +223,7 @@
       <section id="view-rank" class="view">
         <div class="rank-unavailable panel" id="rank-unavailable" hidden>
           <div class="panel-head"><span>그룹 순위</span><svg class="i"><use href="#i-trophy"/></svg></div>
-          <p class="hint" id="rank-unavailable-msg">순위와 댓글은 공유 링크(claude.ai)에서 열었을 때 동작해요.</p>
+          <p class="hint" id="rank-unavailable-msg">순위와 댓글은 claude.ai에 로그인한 상태로 열어야 동작해요. 카톡 안에서 열었다면 ⋯ → 다른 브라우저로 열기(Safari·크롬) 후 로그인해 주세요.</p>
         </div>
 
         <div class="panel join-card" id="rank-join" hidden>

@@ -352,8 +352,8 @@ const CARDIO = {
   '스키 에르그': { met: 8.0 },
   '줄넘기': { met: 11.0 },
   '수영': { met: 7.0, kcalOnly: true },   // 칼로리 입력만 (워치 칼로리 × 25)
-  '크로스핏': { met: 8.0, kcalOnly: true }, // 칼로리 입력만
-  '하이록스': { met: 9.0, kcalOnly: true }, // 칼로리 입력만
+  '크로스핏': { met: 8.0, kcalOnly: true, scale: 0.7 }, // 칼로리 입력만 · 30% 할인
+  '하이록스': { met: 9.0, kcalOnly: true, scale: 0.7 }, // 칼로리 입력만 · 30% 할인
   '풋살': { met: 8.0, perKm: 1.0, timeScale: 0.7, scale: 0.5, goals: true },   // 시간만 입력 시 30% 낮춤, 전체 50%
   '축구': { met: 7.0, perKm: 1.0, goals: true },
   '농구': { met: 6.5 },

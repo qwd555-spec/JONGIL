@@ -2436,6 +2436,12 @@ const nightly = (() => {
 })();
 
 cloud.init();
+// 로그인 안 된 상태(카톡 인앱 브라우저 등)면 참가 안내
+setTimeout(() => {
+  let ok = false;
+  try { ok = !!social.id(); } catch {}
+  if (!ok) $('#login-banner').hidden = false;
+}, 9000);
 
 /* ---------- 🎉 이벤트 배경 ---------- */
 (() => {

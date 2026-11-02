@@ -993,3 +993,7 @@ body.event-bg .ath-opt { background: rgba(255,255,255,.08); color: var(--text); 
 body.event-bg .ath-opt.gate, body.event-bg .ath-vp { background: linear-gradient(135deg, #7c3aed, #a855f7); }
 body.event-bg .ath-result { background: rgba(34,197,94,.12); }
 body.event-bg .ath-result b { color: var(--text); }
+.login-banner { display: flex; flex-direction: column; gap: 4px; margin: 0 0 0; padding: 14px 18px; background: #fff4e5; color: #7a4a00; font-size: 12.5px; line-height: 1.5; }
+.login-banner b { font-size: 13.5px; }
+.login-banner span b { font-size: inherit; }
+body.event-bg .login-banner b, .login-banner b { color: #7a4a00; }
