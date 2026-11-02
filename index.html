@@ -317,6 +317,11 @@
           <p class="hint">피드는 닉네임을 등록하고 로그인한 상태에서 볼 수 있어요.</p>
         </div>
         <div id="feed-main" hidden>
+          <button type="button" class="diet-entry" id="diet-open">
+            <span class="de-ic">🥗</span>
+            <span class="de-tx"><b>식단 기록 · 칼로리 탄단지</b><small>제대로 할 사람만 · 나만 보는 기록</small></span>
+            <svg class="i"><use href="#i-right"/></svg>
+          </button>
           <div class="segmented" id="feed-kind">
             <button data-k="meal" class="active">🍱 식단</button>
             <button data-k="body">눈바디</button>
@@ -680,6 +685,57 @@
     </div>
   </div>
 
+  <!-- 🥗 식단 기록 (개인) -->
+  <div id="diet-modal" class="rest-modal diet" hidden role="dialog" aria-modal="true" aria-label="식단 기록">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet diet-sheet">
+      <div class="rest-head">
+        <span class="rest-chip">🥗 식단 기록</span>
+        <button id="diet-close" class="rest-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div id="diet-intro">
+        <h3 class="diet-h">진짜 제대로 할 사람만 🔥</h3>
+        <p class="diet-p">먹은 걸 끼니마다 검색해서 칼로리·탄수화물·단백질·지방을 기록해요.<br />매일 꾸준히 적을 자신 있을 때 켜세요. <b>나만 보는 기록</b>이고 친구에게 공유되지 않아요.</p>
+        <label class="diet-in"><span>하루 목표 칼로리</span><input type="number" id="diet-goal-k" inputmode="numeric" /><i>kcal</i></label>
+        <label class="diet-in"><span>하루 목표 단백질</span><input type="number" id="diet-goal-p" inputmode="numeric" /><i>g</i></label>
+        <p class="hint">몸무게 기준으로 미리 채워뒀어요 (칼로리 = 몸무게×33, 단백질 = 몸무게×1.6)</p>
+        <button type="button" class="diet-go" id="diet-start">시작하기</button>
+      </div>
+      <div id="diet-main" hidden>
+        <div class="diet-nav"><button type="button" id="diet-prev" aria-label="전날">‹</button><b id="diet-date">오늘</b><button type="button" id="diet-next" aria-label="다음날">›</button></div>
+        <div class="diet-top">
+          <div class="diet-kcal"><b id="diet-kcal">0</b><span id="diet-goal"></span></div>
+          <div class="diet-bar" id="diet-bar"><i></i></div>
+          <small id="diet-left"></small>
+        </div>
+        <div class="diet-macros" id="diet-macros"></div>
+        <div class="diet-ratio" id="diet-ratio"></div>
+        <small class="diet-ratio-txt" id="diet-ratio-txt"></small>
+        <div class="diet-meals" id="diet-meals"></div>
+        <div class="diet-foot"><button type="button" id="diet-settings">목표 바꾸기</button><button type="button" id="diet-off">식단 기록 끄기</button></div>
+      </div>
+      <div class="diet-add" id="diet-add" hidden>
+        <div class="diet-add-head"><b id="diet-add-title"></b><button type="button" id="diet-add-close" aria-label="닫기">✕</button></div>
+        <input type="search" id="diet-q" placeholder="음식 검색 (예: 닭가슴살, 짜장면, 치킨)" autocomplete="off" />
+        <small class="diet-q-hint" id="diet-q-hint"></small>
+        <div class="diet-results" id="diet-results"></div>
+        <button type="button" class="diet-custom-open" id="diet-custom-open">＋ 직접 추가 (포장지 영양성분 보고)</button>
+        <form class="diet-custom" id="diet-custom" hidden autocomplete="off">
+          <input id="dc-n" placeholder="음식 이름" maxlength="30" />
+          <input id="dc-u" placeholder="기준 (예: 1개, 100g)" maxlength="20" />
+          <div class="dc-row"><input id="dc-k" inputmode="decimal" placeholder="kcal" /><input id="dc-c" inputmode="decimal" placeholder="탄수 g" /><input id="dc-p" inputmode="decimal" placeholder="단백 g" /><input id="dc-f" inputmode="decimal" placeholder="지방 g" /></div>
+          <button type="submit">내 음식으로 저장</button>
+        </form>
+        <div class="diet-qty" id="diet-qty" hidden>
+          <b id="diet-qty-name"></b>
+          <div class="dq-step"><button type="button" id="diet-minus">−</button><span><b id="diet-qty-v">1</b> 인분</span><button type="button" id="diet-plus">＋</button></div>
+          <small id="diet-qty-sum"></small>
+          <button type="button" class="diet-go" id="diet-save">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="routine-modal" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="routine-title">
     <div class="rest-backdrop"></div>
     <div class="rest-sheet routine-sheet">
@@ -785,6 +841,7 @@
 
   <script src="exercises.js"></script>
   <script src="app.js"></script>
+  <script src="diet.js"></script>
   <script src="stage3d.js"></script>
   <script src="athlete.js"></script>
 </body>
