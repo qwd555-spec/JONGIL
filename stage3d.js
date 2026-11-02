@@ -361,9 +361,36 @@ window.stage3d = (() => {
     sx.fillStyle = '#fff'; sx.font = '900 104px -apple-system, "Apple SD Gothic Neo", sans-serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.fillText('⛰ 볼류머 산스장', 512, 116);
     const st = new THREE.CanvasTexture(sign); st.encoding = THREE.sRGBEncoding;
     const signM = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.9), new THREE.MeshStandardMaterial({ map: st, roughness: 0.6, emissive: 0x222222 }));
-    signM.position.set(0, 3.0, -8.4); gymScene.add(signM);
+    signM.position.set(0, 2.05, -10.2); gymScene.add(signM);
+    // 📢 뒤쪽 대형 광고판 (가로로 길게)
+    (() => {
+      const W = 1400, H = 520, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const cx = cv.getContext('2d'); cx.fillStyle = '#111'; cx.fillRect(0, 0, W, H);
+      const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
+      const img = new Image();
+      img.onload = () => {
+        cx.drawImage(img, 0, 0, W, H);
+        const g = cx.createLinearGradient(0, 0, 640, 0); g.addColorStop(0, 'rgba(0,0,0,.7)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        cx.fillStyle = g; cx.fillRect(0, 0, 640, H);
+        cx.textAlign = 'left'; cx.textBaseline = 'alphabetic';
+        cx.fillStyle = '#e8b923'; cx.font = '800 34px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText('VOLUMER 산스장 공식 모델', 56, 150);
+        cx.fillStyle = '#fff'; cx.font = '900 76px -apple-system, "Apple SD Gothic Neo", sans-serif';
+        cx.fillText('볼륨은', 52, 260); cx.fillText('배신하지 않는다', 52, 350);
+        cx.fillStyle = 'rgba(255,255,255,.75)'; cx.font = '600 30px -apple-system, "Apple SD Gothic Neo", sans-serif'; cx.fillText('오늘도 한 세트 더 — 해발 1,000m', 56, 420);
+        tex.needsUpdate = true;
+      };
+      img.src = 'billboard.jpg';
+      const bw = 9.6, bh = bw * H / W, by = 4.5, bz = -10.4;
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+      board.position.set(0, by, bz + 0.09); gymScene.add(board);
+      const fm = M(0x15161a, 0.5, 0.6);
+      B(bw + 0.35, bh + 0.35, 0.15, fm, 0, by, bz);
+      [-bw * 0.32, bw * 0.32].forEach((x) => B(0.22, by + 6, 0.22, fm, x, (by - 6) / 2, bz - 0.2));
+      B(bw * 0.8, 0.1, 0.5, fm, 0, by + bh / 2 + 0.3, bz + 0.25);
+      for (let i = 0; i < 4; i++) { const x = -bw * 0.36 + i * bw * 0.24; B(0.12, 0.25, 0.35, M(0x333333, 0.4, 0.6), x, by + bh / 2 + 0.36, bz + 0.45);
+        const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture('rgba(255,240,200,.9)', 'rgba(255,240,200,0)'), transparent: true, depthWrite: false })); gl.scale.set(1.2, 1.2, 1); gl.position.set(x, by + bh / 2 + 0.2, bz + 0.6); gymScene.add(gl); }
+    })();
     const black = M(0x1d1e22, 0.5, 0.5), steel = M(0xd9dbe0, 0.25, 0.9), plate = M(0x121214, 0.7, 0.2), red = M(0xd83a3a, 0.5, 0.3), pad = M(0x2b2c31, 0.6, 0.1), conc = M(0xa9a59c, 0.95);
-    Cy(0.07, 3.0, black, -1.9, 1.5, -8.45); Cy(0.07, 3.0, black, 1.9, 1.5, -8.45);
     // 소나무 몇 그루 (가장자리)
     const trunkM = M(0x5a3b24), pineM = M(0x2f5a3a, 0.9), pineM2 = M(0x3b6b44, 0.9);
     const pine = (x, z, k) => { Cy(0.12 * k, 1.2 * k, trunkM, x, 0.6 * k, z); [0, 1, 2].forEach((j) => { const c = new THREE.Mesh(new THREE.ConeGeometry((1.0 - j * 0.25) * k, 1.3 * k, 8), j % 2 ? pineM2 : pineM); c.position.set(x, (1.4 + j * 0.75) * k, z); c.castShadow = true; gymScene.add(c); }); };
