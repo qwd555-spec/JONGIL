@@ -288,7 +288,8 @@ function setVolume(set, ex, date) {
   if (!type) return w * r;
   const bw = bodyweightOn(date);
   if (type === 'assist') return Math.max(0, bw - w) * r;
-  return (bw + w) * r;
+  const k = (typeof BW_SCALE !== 'undefined' && BW_SCALE[ex.name]) || 1;
+  return (bw + w) * r * k;
 }
 function exerciseVolume(ex, date) { return ex.sets.reduce((a, s) => a + setVolume(s, ex, date), 0); }
 /** 근력 볼륨 — 유산소·스포츠 제외 */
@@ -814,7 +815,8 @@ function renderDay() {
       chip.hidden = false;
       const bw = bodyweightOn(state.day);
       chip.classList.toggle('on', !!type);
-      chip.textContent = !type ? '맨몸 운동?' : bw ? `맨몸 +${bw}kg` : '맨몸 · 몸무게 미입력';
+      const nerf = type === 'bw' && typeof BW_SCALE !== 'undefined' && BW_SCALE[ex.name] ? ` · 볼륨 ×${Math.round(BW_SCALE[ex.name] * 100)}%` : '';
+      chip.textContent = (!type ? '맨몸 운동?' : bw ? `맨몸 +${bw}kg` : '맨몸 · 몸무게 미입력') + nerf;
       chip.title = isCatalog ? '' : '눌러서 맨몸 운동으로 설정/해제';
       if (!isCatalog) {
         chip.addEventListener('click', () => {
