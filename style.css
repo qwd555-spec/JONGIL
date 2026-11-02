@@ -1078,3 +1078,22 @@ body.event-bg .meal-add { background: linear-gradient(135deg, #7c3aed, #a855f7);
 .meal-cell span { font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
 .meal-up .rb-name { margin-top: 0; }
 body.event-bg .meal-row { background: rgba(255,255,255,.06); }
+/* ---------- 🎬 선수 무대 (시네마틱) ---------- */
+.ath-hero.cine { position: relative; height: 440px; padding: 0; overflow: hidden; border-radius: 28px; background: #07070d; color: #fff; text-align: left; box-shadow: 0 24px 50px -24px rgba(7,7,13,.7); }
+.ath-3d { position: absolute; inset: 0; }
+.ath-3d canvas { display: block; cursor: grab; }
+.ath-3d canvas:active { cursor: grabbing; }
+.ath-hero.cine .ath-figure { position: absolute; inset: 40px 0 90px; display: flex; justify-content: center; align-items: center; }
+.ath-hero.cine .ath-figure[hidden], .ath-3d[hidden] { display: none; }
+.cine-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(7,7,13,.55) 0%, rgba(7,7,13,0) 22%, rgba(7,7,13,0) 58%, rgba(7,7,13,.92) 100%); }
+.cine-top { position: absolute; top: 16px; left: 18px; right: 16px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+.cine-ch { font-size: 11px; font-weight: 700; letter-spacing: .28em; color: rgba(255,255,255,.7); }
+.ath-hero.cine .ath-track { background: rgba(255,255,255,.12); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.14); }
+.ath-hero.cine .ath-track.none { color: rgba(255,255,255,.7); }
+.ath-hero.cine .ath-hulk { position: absolute; top: 52px; right: 16px; background: rgba(95,184,64,.2); color: #b7f59a; border: 1px solid rgba(183,245,154,.35); letter-spacing: .08em; }
+.cine-bottom { position: absolute; left: 20px; right: 20px; bottom: 18px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.cine-bottom small { font-size: 10px; font-weight: 700; letter-spacing: .3em; color: var(--pink); }
+.cine-bottom b { font-size: 34px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; color: #fff; }
+.cine-bottom span { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.72); letter-spacing: -0.01em; }
+.cine-hint { position: absolute; right: 18px; bottom: 22px; font-size: 10.5px; color: rgba(255,255,255,.45); pointer-events: none; }
+body.event-bg .ath-hero.cine { background: #07070d; }

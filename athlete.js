@@ -315,13 +315,17 @@ window.athlete = (() => {
     const bal = balance(R);
     const T = TRACKS[G.track];
     const rest = restDays();
-    $('#ath-figure').innerHTML = drawAthlete({ up: R.up, low: R.low, track: G.track, mood: rest <= 1 ? 'happy' : rest <= 3 ? 'ok' : 'sad', size: 190 });
+    // 3D 무대 (안 되면 2D 그림으로)
+    const fallback = () => { $('#ath-3d').hidden = true; $('#ath-figure').hidden = false; $('#ath-figure').innerHTML = drawAthlete({ up: R.up, low: R.low, track: G.track, mood: rest <= 1 ? 'happy' : rest <= 3 ? 'ok' : 'sad', size: 170 }); };
+    if (window.stage3d) window.stage3d.show($('#ath-3d'), { up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42' }).then((ok) => { if (!ok) fallback(); }).catch(fallback);
+    else fallback();
+    $('#ath-chapter').textContent = `CHAPTER ${String((T ? G.stage : 0) + 1).padStart(2, '0')}`;
     let nick = '나'; try { nick = social.nick() || '나'; } catch {}
     $('#ath-name').textContent = nick;
     $('#ath-track').textContent = T ? `${T.icon} ${T.name}` : '종목 미정';
     $('#ath-track').classList.toggle('none', !T);
     $('#ath-stage').textContent = T ? T.stages[G.stage].name : '어떤 선수가 될지 골라주세요';
-    $('#ath-hulk').hidden = (Math.min(R.up, 40) + Math.min(R.low, 40)) / 2 < 16;
+    $('#ath-hulk').hidden = (Math.min(R.up, 40) + Math.min(R.low, 40)) / 2 < 19;
     $('#ath-vp').innerHTML = `<b>${bal.toLocaleString()}</b> VP <small>선택 1번 = ${COST.toLocaleString()} VP · 볼륨 10kg = 1 VP</small>`;
 
     $('#ath-setup').hidden = !!T;

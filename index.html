@@ -340,14 +340,21 @@
 
       <!-- 선수 키우기 -->
       <section id="view-career" class="view">
-        <div class="ath-hero">
-          <div class="ath-stage-bg"></div>
-          <div class="ath-top">
+        <div class="ath-hero cine">
+          <div class="ath-3d" id="ath-3d"></div>
+          <div class="ath-figure" id="ath-figure" hidden></div>
+          <div class="cine-shade"></div>
+          <div class="cine-top">
+            <span class="cine-ch" id="ath-chapter">CHAPTER 01</span>
             <span class="ath-track" id="ath-track"></span>
-            <span class="ath-hulk" id="ath-hulk" hidden>💚 헐크 모드</span>
           </div>
-          <div class="ath-figure" id="ath-figure"></div>
-          <div class="ath-id"><b id="ath-name"></b><span id="ath-stage"></span></div>
+          <span class="ath-hulk" id="ath-hulk" hidden>💚 HULK MODE</span>
+          <div class="cine-bottom">
+            <small>VOLUMER ATHLETE</small>
+            <b id="ath-name"></b>
+            <span id="ath-stage"></span>
+          </div>
+          <span class="cine-hint">드래그해서 돌려보기</span>
         </div>
 
         <div class="ath-vp" id="ath-vp"></div>
@@ -688,6 +695,7 @@
 
   <script src="exercises.js"></script>
   <script src="app.js"></script>
+  <script src="stage3d.js"></script>
   <script src="athlete.js"></script>
 </body>
 </html>
