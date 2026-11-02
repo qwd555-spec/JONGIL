@@ -1930,6 +1930,18 @@ const social = (() => {
     toast(`${nickOf(last.from)}: ${String(last.text).slice(0, 40)}${fresh.length > 1 ? ` 외 ${fresh.length - 1}개` : ''}`);
   }
 
+  /* ---- 🔒 어제 운동 안 한 사람 → 오늘 산스장 교도소 (오늘 운동하면 석방) ---- */
+  function isJailed(id) {
+    const t = todayStr(), y = addDays(t, -1);
+    if (id === myId) {
+      if (dayVolume(t) > 0) return false;
+      return Object.keys(db).some((d) => d < y && dayVolume(d) > 0) && !(dayVolume(y) > 0);
+    }
+    const m = members[id]; if (!m) return false;
+    if (friendDay(m, t)) return false;
+    const ever = Object.keys(m.days || {}).length + Object.keys(m.cdays || {}).length + Object.keys(m.dsum || {}).length;
+    return ever > 0 && !friendDay(m, y);
+  }
   /* ---- 🎉 친구가 운동 기록 남기면 첫 화면에 축하 팝업 (축하/피드백해야 닫힘) ---- */
   const CONGRATS_KEY = 'gymlog.congrats';
   let congratsArmed = true, congratsQ = [], congratsCur = null;
@@ -2568,7 +2580,7 @@ const social = (() => {
   }
 
   return { init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
-    members: () => members, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id),
+    members: () => members, jailed: isJailed, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id),
     focus: (id) => { try { return todayFocus(id); } catch { return null; } },
     send: async (to, text) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to, text, at: Date.now() }); } };
 })();

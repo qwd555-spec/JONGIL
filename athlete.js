@@ -430,9 +430,20 @@ window.athlete = (() => {
   function openOrder(a) {
     picked = a;
     const T = window.stage3d.tasks;
+    if (a.jail) {
+      $('#order-title').textContent = a.me ? '🔒 나는 지금 수감 중' : `🔒 ${a.nick} 수감 중`;
+      $('#order-now').textContent = a.me ? '죄목: 어제 운동 안 함 · 오늘 운동 기록하면 바로 석방' : '죄목: 어제 운동 안 함 · 오늘 운동하면 석방돼요';
+      $('#order-btns').innerHTML = a.me ? '' : ['🔒 빨리 운동하고 나와라', '🍞 콩밥 넣어줄게 ㅋㅋ', '🏋️ 감방에서 푸쉬업이라도 해'].map((m) => `<button type="button" data-m="${m}">📣 면회: ${m}</button>`).join('');
+      $('#order-btns').querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+        $('#order-sheet').hidden = true;
+        try { await social.send(a.id, `${b.dataset.m} (산스장 교도소 면회)`); toast(`${a.nick}에게 면회 다녀왔어요 🔒`); } catch { toast('면회 실패 — 보낼 권한이 없어요'); }
+      }));
+      $('#order-sheet').hidden = false;
+      return;
+    }
     $('#order-title').textContent = a.me ? '나는 뭐 할까?' : `${a.nick}에게 시키기`;
     $('#order-now').textContent = `지금: ${T[a.task] ? T[a.task].label : '이동 중'}`;
-    $('#order-btns').innerHTML = Object.entries(T).map(([k, t]) => `<button type="button" data-k="${k}">${t.label}</button>`).join('');
+    $('#order-btns').innerHTML = Object.entries(T).filter(([, t]) => !t.hidden).map(([k, t]) => `<button type="button" data-k="${k}">${t.label}</button>`).join('');
     $('#order-btns').querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
       const k = b.dataset.k, label = T[k].label;
       window.stage3d.assign(a.id, k);
@@ -451,12 +462,13 @@ window.athlete = (() => {
   function teamList() {
     let members = {}, myId = null, live = () => false;
     try { members = social.members(); myId = social.id(); live = social.live; } catch {}
+    const jailed = (id) => { try { return !!social.jailed(id); } catch { return false; } };
     return Object.keys(members).map((id) => {
       const m = members[id];
-      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus() }; }
+      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus(), jail: jailed(id) }; }
       const c = m.char || {}, t = TRACKS[c.t] ? c.t : '';
       let fc = null; try { fc = social.focus(id); } catch {}
-      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id) };
+      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id), jail: jailed(id) };
     }).slice(0, 12);
   }
   document.querySelectorAll('#ath-view button').forEach((b) => b.addEventListener('click', () => { view3d = b.dataset.v; render(); }));

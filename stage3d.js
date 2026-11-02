@@ -134,13 +134,14 @@ window.stage3d = (() => {
   }
 
   /* ---- 선수 만들기 (근육량 = 진짜 운동 레벨) ---- */
-  function makeFigure({ up = 0, low = 0, color = '#3a3a42', track = '', stage = 0 }) {
+  function makeFigure({ up = 0, low = 0, color = '#3a3a42', track = '', stage = 0, jail = false }) {
+    if (jail) color = '#ff7a1a';   // 🔒 죄수복
     const mats = {};
     const U = Math.min(up, 40) / 40, L = Math.min(low, 40) / 40;
     const hulk = Math.max(0, Math.min(1, ((up + low) / 2 - 16) / 14));
     mats.skin = new THREE.MeshStandardMaterial({ color: mix('#e9b994', '#5fb840', hulk), roughness: 0.55, metalness: 0.05 });
     mats.shirt = new THREE.MeshStandardMaterial({ color: hex(color), roughness: 0.7 });
-    mats.shorts = new THREE.MeshStandardMaterial({ color: 0x1d1d24, roughness: 0.8 });
+    mats.shorts = new THREE.MeshStandardMaterial({ color: jail ? 0xff7a1a : 0x1d1d24, roughness: 0.8 });
     mats.hair = new THREE.MeshStandardMaterial({ color: 0x1c140e, roughness: 0.9 });
     mats.shoe = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.6 });
     const f = new THREE.Group();
@@ -276,6 +277,7 @@ window.stage3d = (() => {
     curl: { label: '🧗 턱걸이', station: 'db' },
     stretch: { label: '🧘 스트레칭', station: 'mat' },
     rest: { label: '🥤 약수 한 사발', station: 'seat' },
+    jail: { label: '🔒 수감 중', station: 'jail', hidden: true },
   };
   let gymScene = null, gymCam = null, stations = {}, agents = [], gymYaw = 0.25, onPick = null;
   function buildGymScene() {
@@ -394,8 +396,8 @@ window.stage3d = (() => {
     // 소나무 몇 그루 (가장자리)
     const trunkM = M(0x5a3b24), pineM = M(0x2f5a3a, 0.9), pineM2 = M(0x3b6b44, 0.9);
     const pine = (x, z, k) => { Cy(0.12 * k, 1.2 * k, trunkM, x, 0.6 * k, z); [0, 1, 2].forEach((j) => { const c = new THREE.Mesh(new THREE.ConeGeometry((1.0 - j * 0.25) * k, 1.3 * k, 8), j % 2 ? pineM2 : pineM); c.position.set(x, (1.4 + j * 0.75) * k, z); c.castShadow = true; gymScene.add(c); }); };
-    [[-8.6, -3.6, 1.1], [8.4, -4.4, 1.0], [7.9, 4.6, 0.85], [-4.6, -8.6, 0.8], [6.6, 6.6, 0.8]].forEach(([x, z, k]) => pine(x, z, k));
-    stations = { bench: [], rack: [], tread: [], db: [], mat: [], seat: [] };
+    [[-8.6, -3.6, 1.1], [8.4, -4.4, 1.0], [7.9, 4.6, 0.85], [-4.6, -8.6, 0.8], [8.2, 5.4, 0.8]].forEach(([x, z, k]) => pine(x, z, k));
+    stations = { bench: [], rack: [], tread: [], db: [], mat: [], seat: [], jail: [] };
     // 벤치프레스 2대 (왼쪽)
     [-1.3, 1.3].forEach((dz) => {
       const x = -5.2, z = -1 + dz;
@@ -438,7 +440,7 @@ window.stage3d = (() => {
     });
     // 스트레칭 매트 (가운데 앞)
     const matCols = [0x7a5cff, 0x2fbf8f, 0xff7a59, 0x3aa0ff, 0xf2c14e];
-    [[-1.6, 2.4], [0, 2.4], [1.6, 2.4], [-0.8, 3.9], [0.8, 3.9]].forEach(([x, z], i) => {
+    [[-0.4, 2.2], [1.2, 2.2], [2.8, 2.2], [0.4, 3.7], [2.0, 3.7]].forEach(([x, z], i) => {
       B(0.75, 0.025, 1.6, M(matCols[i], 0.9), x, 0.025, z);
       stations.mat.push({ x, z, face: 0, y: 0.04, busy: null });
     });
@@ -457,16 +459,58 @@ window.stage3d = (() => {
     (() => { const x = -8.3, z = 0.6;    // 덤벨 랙
       B(0.6, 0.06, 2.6, black, x, 0.7, z); B(0.6, 0.06, 2.6, black, x, 0.35, z); [-1.2, 1.2].forEach((dz) => B(0.08, 0.75, 0.5, black, x, 0.37, z + dz));
       for (let i = 0; i < 6; i++) { const dz = -1.05 + i * 0.42; [0.76, 0.41].forEach((y, j) => { const d = Cy(0.02, 0.32, steel, x, y, z + dz, 0, Math.PI / 2); [-0.12, 0.12].forEach((o) => Cy(0.06 + i * 0.008 + j * 0.01, 0.06, plate, 0, o, 0, 0, 0, d)); }); } })();
-    // 쉼터: 작은 정자 + 약수터 (왼쪽 앞)
-    const pz = 4.4, px = -5.6;
-    const deck = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.22, 8), M(0x7a5232, 0.8)); deck.position.set(px, 0.11, pz); deck.receiveShadow = true; deck.castShadow = true; gymScene.add(deck);
-    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + Math.PI / 8; Cy(0.08, 2.0, M(0xa0442a, 0.7), px + Math.cos(a) * 1.5, 1.2, pz + Math.sin(a) * 1.5); }
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.0, 8), M(0x3d4a3a, 0.8)); roof.position.set(px, 2.7, pz); roof.rotation.y = Math.PI / 8; roof.castShadow = true; gymScene.add(roof);
-    const eave = new THREE.Mesh(new THREE.CylinderGeometry(2.15, 2.15, 0.1, 8), M(0xa0442a, 0.7)); eave.position.set(px, 2.2, pz); eave.rotation.y = Math.PI / 8; gymScene.add(eave);
-    B(0.9, 0.85, 0.6, conc, -8.2, 0.43, 3.2); Cy(0.03, 0.5, steel, -7.85, 0.8, 3.2, 0, Math.PI / 2);
-    Cy(0.025, 0.5, new THREE.MeshStandardMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.7, emissive: 0x1b4a6b }), -7.62, 0.53, 3.2);
-    B(0.6, 0.16, 0.45, conc, -7.62, 0.08, 3.2);
-    [[-0.8, 0], [0, -0.3], [0.8, 0]].forEach(([dx, dz]) => stations.seat.push({ x: px + dx, z: pz + dz, face: 0, sit: 0.72, busy: null }));
+    // 🔒 볼류머 교도소 (왼쪽 앞) — 어제 운동 안 한 사람 수감. 천장 없이 위에서 다 보이게
+    const px = -2.7, pz = 5.2, JW = 3.6, JD = 3.0, JH = 2.5;
+    const iron = M(0x2c2f36, 0.45, 0.8), ironL = M(0x4a4e57, 0.4, 0.8);
+    B(JW + 0.3, 0.16, JD + 0.3, M(0x8d8a84, 0.95), px, 0.08, pz);   // 콘크리트 바닥
+    const barRow = (x0, z0, x1, z1, skip) => {
+      const len = Math.hypot(x1 - x0, z1 - z0), n = Math.round(len / 0.24);
+      for (let i = 0; i <= n; i++) { if (skip && skip(i, n)) continue; const t = i / n; Cy(0.028, JH, iron, x0 + (x1 - x0) * t, 0.16 + JH / 2, z0 + (z1 - z0) * t); }
+    };
+    const x0 = px - JW / 2, x1 = px + JW / 2, z0 = pz - JD / 2, z1 = pz + JD / 2;
+    barRow(x0, z0, x1, z0); barRow(x0, z0, x0, z1); barRow(x1, z0, x1, z1);
+    barRow(x0, z1, x1, z1, (i, n) => i > n * 0.55 && i < n * 0.85);   // 앞쪽 문 자리
+    [0.16 + JH, 0.16 + JH * 0.55, 0.22].forEach((y) => {   // 가로 띠 (천장은 뚫림)
+      B(JW + 0.06, 0.08, 0.08, ironL, px, y, z0); B(JW + 0.06, 0.08, 0.08, ironL, px, y, z1);
+      B(0.08, 0.08, JD + 0.06, ironL, x0, y, pz); B(0.08, 0.08, JD + 0.06, ironL, x1, y, pz);
+    });
+    [x0, x1].forEach((x) => [z0, z1].forEach((z) => B(0.14, JH + 0.1, 0.14, ironL, x, 0.16 + JH / 2, z)));
+    // 철창 문 (살짝 열린 채 자물쇠)
+    const door = new THREE.Group(); const dx0 = x0 + JW * 0.55; door.position.set(dx0, 0, z1); door.rotation.y = -0.18; gymScene.add(door);
+    for (let i = 0; i <= 5; i++) Cy(0.028, JH - 0.1, iron, i * 0.2, 0.16 + JH / 2, 0, 0, 0, door);
+    [0.35, JH * 0.55, JH].forEach((y) => B(1.08, 0.07, 0.07, ironL, 0.5, y, 0, door));
+    B(0.16, 0.2, 0.1, M(0xd4a017, 0.3, 0.9), 0.95, 1.2, 0.08, door);
+    // 간판
+    const pl = document.createElement('canvas'); pl.width = 1024; pl.height = 256;
+    const plx = pl.getContext('2d'); plx.fillStyle = '#16171b'; plx.fillRect(0, 0, 1024, 256);
+    plx.fillStyle = '#e23b3b'; plx.fillRect(0, 0, 1024, 24); plx.fillRect(0, 232, 1024, 24);
+    plx.textAlign = 'center'; plx.fillStyle = '#fff'; plx.font = '900 104px -apple-system, "Apple SD Gothic Neo", sans-serif'; plx.fillText('🔒 볼류머 교도소', 512, 128);
+    plx.fillStyle = '#ffb3b3'; plx.font = '700 46px -apple-system, "Apple SD Gothic Neo", sans-serif'; plx.fillText('죄목: 어제 운동 안 함', 512, 204);
+    const plT = new THREE.CanvasTexture(pl); plT.encoding = THREE.sRGBEncoding;
+    const plM = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: plT, toneMapped: false }));
+    plM.position.set(px, JH + 0.62, z0 + 0.05); gymScene.add(plM);
+    Cy(0.03, 0.5, ironL, px - 1.0, JH + 0.25 + 0.16, z0); Cy(0.03, 0.5, ironL, px + 1.0, JH + 0.25 + 0.16, z0);
+    // 감방 안: 2층 철침대 · 변기 · 쇠공
+    const bx = px + JW / 2 - 0.55, bzz = pz - 0.3;
+    [[0.5], [1.35]].forEach(([y]) => { B(0.8, 0.08, 1.9, ironL, bx, y, bzz); B(0.72, 0.1, 1.8, M(0xd9d4c4, 0.95), bx, y + 0.09, bzz); });
+    [[-0.38, -0.92], [0.38, -0.92], [-0.38, 0.92], [0.38, 0.92]].forEach(([dx, dz]) => B(0.06, 1.6, 0.06, ironL, bx + dx, 0.95, bzz + dz));
+    const wc = M(0xf4f4f4, 0.3, 0.1);
+    Cy(0.2, 0.36, wc, px - JW / 2 + 0.35, 0.34, pz - JD / 2 + 0.35); B(0.42, 0.42, 0.16, wc, px - JW / 2 + 0.35, 0.6, pz - JD / 2 + 0.16);
+    [[px - 0.9, pz + 0.9], [px + 0.1, pz + 1.0], [px - 0.4, pz - 0.6]].forEach(([x, z]) => {
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10), M(0x1a1a1e, 0.4, 0.7)); ball.position.set(x + 0.28, 0.33, z + 0.12); ball.castShadow = true; gymScene.add(ball);
+    });
+    // 수감자 자리: 앞쪽 철창 붙잡는 줄 + 뒤쪽 침대 · 바닥
+    [[px - 1.2, pz + 1.05], [px - 0.4, pz + 1.05], [px + 0.4, pz + 1.05], [px - 1.0, pz - 0.2], [px - 0.1, pz - 0.5], [px + 0.3, pz + 0.3]].forEach(([x, z], i) =>
+      stations.jail.push({ x, z, face: 0, y: 0.16, grip: i < 3, busy: null }));
+    // 약수터 + 나무 벤치 (쉼터)
+    B(0.9, 0.85, 0.6, conc, -8.4, 0.43, 1.9); Cy(0.03, 0.5, steel, -8.05, 0.8, 1.9, 0, Math.PI / 2);
+    Cy(0.025, 0.5, new THREE.MeshStandardMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.7, emissive: 0x1b4a6b }), -7.82, 0.53, 1.9);
+    B(0.6, 0.16, 0.45, conc, -7.82, 0.08, 1.9);
+    const wood = M(0x8a5a34, 0.85);
+    const sbx = 5.4, sbz = 5.3;
+    B(2.6, 0.1, 0.5, wood, sbx, 0.5, sbz); B(2.6, 0.5, 0.08, wood, sbx, 0.8, sbz - 0.25);
+    [-1.1, 1.1].forEach((dx) => B(0.1, 0.5, 0.45, iron, sbx + dx, 0.25, sbz));
+    [[-0.8, 0], [0, 0], [0.8, 0]].forEach(([dx, dz]) => stations.seat.push({ x: sbx + dx, z: sbz + 0.12, face: 0, sit: 0.72, busy: null }));
   }
 
   // 각 동작 포즈 (매 프레임)
@@ -513,6 +557,19 @@ window.stage3d = (() => {
       f.position.y = a.slot.y || 0.13;
       f.rotation.y = Math.sin(t * 1.8) * 0.75;
       rig.arms.forEach((r) => (r.rotation.x = -1.35));
+    } else if (k === 'jail') {   // 🔒 철창 붙잡고 흔들기 / 바닥에 쭈그려 앉기
+      f.position.y = a.slot.y || 0.16;
+      if (a.slot.grip) {
+        const sh = Math.sin(t * 6) * Math.max(0, Math.sin(t * 0.6));
+        f.position.z = 0.12 + sh * 0.05;
+        rig.arms.forEach((r, i) => { r.rotation.x = -1.9; r.rotation.z = (i ? 1 : -1) * 0.25; });
+        f.rotation.y = Math.sin(t * 0.9) * 0.15;
+      } else {
+        f.position.y = (a.slot.y || 0.16) - 0.45;
+        rig.legs.forEach((l) => (l.rotation.x = -1.5));
+        rig.arms.forEach((r) => (r.rotation.x = -0.9));
+        f.rotation.x = 0.35;   // 고개 푹
+      }
     } else if (k === 'rest') {
       f.position.y = (a.slot.sit || 0.5) - 0.95 + 0.05;
       rig.legs.forEach((l) => (l.rotation.x = -1.45));
@@ -522,6 +579,7 @@ window.stage3d = (() => {
 
   function freeSlot(station) { const list = stations[station] || []; return list.find((x) => !x.busy) || null; }
   function pickTask(a) {
+    if (a.jail) return 'jail';
     if (a.forced) { const k = a.forced; a.forced = null; return k; }
     const pool = a.live
       ? { '가슴': 'bench', '하체': 'squat', '유산소': 'run', '팔': 'curl', '등': 'curl', '어깨': 'bench', '축구': 'run' }[a.focus] || ['bench', 'squat', 'run', 'curl'][Math.floor(Math.random() * 4)]
@@ -531,6 +589,7 @@ window.stage3d = (() => {
   function goTo(a, k) {
     if (a.slot) { a.slot.busy = null; const br = a.slot.bar; if (br && br.position) br.position.y = a.slot.barX !== undefined ? 1.3 : 1.55; }
     let slot = freeSlot(TASKS[k].station);
+    if (!slot && k === 'jail') slot = { x: -2.7 + (Math.random() - 0.5) * 2, z: 5.2 + (Math.random() - 0.5) * 1.6, face: 0, y: 0.16 };
     if (!slot) { k = 'stretch'; slot = freeSlot('mat') || freeSlot('seat'); }
     if (!slot) { slot = { x: (Math.random() - 0.5) * 6, z: 1 + Math.random() * 2, face: 0 }; k = 'stretch'; }
     slot.busy = a; a.slot = slot; a.task = k; a.mode = 'walk';
@@ -546,11 +605,12 @@ window.stage3d = (() => {
       f.scale.multiplyScalar(0.82); f.userData.sy = f.scale.y;
       let tag = null;
       const setTag = (sub) => { if (tag) { g.remove(tag); tag.material.map.dispose(); } tag = nameTag(m.nick, sub, m.me, m.live); tag.position.y = f.userData.top * 0.82 + 0.6; tag.scale.multiplyScalar(2.1); g.add(tag); };
-      const a = { id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
+      const a = { id: m.id, nick: m.nick, me: m.me, live: m.live, today: m.today, focus: m.focus, jail: !!m.jail, g, fig: f, phase: i * 1.7, speed: 1, mode: 'walk', task: 'rest', slot: null, timer: 0, tagSub: setTag };
       g.position.set(-1 + (i % 4) * 0.9, 0, 5.2 + Math.floor(i / 4) * 0.8);   // 입구에서 입장
       g.userData.agent = a;
       gymScene.add(g); agents.push(a);
       goTo(a, pickTask(a));
+      if (a.jail) { g.position.set(a.slot.x, 0, a.slot.z); a.mode = 'do'; a.timer = 20 + Math.random() * 20; a.g.rotation.y = a.slot.face; }
     });
   }
   function updateAgents(dt, s) {
@@ -570,7 +630,7 @@ window.stage3d = (() => {
   /** 사람 눌러서 시키기 */
   function assign(id, k) {
     const a = agents.find((x) => x.id === id);
-    if (!a || !TASKS[k]) return false;
+    if (!a || !TASKS[k] || a.jail) return false;
     goTo(a, k);
     return true;
   }
