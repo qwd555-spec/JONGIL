@@ -29,8 +29,13 @@ const BW_KEY = 'gymlog.bodyweight';
 let bwMap = (() => {           // 날짜 → 몸무게(kg)
   try { return JSON.parse(localStorage.getItem(BW_KEY)) || {}; } catch { return {}; }
 })();
+const VIEW_DAY_KEY = 'gymlog.viewDay';
 const state = {
-  day: todayStr(),
+  day: (() => {
+    // 앱이 새로 고쳐져도(다른 앱 갔다 오기 등) 보던 날짜 유지 — 3시간 안이면
+    try { const v = JSON.parse(localStorage.getItem(VIEW_DAY_KEY)); if (v && /^\d{4}-\d{2}-\d{2}$/.test(v.d) && Date.now() - v.at < 3 * 3600 * 1000) return v.d; } catch {}
+    return todayStr();
+  })(),
   weekAnchor: todayStr(),
   monthAnchor: todayStr(),
 };
@@ -412,6 +417,30 @@ $('#view-day').querySelectorAll('.nav-btn').forEach((b) =>
   b.addEventListener('click', () => { state.day = addDays(state.day, +b.dataset.shift); renderDay(); })
 );
 $('#day-today').addEventListener('click', () => { state.day = todayStr(); renderDay(); });
+$('#past-today').addEventListener('click', () => { state.day = todayStr(); renderDay(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+/* 이 날 기록 통째로 다른 날짜로 옮기기 (날짜 잘못 기록했을 때) */
+$('#move-day-btn').addEventListener('click', () => {
+  const inp = $('#move-day-date');
+  inp.value = addDays(state.day, -1);
+  if (typeof inp.showPicker === 'function') { try { inp.showPicker(); return; } catch {} }
+  inp.focus(); inp.click();
+});
+$('#move-day-date').addEventListener('change', async (e) => {
+  const to = e.target.value, from = state.day;
+  if (!to || to === from) return;
+  const list = db[from] || [];
+  if (!list.length) return;
+  const label = (d) => `${parse(d).getMonth() + 1}월 ${parse(d).getDate()}일`;
+  const has = (db[to] || []).length;
+  if (!(await askConfirm(`${label(from)} 운동 ${list.length}개를\n${label(to)}로 옮길까요?${has ? `\n(${label(to)}에 있던 기록 뒤에 붙어요)` : ''}`, { okText: '옮기기' }))) return;
+  db[to] = [...(db[to] || []), ...list];
+  delete db[from];
+  if (planMap[from]) { planMap[to] = [...new Set([...(planMap[to] || []), ...planMap[from]])]; delete planMap[from]; savePlanClosed(); }
+  save();
+  state.day = to;
+  renderDay();
+  toast(`${label(to)}로 옮겼어요`);
+});
 
 /** 운동 하나를 기본 세트(지난번 기록 → 없으면 fallback)로 만들기 */
 function makeEntry(name, fallbackSets) {
@@ -1152,6 +1181,16 @@ function updateDaySummary() {
   const dayStats = rangeStats([state.day]);
   $('#day-sub').innerHTML = list.length ? [`운동 ${list.length}개 · ${sets}세트`, cardioLine(dayStats)].filter(Boolean).join('<br />') : '';
   $('#day-label').textContent = `${parse(state.day).getMonth() + 1}월 ${parse(state.day).getDate()}일 (${'일월화수목금토'[parse(state.day).getDay()]})`;
+  try { localStorage.setItem(VIEW_DAY_KEY, JSON.stringify({ d: state.day, at: Date.now() })); } catch {}
+  // 오늘이 아닌 날을 보고 있으면 확실히 보이게
+  const diff = Math.round((parse(todayStr()) - parse(state.day)) / 86400000);
+  const isToday = diff === 0;
+  $('#past-banner').hidden = isToday;
+  $('#past-banner').classList.toggle('future', diff < 0);
+  $('#past-text').textContent = diff === 1 ? '📅 어제 기록을 보고 있어요' : diff > 1 ? `📅 ${diff}일 전 기록을 보고 있어요` : diff === -1 ? '📅 내일 날짜예요' : `📅 ${-diff}일 뒤 날짜예요`;
+  $('#day-list-label').textContent = isToday ? '오늘의 운동' : `${parse(state.day).getMonth() + 1}/${parse(state.day).getDate()} 운동`;
+  $('#day-sum-label').textContent = isToday ? '오늘 총 볼륨' : `${parse(state.day).getMonth() + 1}/${parse(state.day).getDate()} 총 볼륨`;
+  $('#move-day-btn').hidden = !(db[state.day] || []).length || isClosed(state.day);
   $('#day-count').textContent = list.length ? list.length : '';
   document.querySelector('#view-day .section-head span').firstChild.textContent = state.day === todayStr() ? '오늘의 운동 ' : '이날의 운동 ';
   updateHeader();

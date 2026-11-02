@@ -1102,3 +1102,16 @@ body.event-bg .ath-hero.cine { background: #07070d; }
 .ath-view button { height: 30px; padding: 0 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: rgba(255,255,255,.75); }
 .ath-view button.active { background: #fff; color: #111; }
 .ath-hero.cine.team .ath-hulk { display: none; }
+/* 오늘이 아닌 날 표시 + 날짜 옮기기 */
+.past-banner { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 12px; padding: 10px 10px 10px 14px; border-radius: 16px; background: #fff4e5; color: #7a4a00; font-size: 13.5px; }
+.past-banner[hidden] { display: none; }
+.past-banner b { color: #7a4a00; font-weight: 800; }
+.past-banner button { flex: none; height: 32px; padding: 0 12px; border-radius: 999px; background: #7a4a00; color: #fff; font-size: 12.5px; font-weight: 700; }
+.past-banner.future { background: #eef2ff; color: #3730a3; }
+.past-banner.future b { color: #3730a3; }
+.past-banner.future button { background: #3730a3; }
+.move-day-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 44px; margin: 4px 0 8px; border-radius: 999px; border: 1.5px dashed #c8c8d0; font-size: 13.5px; font-weight: 700; color: var(--muted); }
+.move-day-btn[hidden] { display: none; }
+.move-day-btn .i { width: 16px; height: 16px; }
+.move-day-date { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+body.event-bg .past-banner b { color: #7a4a00; }

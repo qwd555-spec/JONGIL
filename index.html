@@ -82,10 +82,11 @@
           <button class="nav-btn" data-shift="1" aria-label="다음 날"><svg class="i"><use href="#i-right"/></svg></button>
           <button class="today-btn" id="day-today">오늘</button>
         </div>
+        <div class="past-banner" id="past-banner" hidden><b id="past-text"></b><button type="button" id="past-today">오늘로 가기</button></div>
 
         <div class="summary-card">
           <div class="summary-top">
-            <span class="summary-label">오늘 총 볼륨</span>
+            <span class="summary-label" id="day-sum-label">오늘 총 볼륨</span>
             <svg class="i"><use href="#i-layers"/></svg>
           </div>
           <div class="summary-value" id="day-total">0 kg</div>
@@ -137,7 +138,7 @@
         </div>
 
         <div class="section-head">
-          <span>오늘의 운동 <em id="day-count"></em></span>
+          <span><i id="day-list-label" style="font-style:normal">오늘의 운동</i> <em id="day-count"></em></span>
           <svg class="i"><use href="#i-list"/></svg>
         </div>
         <div id="exercise-container"></div>
@@ -145,6 +146,8 @@
           <svg class="i"><use href="#i-folder"/></svg>
           <p>아직 기록이 없어요<br /><small>위에서 운동을 검색해 추가해보세요</small></p>
         </div>
+        <button class="move-day-btn" id="move-day-btn" type="button" hidden><svg class="i"><use href="#i-month"/></svg>이 날 기록을 다른 날짜로 옮기기</button>
+        <input type="date" id="move-day-date" class="move-day-date" aria-label="옮길 날짜" />
         <button class="finish-btn" id="finish-btn" type="button" hidden><svg class="i"><use href="#i-check"/></svg>오늘 운동 마감</button>
       </section>
 
