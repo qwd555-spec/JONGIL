@@ -332,13 +332,15 @@ EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
  *    (달리기는 속도와 상관없이 약 1kcal/kg/km 소모 — 운동생리학 일반식)
  * 2) 시간 기준(그 외):            소모 kcal ≈ (MET − 1) × 몸무게 × 시간(h)
  *    (MET: 2024 Compendium of Physical Activities 기준, 쉬는 상태 1MET는 뺀 순수 운동량)
- * kcalOnly: 칼로리 입력 방식만 사용 (수영 · 크로스핏 · 하이록스)
+ * kcalOnly: 칼로리 입력 방식만 사용 (수영 · 크로스핏)
  * timeScale: 시간 기준 계산일 때만 보정 (풋살 0.7)
  * scale: 그룹 합의 보정 — 근력 볼륨과 체감 난이도를 맞춤 (러닝류 70%, 풋살 50%)
  * 환산 볼륨 = 소모 kcal × 25
  *    (근력운동 1시간 ≈ 볼륨 1만kg ≈ 350kcal → 1kcal ≈ 25kg 으로 맞춤)
  */
 const CARDIO_KCAL_TO_VOLUME = 25;
+/** 유산소·스포츠 전체 볼륨 너프 (50%) */
+const CARDIO_NERF = 0.5;
 const CARDIO = {
   '러닝': { met: 9.8, perKm: 1.0, scale: 0.7 },
   '트레드밀': { met: 9.0, perKm: 1.0, scale: 0.7 },
@@ -357,7 +359,7 @@ const CARDIO = {
   '줄넘기': { met: 11.0 },
   '수영': { met: 7.0, kcalOnly: true },   // 칼로리 입력만 (워치 칼로리 × 25)
   '크로스핏': { met: 8.0, kcalOnly: true, scale: 0.7 }, // 칼로리 입력만 · 30% 할인
-  '하이록스': { met: 9.0, kcalOnly: true, scale: 0.7 }, // 칼로리 입력만 · 30% 할인
+  '하이록스': { met: 9.0, scale: 0.7, hyrox: true }, // 완주 시간만 적으면 자동 계산 (워치 칼로리도 가능) · 30% 할인
   '풋살': { met: 8.0, perKm: 1.0, timeScale: 0.7, scale: 0.5, goals: true },   // 시간만 입력 시 30% 낮춤, 전체 50%
   '축구': { met: 7.0, perKm: 1.0, goals: true },
   '농구': { met: 6.5 },
@@ -373,6 +375,9 @@ const CARDIO = {
   '필라테스': { met: 3.0 },
 };
 EXERCISES.forEach((e) => { e.cardio = CARDIO[e.name] || null; });
+
+/* 🏁 하이록스 공식 코스: 1km 달리기 + 스테이션, 8번 반복 (총 러닝 8km) */
+const HYROX_STATIONS = ['스키에르그 1000m', '슬레드 푸시 50m', '슬레드 풀 50m', '버피 브로드 점프 80m', '로잉 1000m', '파머스 캐리 200m', '샌드백 런지 100m', '월볼 100개'];
 
 /* ---------- 덤벨 운동 (무게 입력 주의 표시) ---------- */
 const DUMBBELL_EXTRA = ['사이드 레터럴 레이즈', '린 어웨이 레터럴 레이즈', '프론트 레이즈', '벤트오버 레터럴 레이즈', '아놀드 프레스',

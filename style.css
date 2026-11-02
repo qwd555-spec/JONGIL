@@ -1386,3 +1386,10 @@ body.gym-full .toast { z-index: 95; }
 .meal-btns { margin-top: 10px; }
 .meal-btns .meal-add { margin-top: 0; width: auto; }
 .diet-btn { height: 50px; }
+/* 🏁 하이록스 코스 안내 */
+.hyrox-guide{margin:4px 0 8px;padding:8px 12px;border-radius:14px;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.35);font-size:13px}
+.hyrox-guide summary{cursor:pointer;list-style:none}
+.hyrox-guide summary::-webkit-details-marker{display:none}
+.hyrox-guide ol{margin:8px 0 4px;padding-left:20px;line-height:1.7}
+.hyrox-guide li span{opacity:.7}
+.hyrox-guide p{margin:4px 0 0;opacity:.7;font-size:12px}

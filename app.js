@@ -263,7 +263,7 @@ function cardioKcal(set, info, bw, mode = 'calc') {
   return Math.max(0, info.met - 1) * bw * (min / 60) * (info.timeScale ?? 1);
 }
 /** kcal → kg 볼륨 (종목 보정 포함) */
-const cardioToVolume = (kcal, info) => kcal * CARDIO_KCAL_TO_VOLUME * (info.scale ?? 1);
+const cardioToVolume = (kcal, info) => kcal * CARDIO_KCAL_TO_VOLUME * (info.scale ?? 1) * CARDIO_NERF;
 /** 유산소 기록에 칼로리와 kg 볼륨을 함께 남김 (바뀐 경우 true) */
 function stampCardio(set, ex, date) {
   const cinfo = cardioInfo(ex);
@@ -470,7 +470,9 @@ function makeEntry(name, fallbackSets) {
     if (fc && fc.bw) entry.bw = 'bw';
   }
   if (isCardio && CARDIO[name].goals) entry.detail = true;
-  if (isCardio) entry.mode = CARDIO[name].kcalOnly ? 'watch' : last && last.mode ? last.mode : preferredCardioMode();
+  if (isCardio) entry.mode = CARDIO[name].kcalOnly ? 'watch' : last && last.mode ? last.mode : CARDIO[name].hyrox ? 'calc' : preferredCardioMode();
+  // 하이록스: 공식 코스(러닝 8km)를 미리 채움 — 완주 시간만 적으면 끝
+  if (isCardio && CARDIO[name].hyrox) entry.sets.forEach((st) => { if (!num(st.km)) st.km = 8; });
   return entry;
 }
 function addExercise(name) {
@@ -810,6 +812,12 @@ function renderDay() {
         renderDay();
       }));
       if (!cinfo.kcalOnly) node.querySelector('.exercise-head').after(toggle);
+      if (cinfo.hyrox) {
+        const g = document.createElement('details');
+        g.className = 'hyrox-guide';
+        g.innerHTML = `<summary>🏁 하이록스 코스 — <b>완주 시간(분)</b>만 적으면 자동 계산</summary><ol>${HYROX_STATIONS.map((st) => `<li><span>🏃 1km</span> → ${st}</li>`).join('')}</ol><p>러닝 8km + 스테이션 8개 · 시간 × 운동 강도로 칼로리·볼륨 계산 · 반만 했으면 km·시간을 그만큼만</p>`;
+        toggle.after(g);
+      }
       node.querySelector('.rest-btn').hidden = true;
       node.querySelector('.add-set').lastChild.textContent = '기록 추가';
       const db2 = document.createElement('button');
@@ -880,7 +888,7 @@ function renderDay() {
         if (cinfo.goals && goals) parts.unshift(`⚽ ${goals}골`);
         const head = parts.length ? parts.join(' · ') : cardioMode(ex) === 'watch' ? '워치에 찍힌 활동 칼로리를 입력하세요' : (cinfo.perKm ? '거리(km)와 시간(분)을 입력하세요' : '운동한 시간(분)을 입력하세요');
         cardioMeta.innerHTML = `<div>${escapeHtml(head)}</div>` + (kcal
-          ? `<div class="conv"><span class="conv-pill">${cardioMode(ex) === 'watch' ? '⌚ ' : ''}${Math.round(kcal).toLocaleString('ko-KR')} kcal</span><span class="conv-op">× ${CARDIO_KCAL_TO_VOLUME}${(cinfo.scale ?? 1) !== 1 ? ` × ${Math.round(cinfo.scale * 100)}%` : ''}</span><span class="conv-arrow">→</span><span class="conv-pill dark">${fmtKg(cardioToVolume(kcal, cinfo))}</span></div>`
+          ? `<div class="conv"><span class="conv-pill">${cardioMode(ex) === 'watch' ? '⌚ ' : ''}${Math.round(kcal).toLocaleString('ko-KR')} kcal</span><span class="conv-op">× ${CARDIO_KCAL_TO_VOLUME} × ${Math.round((cinfo.scale ?? 1) * CARDIO_NERF * 100)}%</span><span class="conv-arrow">→</span><span class="conv-pill dark">${fmtKg(cardioToVolume(kcal, cinfo))}</span></div>`
           : '');
       }
       updateDaySummary();
