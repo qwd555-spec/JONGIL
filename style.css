@@ -934,3 +934,23 @@ body.event-bg .ath-bar, body.event-bg .ath-stat-bar { background: rgba(255,255,2
 body.event-bg .ath-bar div, body.event-bg .ath-stat.key .ath-stat-bar span { background: #c4b5fd; }
 body.event-bg .ath-mate, body.event-bg .track-opt { background: rgba(255,255,255,.08); }
 #ath-change[hidden], .ath-pick[hidden] { display: none; }
+/* ---------- 실시간 운동 중 + 응원 ---------- */
+.live-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #22c55e; margin-right: 6px; vertical-align: 1px; flex: none;
+  box-shadow: 0 0 0 0 rgba(34,197,94,.6); animation: livePulse 1.2s ease-in-out infinite; }
+@keyframes livePulse { 0% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,.55); } 50% { opacity: .35; box-shadow: 0 0 0 6px rgba(34,197,94,0); } 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
+.cheer-list { display: flex; flex-direction: column; gap: 8px; }
+.cheer-card { padding: 12px 12px 10px; border-radius: 18px; background: var(--raised); box-shadow: var(--shadow-raised); }
+.cheer-card.live { box-shadow: 0 0 0 1.5px rgba(34,197,94,.55) inset, var(--shadow-raised); }
+.cheer-who { display: flex; align-items: center; flex-wrap: wrap; gap: 0 6px; }
+.cheer-who b { font-size: 15px; font-weight: 800; }
+.cheer-who small { font-size: 12px; color: var(--muted); font-weight: 600; }
+.cheer-card.live .cheer-who small { color: #16a34a; }
+.cheer-msg { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; margin: 8px 0; padding: 10px 12px; border-radius: 14px; background: var(--layer); text-align: left; font-size: 14px; font-weight: 600; }
+.cheer-msg .i { width: 15px; height: 15px; color: var(--muted); flex: none; }
+.cheer-btns { display: flex; gap: 6px; }
+.cheer-btns button { flex: 1; height: 40px; border-radius: 999px; background: var(--layer); font-size: 14px; font-weight: 700; transition: transform .15s; }
+.cheer-btns button:active { transform: scale(.94); }
+.cheer-btns button.sent { background: var(--ink); color: #fff; }
+.rank-name .live-dot { margin-right: 0; }
+body.event-bg .cheer-card { background: rgba(255,255,255,.08); }
+body.event-bg .cheer-msg, body.event-bg .cheer-btns button { background: rgba(255,255,255,.08); color: var(--text); }

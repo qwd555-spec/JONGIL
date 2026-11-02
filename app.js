@@ -58,7 +58,10 @@ function bodyweightOn(date) {
   for (const k of keys) { if (k <= date) pick = k; else break; }
   return num(bwMap[pick]);
 }
+let liveAt = (() => { try { return +localStorage.getItem('gymlog.liveAt') || 0; } catch { return 0; } })();
 function save() {
+  // 지금 운동 중 표시용: 오늘 기록을 고친 시각
+  if (state.day === todayStr()) { liveAt = Date.now(); try { localStorage.setItem('gymlog.liveAt', String(liveAt)); } catch {} }
   // 빈 날짜는 정리
   for (const k of Object.keys(db)) if (!db[k] || db[k].length === 0) delete db[k];
   saveLocal();
@@ -1578,6 +1581,7 @@ const social = (() => {
   function refresh() {
     updateDot();
     checkWelcome();
+    checkIncoming();
     if (currentView() === 'rank') render();
     if (openPerson) renderPerson();
   }
@@ -1617,7 +1621,7 @@ const social = (() => {
         }
       }
     }
-    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), dsum: daySums(40), char: (() => { try { return window.athlete ? window.athlete.summary() : null; } catch { return null; } })() };
+    return { days, best, cdays, log: shareLog() ? recentLog(30) : {}, custom: myCustoms(), dsum: daySums(40), char: (() => { try { return window.athlete ? window.athlete.summary() : null; } catch { return null; } })(), live: myLive() };
   }
   /* ---- 하루 요약 (왕 계산용, 최근 40일) ---- */
   const RUN_NAMES = ['러닝', '트레드밀', '인터벌 러닝'];
@@ -1700,11 +1704,12 @@ const social = (() => {
     if (!store || !myId) return;
     const nick = nickOverride || myNick();
     if (!nick) return;                       // 참가 전에는 올리지 않음
-    const { days, best, cdays, log, custom, dsum, char } = mySummary();
-    const key = JSON.stringify({ nick, days, best, cdays, log, custom, dsum, char });
+    const { days, best, cdays, log, custom, dsum, char, live } = mySummary();
+    const key = JSON.stringify({ nick, days, best, cdays, log, custom, dsum, char, live });
     if (key === lastPublished) return;
     const doc = { nick, days, best, cdays, log, custom, dsum, updatedAt: Date.now() };
     if (char) doc.char = char;
+    if (live) doc.live = live;
     await store.doc('board/' + myId).set(doc);
     lastPublished = key;
   }
@@ -1759,6 +1764,99 @@ const social = (() => {
   }
 
   /* ---- 화면 ---- */
+  /* ---- 실시간 운동 중 + 응원 보내기 ---- */
+  const LIVE_MS = 20 * 60 * 1000;
+  function myLive() {
+    const t = todayStr();
+    if (!liveAt || toStr(new Date(liveAt)) !== t || !(dayVolume(t) > 0)) return null;
+    return { at: liveAt };
+  }
+  const isLive = (id) => {
+    const lv = id === myId ? myLive() : (members[id] || {}).live;
+    return !!(lv && Date.now() - num(lv.at) < LIVE_MS);
+  };
+  const CHEERS = {
+    '등': ['야 너 오늘 등 잘먹는다?', '광배 날개 펴지는 소리 들린다', '등짝 미쳤다 진짜', '오늘 등에 문신 새겨지겠다'],
+    '가슴': ['오늘 갑빠 터지겠는데?', '가슴 펌핑 제대로네', '벤치 부서지겠다 살살해', '갑옷 하나 장만했네'],
+    '하체': ['하체 한 날은 존경이지', '내일 계단 조심해라 ㅋㅋ', '허벅지 터지겠다', '레그데이 도망 안 갔네 인정'],
+    '어깨': ['어깨 깡패 납신다', '어깨에 수박 들어간다', '문 옆으로 지나가야겠다'],
+    '팔': ['반팔 찢어지겠다', '알통 터진다 조심해', '팔뚝 펌핑 미쳤네'],
+    '유산소': ['심폐 괴물 출현', '오늘 땀 몇 리터냐', '폐가 두 개 더 있냐'],
+    '축구': ['오늘 몇 골 넣었냐 메시야', '손흥민 빙의했네', '무릎은 괜찮냐 ㅋㅋ'],
+    '기타': ['오늘도 불태웠네 🔥', '꾸준함 미쳤다', '오늘도 출석 인정'],
+    'live': ['운동 중이구나! 한 세트 더!', '지금 불타고 있네 🔥 화이팅', '쉬지 마라 지켜보고 있다 👀'],
+  };
+  const cheerIdx = {};
+  function todayFocus(id) {
+    const t = todayStr();
+    const x = id === myId ? null : friendDay(members[id], t);
+    if (!x) return null;
+    const names = (x.n || []).join(' ');
+    if (/풋살|축구/.test(names)) return { key: '축구', label: '풋살·축구', v: x.v };
+    const top = Object.entries(x.p || {}).sort((a, b) => b[1] - a[1])[0];
+    const k = top ? (top[0] === '팔' || ['이두', '삼두', '전완'].includes(top[0]) ? '팔' : CHEERS[top[0]] ? top[0] : '기타') : '기타';
+    return { key: k, label: top ? top[0] : '운동', v: x.v };
+  }
+  function cheerText(id, f) {
+    const pool = isLive(id) && (cheerIdx[id] || 0) % 2 === 0 ? CHEERS.live : CHEERS[f.key] || CHEERS['기타'];
+    const i = (cheerIdx[id] ?? (hashStr(id + todayStr()) % 7)) % pool.length;
+    return pool[i];
+  }
+  function renderCheers() {
+    const t = todayStr();
+    const rows = Object.keys(members).filter((id) => id !== myId)
+      .map((id) => ({ id, m: members[id], f: todayFocus(id), live: isLive(id) }))
+      .filter((r) => r.f || r.live)
+      .sort((a, b) => (b.live - a.live) || (num(b.f && b.f.v) - num(a.f && a.f.v)));
+    $('#cheer-panel').hidden = !rows.length;
+    if (!rows.length) return;
+    const liveN = rows.filter((r) => r.live).length;
+    $('#cheer-sub').textContent = liveN ? `지금 ${liveN}명 운동 중` : `오늘 ${rows.length}명 운동함`;
+    $('#cheer-list').innerHTML = rows.map((r) => {
+      const f = r.f || { key: '기타', label: '운동', v: 0 };
+      const msg = cheerText(r.id, f);
+      return `<div class="cheer-card ${r.live ? 'live' : ''}" data-id="${escapeHtml(r.id)}">
+        <div class="cheer-top">
+          <span class="cheer-who">${r.live ? '<i class="live-dot"></i>' : ''}<b>${escapeHtml(r.m.nick)}</b>
+            <small>${r.live ? '지금 운동 중' : '오늘'} · ${escapeHtml(f.label)}${f.v ? ` ${fmtKg(f.v)}` : ''}</small></span>
+        </div>
+        <button type="button" class="cheer-msg" data-act="next" aria-label="다른 말로 바꾸기">“${escapeHtml(msg)}” <svg class="i"><use href="#i-right"/></svg></button>
+        <div class="cheer-btns">
+          <button type="button" data-act="send" data-emo="❤️">❤️ 하트</button>
+          <button type="button" data-act="send" data-emo="👍">👍 따봉</button>
+        </div>
+      </div>`;
+    }).join('');
+    $('#cheer-list').querySelectorAll('.cheer-card').forEach((card) => {
+      const id = card.dataset.id;
+      card.querySelector('[data-act=next]').addEventListener('click', () => { cheerIdx[id] = (cheerIdx[id] ?? (hashStr(id + todayStr()) % 7)) + 1; renderCheers(); });
+      card.querySelectorAll('[data-act=send]').forEach((b) => b.addEventListener('click', async () => {
+        const msg = card.querySelector('.cheer-msg').textContent.trim().replace(/^“|”$/g, '');
+        b.disabled = true;
+        try {
+          await store.collection(`comments/${myId}/items`).add({ to: id, text: `${b.dataset.emo} ${msg}`, at: Date.now() });
+          b.classList.add('sent'); toast(`${nickOf(id)}님에게 ${b.dataset.emo} 보냈어요`);
+        } catch (e) {
+          toast(e && e.code === 'invalid_argument' ? '응원을 보낼 권한이 없어요 (편집자로 초대받아야 해요)' : '보내지 못했어요');
+        }
+        setTimeout(() => { b.disabled = false; b.classList.remove('sent'); }, 1500);
+      }));
+    });
+  }
+  // 나한테 온 응원 알림
+  const CHEER_SEEN = 'gymlog.cheerSeen';
+  let cheerSeen = (() => { try { return +localStorage.getItem(CHEER_SEEN) || 0; } catch { return 0; } })();
+  if (!cheerSeen) { cheerSeen = Date.now(); try { localStorage.setItem(CHEER_SEEN, String(cheerSeen)); } catch {} }
+  function checkIncoming() {
+    if (!myId) return;
+    const fresh = Object.values(comments).flat().filter((c) => c.to === myId && c.from !== myId && num(c.at) > cheerSeen).sort((a, b) => a.at - b.at);
+    if (!fresh.length) return;
+    const last = fresh[fresh.length - 1];
+    cheerSeen = num(last.at);
+    try { localStorage.setItem(CHEER_SEEN, String(cheerSeen)); } catch {}
+    toast(`${nickOf(last.from)}: ${String(last.text).slice(0, 40)}${fresh.length > 1 ? ` 외 ${fresh.length - 1}개` : ''}`);
+  }
+
   /* ---- 주간 · 월간 왕 ---- */
   let awPeriod = 'week';
   // 친구의 하루 요약: 새 버전이면 dsum, 아니면 공유된 기록으로 추정
@@ -1920,6 +2018,7 @@ const social = (() => {
     $('#rank-mode').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.mode === mode));
     if (mode === 'photos') { renderPhotoFeed(); return; }
     if (mode === 'kings') { renderAwards(); return; }
+    renderCheers();
 
     // 운동 선택 (최고 중량)
     const exNames = [...new Set(Object.values(members).flatMap((m) => Object.keys(m.best || {})))].sort((a, b) => a.localeCompare(b, 'ko'));
@@ -1944,7 +2043,7 @@ const social = (() => {
       <button class="rank-row ${r.id === myId ? 'me' : ''}" data-id="${escapeHtml(r.id)}">
         <span class="rank-no">${i + 1}</span>
         <span class="rank-main">
-          <span class="rank-name">${escapeHtml(r.m.nick)}${r.id === myId ? '<span class="me-tag">나</span>' : ''}<span class="title-chip">${escapeHtml(titleOf(r.id, todayStr()))}</span>
+          <span class="rank-name">${isLive(r.id) ? '<i class="live-dot" title="지금 운동 중"></i>' : ''}${escapeHtml(r.m.nick)}${r.id === myId ? '<span class="me-tag">나</span>' : ''}<span class="title-chip">${escapeHtml(titleOf(r.id, todayStr()))}</span>
             ${cmtCount[r.id] ? `<span class="rank-cmt"><svg class="i"><use href="#i-chat"/></svg>${cmtCount[r.id]}</span>` : ''}</span>
           <span class="rank-bar"><div style="width:${(r.value / max) * 100}%"></div></span>
         </span>
