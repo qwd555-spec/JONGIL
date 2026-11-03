@@ -2525,15 +2525,34 @@ const social = (() => {
 
     const cmtCount = {};
     allComments().forEach((c) => { if (c.kind !== 'share') cmtCount[c.to] = (cmtCount[c.to] || 0) + 1; });
+    // 오늘 · 어제 몫을 색으로 구분 (막대 + 작은 숫자)
+    const split = metric !== 'best';
+    const pset = periodDates();
+    const tD = todayStr(), yD = addDays(tD, -1);
+    const dayVal = (m, d) => {
+      if (pset && !pset.has(d)) return 0;
+      const v = num((m.days || {})[d]), c = num((m.cdays || {})[d]);
+      return metric === 'total' ? v + c : metric === 'volume' ? v : metric === 'cardio' ? c : metric === 'days' ? (v > 0 || c > 0 ? 1 : 0) : 0;
+    };
+    const fmtPart = (v) => (metric === 'days' ? '' : `+${fmtKg(v)}`);
+    $('#rank-legend').hidden = !split;
     $('#rank-list').innerHTML = rows.map((r, i) => `
       <button class="rank-row ${r.id === myId ? 'me' : ''}" data-id="${escapeHtml(r.id)}">
         <span class="rank-no">${i + 1}</span>
         <span class="rank-main">
           <span class="rank-name">${isLive(r.id) ? '<i class="live-dot" title="지금 운동 중"></i>' : ''}${escapeHtml(r.m.nick)}${r.id === myId ? '<span class="me-tag">나</span>' : ''}<span class="title-chip">${escapeHtml(titleOf(r.id, todayStr()))}</span>
             ${cmtCount[r.id] ? `<span class="rank-cmt"><svg class="i"><use href="#i-chat"/></svg>${cmtCount[r.id]}</span>` : ''}</span>
-          <span class="rank-bar"><div style="width:${(r.value / max) * 100}%"></div></span>
+          ${(() => {
+            if (!split) return `<span class="rank-bar"><div style="width:${(r.value / max) * 100}%"></div></span>`;
+            const tv = Math.min(dayVal(r.m, tD), r.value), yv = Math.min(dayVal(r.m, yD), Math.max(0, r.value - tv)), ev = Math.max(0, r.value - tv - yv);
+            const w = (v) => (v / max) * 100;
+            return `<span class="rank-bar split"><div class="seg-old" style="width:${w(ev)}%"></div><div class="seg-y" style="width:${w(yv)}%"></div><div class="seg-t" style="width:${w(tv)}%"></div></span>`;
+          })()}
         </span>
-        <span class="rank-val">${fmtMetric(r.value)}</span>
+        <span class="rank-val">${fmtMetric(r.value)}${split ? (() => {
+          const tv = dayVal(r.m, tD), yv = dayVal(r.m, yD);
+          return `<small class="rank-parts">${tv ? `<i class="pt">오늘 ${fmtPart(tv)}</i>` : '<i class="pt none">오늘 –</i>'}${yv ? `<i class="py">어제 ${fmtPart(yv)}</i>` : ''}</small>`;
+        })() : ''}</span>
       </button>`).join('');
     $('#rank-list').querySelectorAll('.rank-row').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
 
