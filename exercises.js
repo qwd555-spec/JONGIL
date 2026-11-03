@@ -386,8 +386,8 @@ const CARDIO = {
   '요가': { met: 2.5 },
   '필라테스': { met: 3.0 },
 };
-/* 유산소·스포츠 최종 비율 (정상 기준 = 소모 kcal × 25): 전부 70%, 걷기만 50% */
-const CARDIO_RATE = { default: 0.7, '걷기': 0.5 };
+/* 유산소·스포츠 최종 비율 (정상 기준 = 소모 kcal × 25): 기본 70% · 러닝류·걷기 50% */
+const CARDIO_RATE = { default: 0.7, '걷기': 0.5, '러닝': 0.5, '트레드밀': 0.5, '인터벌 러닝': 0.5 };
 for (const [n, c] of Object.entries(CARDIO)) c.scale = CARDIO_RATE[n] ?? CARDIO_RATE.default;
 EXERCISES.forEach((e) => { e.cardio = CARDIO[e.name] || null; });
 
