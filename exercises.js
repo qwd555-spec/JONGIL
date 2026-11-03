@@ -340,7 +340,7 @@ EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
  */
 const CARDIO_KCAL_TO_VOLUME = 25;
 /** 유산소·스포츠 전체 볼륨 보정: 50% 너프 후 15% 버프 → 57.5% */
-const CARDIO_NERF = 0.5 * 1.15;
+const CARDIO_NERF = 1;   // 종목별 비율은 아래 CARDIO_RATE 로 통일
 /* 🏃 페이스 보너스 (거리+시간 둘 다 적었을 때)
  * 러닝: 6'00"/km(10km/h) = ×1.00, 1km/h 빠를 때마다 +8% (최대 ×1.4, 최소 ×0.85)
  *       → 5'00"/km ×1.16 · 4'30"/km ×1.27 · 4'00"/km ×1.40
@@ -386,6 +386,9 @@ const CARDIO = {
   '요가': { met: 2.5 },
   '필라테스': { met: 3.0 },
 };
+/* 유산소·스포츠 최종 비율 (정상 기준 = 소모 kcal × 25): 전부 70%, 걷기만 50% */
+const CARDIO_RATE = { default: 0.7, '걷기': 0.5 };
+for (const [n, c] of Object.entries(CARDIO)) c.scale = CARDIO_RATE[n] ?? CARDIO_RATE.default;
 EXERCISES.forEach((e) => { e.cardio = CARDIO[e.name] || null; });
 
 /* 🏁 하이록스 공식 코스: 1km 달리기 + 스테이션, 8번 반복 (총 러닝 8km) */
