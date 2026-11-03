@@ -8,11 +8,11 @@
  *   ]
  * }
  * 볼륨 = Σ (무게 × 횟수)
- * 주는 월요일 시작
+ * 주는 일요일 시작
  * ========================================================= */
 
 const STORAGE_KEY = 'gymlog.v1';
-const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];   // 주는 일요일 시작
 
 let db = load();
 let friendCustoms = [];
@@ -253,7 +253,7 @@ function addDays(s, n) {
 }
 function weekStart(s) {
   const d = parse(s);
-  const dow = (d.getDay() + 6) % 7; // 월=0 ... 일=6
+  const dow = d.getDay(); // 일=0 ... 토=6 (일요일 시작)
   d.setDate(d.getDate() - dow);
   return toStr(d);
 }
@@ -269,7 +269,7 @@ function monthDays(s) {
 }
 function fmtDate(s) {
   const d = parse(s);
-  return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[(d.getDay() + 6) % 7]})`;
+  return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
 }
 
 /* ---------- 볼륨 계산 ---------- */
@@ -1561,12 +1561,12 @@ function renderMonth() {
     cardioLine(stats),
   ].filter(Boolean).join('<br />');
 
-  // 달력 (월요일 시작)
+  // 달력 (일요일 시작)
   const vols = dates.map(dayVolume);
   const max = Math.max(...vols, 1);
-  const lead = (first.getDay() + 6) % 7;
+  const lead = first.getDay();
   const today = todayStr();
-  let html = WEEKDAYS.map((w, i) => `<div class="cal-head ${i === 5 ? 'sat' : i === 6 ? 'sun' : ''}">${w}</div>`).join('');
+  let html = WEEKDAYS.map((w, i) => `<div class="cal-head ${i === 6 ? 'sat' : i === 0 ? 'sun' : ''}">${w}</div>`).join('');
   html += '<div class="cal-cell blank"></div>'.repeat(lead);
   dates.forEach((d, i) => {
     const v = vols[i];
@@ -1575,7 +1575,7 @@ function renderMonth() {
     const col = (lead + i) % 7;
     html += `
       <div class="cal-cell ${d === today ? 'today' : ''} ${v ? 'has' : ''}" data-date="${d}" style="${bg}">
-        <span class="cal-day ${col === 5 ? 'sat' : col === 6 ? 'sun' : ''}">${i + 1}</span>
+        <span class="cal-day ${col === 6 ? 'sat' : col === 0 ? 'sun' : ''}">${i + 1}</span>
         <span class="cal-vol">${fmtShort(v)}</span>
       </div>`;
   });
@@ -2495,7 +2495,7 @@ const social = (() => {
   function renderAwards() {
     const t = todayStr();
     $('#awards-title').textContent = awPeriod === 'week' ? '이주의 왕' : `${+t.slice(5, 7)}월의 왕`;
-    $('#awards-hint').textContent = awPeriod === 'week' ? '매주 월요일 초기화 · 눌러서 전체 순위' : '매달 1일 초기화 · 눌러서 전체 순위';
+    $('#awards-hint').textContent = awPeriod === 'week' ? '매주 일요일 초기화 · 눌러서 전체 순위' : '매달 1일 초기화 · 눌러서 전체 순위';
     document.querySelectorAll('#aw-period button').forEach((b) => b.classList.toggle('active', b.dataset.p === awPeriod));
     const range = awardRange();
     const start = parse(range.dates[0]).getTime();
