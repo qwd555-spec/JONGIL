@@ -1590,3 +1590,13 @@ body.event-bg #person-modal .person-sheet, body.event-bg #person-modal .rest-hea
 body.event-bg #person-modal .comment-form { background: #1b1528; }
 #person-modal .log-date { flex: none; }
 #person-modal .log-dates { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+/* 탭바: 하단 → 맨 위 고정, 얇게 */
+:root { --nav-h: 0px; }
+.tabbar, body.event-bg .tabbar { position: sticky; top: 0; left: auto; right: auto; bottom: auto; transform: none; width: 100%; height: 46px; margin: 0 0 8px; padding: 4px; border-radius: 16px; z-index: 40; gap: 4px; box-shadow: 0 6px 18px -10px rgba(20,20,30,.35); }
+.app { padding-top: calc(env(safe-area-inset-top, 0px) + 6px); }
+.tabbar .tab { height: 38px; padding: 0 6px; gap: 5px; border-radius: 12px; }
+.tabbar .tab .i { width: 19px; height: 19px; }
+.tabbar .tab-text { font-size: 13px; }
+main { padding-bottom: calc(var(--safe-b) + 40px); }
+.photo-bar, .room-bar { bottom: 24px; }
+.ath-hero.cine.full .room-bar { bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }

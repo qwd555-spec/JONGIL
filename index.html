@@ -49,6 +49,13 @@
 
   <div class="event-tag" id="event-tag"><svg class="i"><use href="#i-spark"/></svg>이벤트 · 오늘의 배경 모델</div>
   <div class="app">
+    <!-- 상단 탭 (맨 위 고정) -->
+    <nav class="tabbar" role="tablist">
+      <button class="tab active" data-view="workout" aria-label="운동"><span class="tab-icon"><svg class="i"><use href="#i-day"/></svg><i class="dot" id="day-dot"></i></span><span class="tab-text">운동</span></button>
+      <button class="tab" data-view="rank" aria-label="랭킹"><span class="tab-icon"><svg class="i"><use href="#i-trophy"/></svg><i class="dot" id="rank-dot"></i></span><span class="tab-text">랭킹</span></button>
+      <button class="tab" data-view="feed" aria-label="피드"><span class="tab-icon"><svg class="i"><use href="#i-grid"/></svg><i class="tab-badge" id="feed-badge" hidden></i></span><span class="tab-text">피드</span></button>
+      <button class="tab" data-view="career" aria-label="선수"><span class="tab-icon"><svg class="i"><use href="#i-body"/></svg></span><span class="tab-text">선수</span></button>
+    </nav>
     <header class="app-header periodic">
       <div class="brand">
         <svg class="i brand-mark"><use href="#i-spark"/></svg>
@@ -873,13 +880,6 @@
     </div>
   </div>
 
-  <!-- 하단 탭 -->
-  <nav class="tabbar" role="tablist">
-    <button class="tab active" data-view="workout" aria-label="운동"><span class="tab-icon"><svg class="i"><use href="#i-day"/></svg><i class="dot" id="day-dot"></i></span><span class="tab-text">운동</span></button>
-    <button class="tab" data-view="rank" aria-label="랭킹"><span class="tab-icon"><svg class="i"><use href="#i-trophy"/></svg><i class="dot" id="rank-dot"></i></span><span class="tab-text">랭킹</span></button>
-    <button class="tab" data-view="feed" aria-label="피드"><span class="tab-icon"><svg class="i"><use href="#i-grid"/></svg><i class="tab-badge" id="feed-badge" hidden></i></span><span class="tab-text">피드</span></button>
-    <button class="tab" data-view="career" aria-label="선수"><span class="tab-icon"><svg class="i"><use href="#i-body"/></svg></span><span class="tab-text">선수</span></button>
-  </nav>
 
   <template id="exercise-template">
     <div class="exercise-card">
