@@ -500,6 +500,8 @@ window.athlete = (() => {
   }
   function openMemo(id) {
     memoFor = id;
+    // 내 메모판을 열면 붙어 있던 메모는 '봤음' → 메모 팝업 다시 안 뜸
+    try { if (id === social.id()) { const top = (memoMap()[id] || []).reduce((a, m) => Math.max(a, m.at || 0), 0); if (top) seenSet('memo', top); } } catch { /* 없음 */ }
     $('#order-sheet').hidden = true;
     renderMemoSheet();
     $('#memo-sheet').hidden = false;

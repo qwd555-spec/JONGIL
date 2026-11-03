@@ -70,6 +70,32 @@ function setPart(name, part) {
   partMap[name] = part;
   try { localStorage.setItem(PARTS_KEY, JSON.stringify(partMap)); } catch { /* 없음 */ }
 }
+/* 👀 '봤음' 기록 (메모·톡·축하 팝업): 브라우저 저장소가 지워져도 다시 안 뜨게 클라우드 설정에도 저장 */
+const SEEN_ALL_KEY = 'gymlog.seenAll';
+let seenMap = (() => {
+  let m = {}; try { m = JSON.parse(localStorage.getItem(SEEN_ALL_KEY) || '{}') || {}; } catch { /* 없음 */ }
+  try {   // 예전 키 옮겨오기
+    for (const [k, old] of [['memo', 'gymlog.memoSeen'], ['chat', 'gymlog.chatSeen'], ['chatPop', 'gymlog.chatPopAt']]) { const v = +localStorage.getItem(old) || 0; if (v > (m[k] || 0)) m[k] = v; }
+    const cg = JSON.parse(localStorage.getItem('gymlog.congrats') || '{}') || {};
+    for (const [k, v] of Object.entries(cg)) if (!m['cg:' + k]) m['cg:' + k] = v;
+  } catch { /* 없음 */ }
+  return m;
+})();
+const seenGet = (k) => +seenMap[k] || 0;
+function seenSet(k, v) {
+  if (v <= seenGet(k)) return;
+  seenMap[k] = v;
+  // 축하 기록은 5일 지나면 정리
+  const cut = Date.now() - 5 * 864e5;
+  for (const key of Object.keys(seenMap)) if (key.startsWith('cg:') && seenMap[key] < cut) delete seenMap[key];
+  try { localStorage.setItem(SEEN_ALL_KEY, JSON.stringify(seenMap)); } catch { /* 없음 */ }
+  try { cloud.markDirty(); } catch { /* 없음 */ }
+}
+function seenMerge(remote) {
+  if (!remote || typeof remote !== 'object') return;
+  for (const [k, v] of Object.entries(remote)) if (+v > (+seenMap[k] || 0)) seenMap[k] = +v;
+  try { localStorage.setItem(SEEN_ALL_KEY, JSON.stringify(seenMap)); } catch { /* 없음 */ }
+}
 let liveAt = (() => { try { return +localStorage.getItem('gymlog.liveAt') || 0; } catch { return 0; } })();
 function save() {
   // 지금 운동 중 표시용: 오늘 기록을 고친 시각
@@ -148,8 +174,9 @@ const cloud = (() => {
           if (body.game && window.athlete) window.athlete.restore(body.game);
           if (Array.isArray(body.routines)) routines.restore(body.routines);
           if (body.diet && window.diet) window.diet.restore(body.diet);
+          seenMerge(body.seen);
           if (body.parts && typeof body.parts === 'object') { partMap = { ...partMap, ...body.parts }; try { localStorage.setItem(PARTS_KEY, JSON.stringify(partMap)); } catch { /* 없음 */ } }
-          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {}, photoDates: body.photoDates || [], game: body.game || null, routines: body.routines || [], diet: body.diet || null, parts: body.parts || {} });
+          syncedSettings = JSON.stringify({ restSeconds: body.restSeconds || 60, bodyweight: body.bodyweight || {}, goal: body.goal || 0, plan: body.plan || {}, closed: body.closed || {}, photoDates: body.photoDates || [], game: body.game || null, routines: body.routines || [], diet: body.diet || null, parts: body.parts || {}, seen: body.seen || {} });
         }
       }
       for (const [k, v] of Object.entries(remote)) synced[k] = JSON.stringify(v);
@@ -187,7 +214,7 @@ const cloud = (() => {
         if (cur === null) { await col.doc(k).delete(); delete synced[k]; }
         else { await col.doc(k).set({ list: JSON.parse(cur), updatedAt: Date.now() }); synced[k] = cur; }
       }
-      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap, photoDates: photos.dates(), game: window.athlete ? window.athlete.state() : null, routines: routines.list(), diet: window.diet ? window.diet.state() : null, parts: partMap });
+      const st = JSON.stringify({ restSeconds: restSeconds(), bodyweight: bwMap, goal: customGoal, plan: planMap, closed: closedMap, photoDates: photos.dates(), game: window.athlete ? window.athlete.state() : null, routines: routines.list(), diet: window.diet ? window.diet.state() : null, parts: partMap, seen: seenMap });
       if (st !== syncedSettings) { await col.doc('settings').set(JSON.parse(st)); syncedSettings = st; }
       try { await social.publish(); } catch { /* 순위 참가 권한 없음 → 개인 기록만 저장 */ }
       status('Claude 클라우드에 자동 저장돼요. 다른 기기에서도 같은 링크로 열면 기록이 보여요.');
@@ -2239,13 +2266,8 @@ const social = (() => {
   /* ---- 🎉 친구가 운동 기록 남기면 첫 화면에 축하 팝업 (축하/피드백해야 닫힘) ---- */
   const CONGRATS_KEY = 'gymlog.congrats';
   let congratsArmed = true, congratsQ = [], congratsCur = null;
-  const congratsDone = () => { try { return JSON.parse(localStorage.getItem(CONGRATS_KEY) || '{}') || {}; } catch { return {}; } };
-  function markCongrats(key) {
-    const d = congratsDone(); d[key] = Date.now();
-    const cut = Date.now() - 5 * 864e5;
-    for (const k of Object.keys(d)) if (d[k] < cut) delete d[k];
-    try { localStorage.setItem(CONGRATS_KEY, JSON.stringify(d)); } catch {}
-  }
+  const congratsDone = () => { const d = {}; for (const [k, v] of Object.entries(seenMap)) if (k.startsWith('cg:')) d[k.slice(3)] = v; return d; };
+  function markCongrats(key) { seenSet('cg:' + key, Date.now()); }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { congratsArmed = true; setTimeout(checkCongrats, 1200); } });
   function checkCongrats() {
     if (!store || !myId || !ready || !myNick()) return;
@@ -2273,7 +2295,7 @@ const social = (() => {
   }
   /* 📌 누가 내 방 메모판에 메모를 붙이면 바로가기 팝업 */
   const MEMO_SEEN_KEY = 'gymlog.memoSeen';
-  const memoSeen = () => { try { return +localStorage.getItem(MEMO_SEEN_KEY) || 0; } catch { return 0; } };
+  const memoSeen = () => seenGet('memo');
   let memoPopList = [];
   function checkMemoPop() {
     if (!store || !myId || !ready || !myNick()) return;
@@ -2293,7 +2315,7 @@ const social = (() => {
   }
   function closeMemoPop() {
     const top = memoPopList.reduce((a, c) => Math.max(a, num(c.at)), 0);
-    try { localStorage.setItem(MEMO_SEEN_KEY, String(Math.max(top, memoSeen()))); } catch { /* 없음 */ }
+    seenSet('memo', top);
     $('#memo-pop').hidden = true;
     document.body.classList.remove('modal-open');
   }
@@ -2954,7 +2976,7 @@ const social = (() => {
   const chatBoot = Date.now();
   const chatToasted = new Set();
   let chatCleaned = false, chatCount = 0;
-  const chatSeen = () => { try { return +localStorage.getItem(CHAT_SEEN_KEY) || 0; } catch { return 0; } };
+  const chatSeen = () => seenGet('chat');
   function chatMsgs() {
     return Object.values(comments).flat().filter((c) => c.kind === 'chat' && members[c.from] && typeof c.text === 'string')
       .sort((a, b) => num(a.at) - num(b.at)).slice(-300);
@@ -3021,10 +3043,10 @@ const social = (() => {
     const busy = ['#welcome-modal', '#congrats-modal', '#part-modal', '#memo-pop', '#chat-pop'].some((q) => { const e = $(q); return e && !e.hidden; });
     if (busy) return;
     const last = fresh[fresh.length - 1];
-    let shown = 0; try { shown = +localStorage.getItem(CHAT_POP_KEY) || 0; } catch { /* 없음 */ }
+    const shown = seenGet('chatPop');
     if (num(last.at) <= shown) { chatPopDone = true; return; }
     chatPopDone = true;
-    try { localStorage.setItem(CHAT_POP_KEY, String(num(last.at))); } catch { /* 없음 */ }
+    seenSet('chatPop', num(last.at));
     const who = [...new Set(fresh.map((c) => nickOf(c.from)))];
     $('#chat-pop-title').textContent = `${who.slice(0, 2).join(', ')}${who.length > 2 ? ` 외 ${who.length - 2}명` : ''}님이 톡을 보냈어요 · ${fresh.length}개`;
     $('#chat-pop-list').innerHTML = fresh.slice(-3).map((c) => `<div class="cp-msg"><b>${escapeHtml(nickOf(c.from))}</b><span>${escapeHtml(c.text)}</span></div>`).join('');
@@ -3077,7 +3099,7 @@ const social = (() => {
   function renderChat(jump) {
     if (!store || !myId || !ready || !myNick()) return;
     const list = chatMsgs();
-    try { localStorage.setItem(CHAT_SEEN_KEY, String(Date.now())); } catch { /* 없음 */ }
+    { const lastAt = list.reduce((a, c) => Math.max(a, num(c.at)), 0); if (lastAt > chatSeen()) seenSet('chat', lastAt); }
     feedBadges();
     chatStrip(list, 0);
     list.forEach((c) => chatToasted.add(c.id));
