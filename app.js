@@ -2643,6 +2643,21 @@ const social = (() => {
     const total = items.reduce((a, x) => a + num(x.v), 0);
     const parts = sm && sm.p ? Object.entries(sm.p).filter(([, v]) => num(v) > 0).sort((a, b) => b[1] - a[1]) : [];
     const hours = sm && sm.h0 !== undefined ? `${sm.h0}시${sm.h1 !== sm.h0 ? `~${sm.h1}시` : ''}` : '';
+    // 예전 기록(세트 배열 없음)은 "30kg × 10회 × 3세트" 글을 세트별로 풀어서 보여줌
+    const parseSets = (x) => {
+      if (Array.isArray(x.s) && x.s.length) return;
+      if (x.c || !x.d) return;
+      const out = []; let b = 0;
+      for (const seg of String(x.d).split(', ')) {
+        const mm = seg.match(/^(?:맨몸(?:\+([\d.]+)kg)?|보조 ([\d.]+)kg|([\d.]+)kg) × (\d+)회(?: × (\d+)세트)?$/);
+        if (!mm) return;
+        const w = mm[1] !== undefined ? num(mm[1]) : mm[2] !== undefined ? num(mm[2]) : num(mm[3]);
+        if (seg.startsWith('맨몸')) b = 1; else if (seg.startsWith('보조')) b = 2;
+        for (let k = 0; k < (num(mm[5]) || 1) && out.length < 30; k++) out.push([w, num(mm[4])]);
+      }
+      x.s = out; if (b) x.b = b;
+    };
+    items.forEach(parseSets);
     const setRows = (x) => {
       if (!Array.isArray(x.s) || !x.s.length) return `<div class="log-desc">${escapeHtml(x.d)}</div>`;
       return `<div class="lg-sets">${x.s.map((st, i) => {

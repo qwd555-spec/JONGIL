@@ -1576,3 +1576,17 @@ body.event-bg .diet-sheet.inline { background: rgba(255,255,255,.05); box-shadow
 .news-panel:not(.open) #feed-list > :not(:first-child) { display: none; }
 .news-more { width: 100%; height: 40px; margin-top: 8px; border-radius: 999px; background: var(--layer); color: var(--muted); font-weight: 700; font-size: 13px; box-shadow: inset 0 0 0 1px var(--line); }
 .news-more[hidden] { display: none; }
+/* 친구 상세: 아예 전체 화면으로 */
+#person-modal { padding: 0; place-items: stretch; z-index: 60; }
+#person-modal .person-sheet { width: 100%; max-width: 560px; margin: 0 auto; height: 100%; max-height: none; border-radius: 0; display: block; overflow-y: auto; overscroll-behavior: contain; padding: calc(12px + env(safe-area-inset-top, 0px)) 18px calc(96px + var(--safe-b)); animation: personIn .28s cubic-bezier(.2,.9,.25,1); }
+@keyframes personIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+#person-modal .rest-head { position: sticky; top: calc(-12px - env(safe-area-inset-top, 0px)); z-index: 3; margin: -12px -18px 0; padding: 12px 18px 8px; background: var(--sheet); }
+body.event-bg #person-modal .person-sheet, body.event-bg #person-modal .rest-head { background: #120e1c; }
+#person-modal .log-items { max-height: none; overflow: visible; }
+#person-modal .person-comments { max-height: none; overflow: visible; margin-top: 18px; }
+#person-modal .person-comments::before { content: '💬 댓글'; display: block; font-size: 15px; font-weight: 800; margin: 0 2px 8px; }
+#person-modal .cheer-row { margin-top: 10px; }
+#person-modal .comment-form { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + var(--safe-b)); width: min(calc(100% - 28px), 524px); z-index: 4; padding: 6px; border-radius: 999px; background: var(--sheet); box-shadow: 0 10px 30px -10px rgba(0,0,0,.5); }
+body.event-bg #person-modal .comment-form { background: #1b1528; }
+#person-modal .log-date { flex: none; }
+#person-modal .log-dates { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
