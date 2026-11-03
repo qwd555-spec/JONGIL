@@ -2565,6 +2565,11 @@ const social = (() => {
         <div class="feed-meta"><b>${escapeHtml(nickOf(c.from))}</b> → <b>${escapeHtml(nickOf(c.to))}</b> · ${relTime(c.at)}</div>
         <div class="feed-text">${escapeHtml(c.text)}</div>
       </div>`).join('') : '<p class="empty-text">아직 댓글이 없어요. 친구를 눌러 첫 응원을 남겨보세요!</p>';
+    // 평소엔 맨 위 1개만, 날개(더보기) 펼치면 전부
+    $('#news-panel').classList.toggle('open', newsOpen);
+    $('#news-n').textContent = feed.length ? `운동 공유 · 응원 댓글 ${feed.length}개` : '운동 공유 · 응원 댓글';
+    $('#news-more').hidden = feed.length <= 1;
+    $('#news-more').textContent = newsOpen ? '접기 ▲' : `${feed.length - 1}개 더 보기 ▼`;
     $('#feed-list').querySelectorAll('.share-img').forEach((el) => el.addEventListener('click', () => { $('#photo-viewer-img').src = el.src; $('#photo-viewer').hidden = false; }));
     $('#feed-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
       if (!(await askConfirm('공유한 글을 삭제할까요?', { okText: '삭제', danger: true }))) return;
@@ -2573,6 +2578,8 @@ const social = (() => {
     $('#my-nick').textContent = myNick();
   }
 
+  let newsOpen = false;
+  $('#news-more').addEventListener('click', () => { newsOpen = !newsOpen; render(); if (!newsOpen) $('#news-panel').scrollIntoView({ block: 'nearest' }); });
   function openProfile(id) {
     openPerson = id;
     logDay = null;
