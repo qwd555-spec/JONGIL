@@ -399,6 +399,7 @@ $('#period-prev').addEventListener('click', () => shiftPeriod(-1));
 $('#period-next').addEventListener('click', () => shiftPeriod(1));
 $('#settings-btn').addEventListener('click', () => showView(curView === 'settings' ? lastPeriod : 'settings'));
 function showView(view) {
+  if (view === 'feed' && curView !== 'feed') social.feedEnter();
   curView = view;
   const periodic = PERIODS.includes(view);
   if (periodic) lastPeriod = view;
@@ -2240,7 +2241,7 @@ const social = (() => {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { congratsArmed = true; setTimeout(checkCongrats, 1200); } });
   function checkCongrats() {
     if (!store || !myId || !ready || !myNick()) return;
-    if (!$('#welcome-modal').hidden || !$('#congrats-modal').hidden) return;
+    if (!$('#welcome-modal').hidden || !$('#congrats-modal').hidden || !$('#chat-pop').hidden) return;
     if (!comments[myId]) return;   // 내가 보낸 댓글을 불러온 뒤에 판단 (이미 반응한 친구는 건너뜀)
     congratsArmed = false;
     const t = todayStr(), y = addDays(t, -1), done = congratsDone();
@@ -2268,7 +2269,7 @@ const social = (() => {
   let memoPopList = [];
   function checkMemoPop() {
     if (!store || !myId || !ready || !myNick()) return;
-    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal'].some((q) => { const e = $(q); return e && !e.hidden; });
+    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal', '#chat-pop'].some((q) => { const e = $(q); return e && !e.hidden; });
     if (busy) return;
     const from = Math.max(memoSeen(), Date.now() - 3 * 86400000);
     memoPopList = Object.values(comments).flat()
@@ -2916,12 +2917,61 @@ const social = (() => {
     const seen = chatSeen();
     const fresh = list.filter((c) => c.from !== myId && num(c.at) > seen);
     feedBadges();
+    chatStrip(list, fresh.length);
+    chatPopup(fresh);
     const pop = fresh.filter((c) => num(c.at) > chatBoot - 5000 && !chatToasted.has(c.id));
     pop.forEach((c) => chatToasted.add(c.id));
     const last = pop[pop.length - 1];
     if (last) toast(`💬 ${nickOf(last.from)}: ${last.text.slice(0, 40)}`);
   }
   const inChat = () => currentView() === 'feed' && feedKind === 'chat';
+  /** 💬 톡방으로 바로 가기 */
+  function goChat() {
+    feedKind = 'chat'; chatJump = true;
+    if (currentView() === 'feed') renderFeed(); else showView('feed');
+  }
+  /** 피드에 들어올 때 안 읽은 톡이 있으면 톡 칸부터 */
+  function feedEnter() {
+    if (!store || !myId) return;
+    const seen = chatSeen();
+    if (chatMsgs().some((c) => c.from !== myId && num(c.at) > seen)) { feedKind = 'chat'; chatJump = true; }
+  }
+  /** 운동 탭 맨 위: 최신 톡 한 줄 (최근 3일) */
+  function chatStrip(list, unread) {
+    const el = $('#chat-strip'); if (!el) return;
+    const last = list[list.length - 1];
+    if (!last || Date.now() - num(last.at) > 3 * 864e5) { el.hidden = true; return; }
+    el.hidden = false;
+    el.querySelector('.cs-who').textContent = last.from === myId ? '나' : nickOf(last.from);
+    el.querySelector('.cs-text').textContent = last.text.replace(/\s+/g, ' ');
+    el.querySelector('.cs-time').textContent = relTime(num(last.at));
+    const b = el.querySelector('.cs-badge'); b.textContent = unread > 99 ? '99+' : String(unread); b.hidden = !unread;
+    el.classList.toggle('unread', unread > 0);
+  }
+  /** 앱을 켰을 때 안 읽은 톡이 있으면 팝업 1번 (같은 메시지로는 다시 안 뜸) */
+  const CHAT_POP_KEY = 'gymlog.chatPopAt';
+  let chatPopDone = false;
+  function chatPopup(fresh) {
+    if (chatPopDone || !fresh.length || !ready || !myNick() || Date.now() - chatBoot > 20000) return;   // 앱을 켰을 때만
+    if (!Object.keys(members).every((id) => comments[id])) return;   // 모든 친구 톡을 불러온 뒤에
+    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal', '#memo-pop', '#chat-pop'].some((q) => { const e = $(q); return e && !e.hidden; });
+    if (busy) return;
+    const last = fresh[fresh.length - 1];
+    let shown = 0; try { shown = +localStorage.getItem(CHAT_POP_KEY) || 0; } catch { /* 없음 */ }
+    if (num(last.at) <= shown) { chatPopDone = true; return; }
+    chatPopDone = true;
+    try { localStorage.setItem(CHAT_POP_KEY, String(num(last.at))); } catch { /* 없음 */ }
+    const who = [...new Set(fresh.map((c) => nickOf(c.from)))];
+    $('#chat-pop-title').textContent = `${who.slice(0, 2).join(', ')}${who.length > 2 ? ` 외 ${who.length - 2}명` : ''}님이 톡을 보냈어요 · ${fresh.length}개`;
+    $('#chat-pop-list').innerHTML = fresh.slice(-3).map((c) => `<div class="cp-msg"><b>${escapeHtml(nickOf(c.from))}</b><span>${escapeHtml(c.text)}</span></div>`).join('');
+    $('#chat-pop').hidden = false;
+    document.body.classList.add('modal-open');
+  }
+  function closeChatPop() { $('#chat-pop').hidden = true; document.body.classList.remove('modal-open'); setTimeout(() => { checkCongrats(); checkMemoPop(); }, 300); }
+  $('#chat-pop-later').addEventListener('click', closeChatPop);
+  $('#chat-pop .rest-backdrop').addEventListener('click', closeChatPop);
+  $('#chat-pop-go').addEventListener('click', () => { closeChatPop(); goChat(); });
+  $('#chat-strip').addEventListener('click', goChat);
   /* 🔔 피드 알림: 안 읽은 개수 → 피드 탭 + 식단/톡/눈바디 버튼 숫자 (그 칸을 보면 사라지고, 안 보면 쌓임)
    * 식단 = 친구가 새로 올린 식단 + 내 식단에 달린 댓글 · 눈바디 = 친구가 공유한 눈바디 + 내 눈바디에 달린 댓글 · 톡 = 새 메시지 */
   const FEED_SEEN_KEY = 'gymlog.feedAlertSeen';
@@ -2965,6 +3015,7 @@ const social = (() => {
     const list = chatMsgs();
     try { localStorage.setItem(CHAT_SEEN_KEY, String(Date.now())); } catch { /* 없음 */ }
     feedBadges();
+    chatStrip(list, 0);
     list.forEach((c) => chatToasted.add(c.id));
     $('#chat-count').textContent = `${Object.values(members).filter((m) => m && m.nick).length}명`;
     const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
@@ -3085,7 +3136,7 @@ const social = (() => {
       .sort((a, b) => b.v - a.v);
   }
 
-  return { renderChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
+  return { renderChat, feedEnter, goChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
     members: () => members, jailed: isJailed,
     // 🏠 각자 짐 메모: { 주인id: [{id, from, who, text, c, at, mine}] } (최신순)
     memos: () => {

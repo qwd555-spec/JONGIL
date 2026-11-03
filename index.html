@@ -73,6 +73,11 @@
     <main>
       <!-- 일간 -->
       <section id="view-day" class="view active">
+        <button type="button" class="chat-strip" id="chat-strip" hidden>
+          <span class="cs-ico">💬</span>
+          <span class="cs-main"><b class="cs-who"></b><span class="cs-text"></span></span>
+          <span class="cs-time"></span><i class="cs-badge" hidden></i>
+        </button>
         <div class="period-nav">
           <button class="nav-btn" data-shift="-1" aria-label="이전 날"><svg class="i"><use href="#i-left"/></svg></button>
           <label class="period-label date-label">
@@ -680,6 +685,15 @@
         </div>
       </div>
       <div class="part-btns"><button type="button" id="part-cancel">취소</button><button type="button" id="part-ok">등록하기</button></div>
+    </div>
+  </div>
+  <div id="chat-pop" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="chat-pop-title">
+    <div class="rest-backdrop"></div>
+    <div class="rest-sheet chat-pop">
+      <div class="chat-pop-ico" aria-hidden="true">💬</div>
+      <h3 id="chat-pop-title"></h3>
+      <div class="chat-pop-list" id="chat-pop-list"></div>
+      <div class="part-btns"><button type="button" id="chat-pop-later">나중에</button><button type="button" id="chat-pop-go">💬 톡방 가기</button></div>
     </div>
   </div>
   <div id="memo-pop" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="memo-pop-title">
