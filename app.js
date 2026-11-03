@@ -2700,7 +2700,7 @@ const social = (() => {
       }).join('')}</div>`;
     };
     box.innerHTML = `
-      <div class="log-dates">${dates.map((d) => `<button type="button" class="log-date ${d === logDay ? 'active' : ''}" data-d="${escapeHtml(d)}">${escapeHtml(fmtDate(d))}</button>`).join('')}</div>
+      <div class="log-dates">${dates.slice().reverse().map((d) => `<button type="button" class="log-date ${d === logDay ? 'active' : ''}" data-d="${escapeHtml(d)}">${escapeHtml(fmtDate(d))}</button>`).join('')}</div>
       <div class="lg-sum">
         <div><small>총 볼륨</small><b>${fmtKg(Math.round(sm ? num(sm.v) || total : total))}</b></div>
         <div><small>운동</small><b>${items.length}개</b></div>
@@ -2714,6 +2714,9 @@ const social = (() => {
           ${setRows(x)}
         </div>`).join('')}</div>`;
     box.querySelectorAll('.log-date').forEach((b) => b.addEventListener('click', () => { logDay = b.dataset.d; renderPersonLog(m); }));
+    // 날짜는 왼쪽(예전) → 오른쪽(최신)으로 쌓임 · 고른 날짜가 보이게 스크롤
+    const row = box.querySelector('.log-dates'), act = row && row.querySelector('.log-date.active');
+    if (row && act) row.scrollLeft = act.offsetLeft - row.clientWidth + act.offsetWidth + 8;
   }
 
   async function sendComment(text) {
