@@ -2396,6 +2396,15 @@ const social = (() => {
       if (x.h1 !== undefined && x.h1 >= 22) S.late++;
       if (x.h0 !== undefined && x.h0 < 8) S.early++;
     }
+    // 🫣 딸딸왕: 자위행위 세트 수 (볼륨 −라 daySum엔 안 잡혀서 기록에서 직접 셈)
+    S.ddal = 0;
+    for (const d of range.dates) {
+      if (id === myId) { for (const ex of db[d] || []) if (isPenalty(ex)) S.ddal += ex.sets.filter((st) => num(st.r) > 0).length; continue; }
+      for (const it of ((members[id] || {}).log || {})[d] || []) {
+        if (!it || it.n !== '자위행위') continue;
+        S.ddal += Array.isArray(it.s) && it.s.length ? it.s.filter((x) => num(x[1]) > 0).length : (String(it.d || '').match(/\d+회/g) || []).length;
+      }
+    }
     S.cmt = cmts.filter((c) => c.from === id).length;
     const before = range.prev.reduce((a, d) => a + dayTotal(id, d), 0);
     S.growth = before > 0 && S.total > before ? Math.round(((S.total - before) / before) * 100) : 0;
@@ -2420,6 +2429,7 @@ const social = (() => {
     { icon: '🛋️', name: '휴식왕', desc: '가장 많이 쉰 사람', get: (S) => S.rest, fmt: (v) => `${v}일 쉼`, ties: true, meWin: '나… 😅' },
   ];
   const FUN_AWARDS = [
+    { icon: '🫣', name: '딸딸왕', desc: '자위행위 기록 횟수 (세트당 −50kg)', get: (S) => S.ddal, fmt: (v) => `${v}번`, none: '이번엔 다들 참았어요 🙏' },
     { icon: '🏋️', name: '최고중량왕', desc: '가장 무거운 한 세트', get: (S) => S.maxW, fmt: (v) => `${+v.toFixed(1)}kg` },
     { icon: '🔁', name: '횟수왕', desc: '총 반복 횟수', get: (S) => S.reps, fmt: (v) => `${v.toLocaleString()}회` },
     { icon: '💥', name: '하루 볼륨왕', desc: '하루 최고 볼륨', get: (S) => S.dayMax, fmt: fmtKg },
