@@ -339,8 +339,8 @@ EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
  *    (근력운동 1시간 ≈ 볼륨 1만kg ≈ 350kcal → 1kcal ≈ 25kg 으로 맞춤)
  */
 const CARDIO_KCAL_TO_VOLUME = 25;
-/** 유산소·스포츠 전체 볼륨 너프 (50%) */
-const CARDIO_NERF = 0.5;
+/** 유산소·스포츠 전체 볼륨 보정: 50% 너프 후 15% 버프 → 57.5% */
+const CARDIO_NERF = 0.5 * 1.15;
 /* 🏃 페이스 보너스 (거리+시간 둘 다 적었을 때)
  * 러닝: 6'00"/km(10km/h) = ×1.00, 1km/h 빠를 때마다 +8% (최대 ×1.4, 최소 ×0.85)
  *       → 5'00"/km ×1.16 · 4'30"/km ×1.27 · 4'00"/km ×1.40
