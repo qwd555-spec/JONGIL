@@ -3105,22 +3105,22 @@ const social = (() => {
     list.forEach((c) => chatToasted.add(c.id));
     $('#chat-count').textContent = `💬 ${Object.values(members).filter((m) => m && m.nick).length}명`;
     const lb = $('#chat-list');
-    const nearBottom = lb.scrollTop + lb.clientHeight >= lb.scrollHeight - 120;
+    const nearTop = lb.scrollTop < 120;   // 최신이 맨 위 (입력창 바로 아래)
     const changed = list.length !== chatCount;
     chatCount = list.length;
     const tm = (t) => { const d = new Date(t); const h = d.getHours(); return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`; };
     const dayLabel = (t) => { const d = new Date(t); return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`; };
     let html = '', prevDay = '';
-    list.forEach((c, i) => {
+    const rev = list.slice().reverse();   // 최신 메시지가 위로
+    rev.forEach((c, i) => {
       const at = num(c.at), day = toStr(new Date(at));
       if (day !== prevDay) { html += `<div class="chat-day"><span>${dayLabel(at)}</span></div>`; prevDay = day; }
-      const prev = list[i - 1], next = list[i + 1];
-      const first = !prev || prev.from !== c.from || toStr(new Date(num(prev.at))) !== day || at - num(prev.at) > 180000;
-      const lastOfGroup = !next || next.from !== c.from || toStr(new Date(num(next.at))) !== day || num(next.at) - at > 180000 || tm(num(next.at)) !== tm(at);
+      const prev = rev[i - 1];
+      const first = !prev || prev.from !== c.from || toStr(new Date(num(prev.at))) !== day || num(prev.at) - at > 180000;
       const mine = c.from === myId;
       const nk = nickOf(c.from);
       const bubble = `<div class="chat-bubble${c.share ? ' share' : ''}" ${mine ? `data-del="${escapeHtml(c.id)}"` : ''}>${escapeHtml(c.text)}</div>`;
-      const time = lastOfGroup ? `<span class="chat-time">${tm(at)}</span>` : '';
+      const time = first ? `<span class="chat-time">${tm(at)}</span>` : '';
       if (mine) html += `<div class="chat-row me${first ? ' first' : ''}">${time}${bubble}</div>`;
       else html += `<div class="chat-row${first ? ' first' : ''}">${first ? `<span class="chat-ava" style="background:${avaColor(c.from)}">${escapeHtml([...nk][0] || '?')}</span>` : '<span class="chat-ava ghost"></span>'}<div class="chat-col">${first ? `<span class="chat-nick">${escapeHtml(nk)}</span>` : ''}<div class="chat-line">${bubble}${time}</div></div></div>`;
     });
@@ -3129,7 +3129,7 @@ const social = (() => {
       if (!confirm('이 메시지를 지울까요?')) return;
       try { await store.doc(`comments/${myId}/items/${b.dataset.del}`).delete(); } catch { toast('지우지 못했어요'); }
     }));
-    if (jump || (changed && nearBottom)) requestAnimationFrame(() => lb.scrollTo({ top: lb.scrollHeight, behavior: jump ? 'auto' : 'smooth' }));
+    if (jump || (changed && nearTop)) requestAnimationFrame(() => lb.scrollTo({ top: 0, behavior: jump ? 'auto' : 'smooth' }));
   }
   async function sendChat(text, extra) {
     text = String(text || '').trim().slice(0, 300);

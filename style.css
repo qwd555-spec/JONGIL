@@ -1600,3 +1600,15 @@ body.event-bg #person-modal .comment-form { background: #1b1528; }
 main { padding-bottom: calc(var(--safe-b) + 40px); }
 .photo-bar, .room-bar { bottom: 24px; }
 .ath-hero.cine.full .room-bar { bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
+/* 톡 창: 화면 위에 붙여서 열기 (입력창이 항상 보이게) · 최신 메시지가 입력창 바로 아래 */
+.chat-sheet { align-items: flex-start; }
+.cs-panel { height: auto; max-height: min(72vh, 640px); border-radius: 0 0 26px 26px; padding: calc(env(safe-area-inset-top, 0px) + 6px) 0 12px; animation: csDrop .3s cubic-bezier(.2,.9,.25,1); box-shadow: 0 20px 60px -20px rgba(0,0,0,.6); }
+.chat-sheet.closing .cs-panel { animation: csLift .24s ease-in forwards; }
+@keyframes csDrop { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes csLift { to { transform: translateY(-100%); } }
+.cs-panel .chat-bar, body.event-bg .cs-panel .chat-bar { margin: 4px 12px 8px; }
+.cs-panel .chat-list { min-height: 120px; padding-top: 4px; }
+.cs-panel .chat-day:first-child { margin-top: 6px; }
+/* 친구 상세 댓글 입력창: 하단 고정 대신 댓글 바로 아래 (가려지지 않게) */
+#person-modal .comment-form, body.event-bg #person-modal .comment-form { position: static; transform: none; width: auto; margin-top: 10px; box-shadow: none; background: transparent; padding: 0; }
+#person-modal .person-sheet { padding-bottom: calc(40px + var(--safe-b)); }
