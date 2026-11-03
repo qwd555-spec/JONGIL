@@ -2053,8 +2053,16 @@ const social = (() => {
     const log = {};
     for (const d of Object.keys(db)) {
       if (d < from) continue;
-      const items = db[d].map((ex) => ({ n: ex.name, d: describeSets(ex), v: Math.round(exerciseVolume(ex, d)), c: cardioInfo(ex) ? 1 : 0 }))
-        .filter((x) => x.d);
+      const items = db[d].map((ex) => {
+        const ci = cardioInfo(ex);
+        const done = ex.sets.filter((st) => num(st.r) > 0 || num(st.km) > 0 || num(st.min) > 0 || num(st.wkcal) > 0);
+        // 세트별 상세: 근력 [무게, 횟수] · 유산소 [km, 분] (최대 20세트)
+        const sets = done.slice(0, 20).map((st) => (ci ? [num(st.km), num(st.min)] : [num(st.w), num(st.r)]));
+        const x = { n: ex.name, d: describeSets(ex), v: Math.round(exerciseVolume(ex, d)), c: ci ? 1 : 0, p: ci ? '유산소' : partOf(ex.name), s: sets };
+        if (!ci && bwType(ex)) x.b = bwType(ex) === 'assist' ? 2 : 1;
+        if (ex.ss) x.ss = String(ex.ss).slice(-4);
+        return x;
+      }).filter((x) => x.d);
       if (items.length) log[d] = items;
     }
     return log;
@@ -2617,19 +2625,39 @@ const social = (() => {
   function renderPersonLog(m) {
     const box = $('#person-log');
     const log = m.log || {};
-    const dates = Object.keys(log).sort().reverse().slice(0, 14);
+    const dates = Object.keys(log).sort().reverse().slice(0, 30);
     if (!dates.length) {
       box.innerHTML = `<p class="empty-text">${openPerson === myId && !shareLog() ? '운동 내용 공개가 꺼져 있어요' : '최근 30일 운동 내용이 없어요'}</p>`;
       return;
     }
     if (!logDay || !dates.includes(logDay)) logDay = dates[0];
     const items = Array.isArray(log[logDay]) ? log[logDay] : [];
+    const sm = (m.dsum || {})[logDay] || null;
+    const total = items.reduce((a, x) => a + num(x.v), 0);
+    const parts = sm && sm.p ? Object.entries(sm.p).filter(([, v]) => num(v) > 0).sort((a, b) => b[1] - a[1]) : [];
+    const hours = sm && sm.h0 !== undefined ? `${sm.h0}시${sm.h1 !== sm.h0 ? `~${sm.h1}시` : ''}` : '';
+    const setRows = (x) => {
+      if (!Array.isArray(x.s) || !x.s.length) return `<div class="log-desc">${escapeHtml(x.d)}</div>`;
+      return `<div class="lg-sets">${x.s.map((st, i) => {
+        const [a, b] = st.map(num);
+        const txt = x.c ? [a ? `${a}km` : '', b ? `${b}분` : ''].filter(Boolean).join(' · ') || '-'
+          : x.b === 1 ? `${a ? `맨몸 +${a}kg` : '맨몸'} × ${b}회` : x.b === 2 ? `보조 ${a}kg × ${b}회` : `${a}kg × ${b}회`;
+        return `<div class="lg-set"><i>${i + 1}</i><span>${txt}</span>${!x.c && !x.b ? `<em>${fmtKg(a * b)}</em>` : '<em></em>'}</div>`;
+      }).join('')}</div>`;
+    };
     box.innerHTML = `
       <div class="log-dates">${dates.map((d) => `<button type="button" class="log-date ${d === logDay ? 'active' : ''}" data-d="${escapeHtml(d)}">${escapeHtml(fmtDate(d))}</button>`).join('')}</div>
-      <div class="log-items">${items.map((x) => `
-        <div class="log-item">
-          <div class="log-top"><b>${escapeHtml(x.n)}</b><span>${x.c ? '유산소 ' : ''}${fmtKg(num(x.v))}</span></div>
-          <div class="log-desc">${escapeHtml(x.d)}</div>
+      <div class="lg-sum">
+        <div><small>총 볼륨</small><b>${fmtKg(Math.round(sm ? num(sm.v) || total : total))}</b></div>
+        <div><small>운동</small><b>${items.length}개</b></div>
+        <div><small>세트 · 횟수</small><b>${sm ? `${num(sm.sets)}세트 · ${num(sm.reps)}회` : '-'}</b></div>
+        <div><small>시간대</small><b>${hours || '-'}</b></div>
+      </div>
+      ${parts.length ? `<div class="lg-parts">${parts.map(([p, v]) => `<span>${escapeHtml(p)} <b>${fmtKg(Math.round(num(v)))}</b></span>`).join('')}</div>` : ''}
+      <div class="log-items">${items.map((x, i) => `
+        <div class="log-item${x.ss ? ' ss' : ''}">
+          <div class="log-top"><b><i class="lg-no">${i + 1}</i>${escapeHtml(x.n)}${x.p ? `<small class="lg-part">${escapeHtml(x.p)}</small>` : ''}${x.ss ? '<small class="lg-ss">🔗 슈퍼세트</small>' : ''}</b><span>${fmtKg(num(x.v))}</span></div>
+          ${setRows(x)}
         </div>`).join('')}</div>`;
     box.querySelectorAll('.log-date').forEach((b) => b.addEventListener('click', () => { logDay = b.dataset.d; renderPersonLog(m); }));
   }
@@ -2842,10 +2870,9 @@ const social = (() => {
     document.querySelectorAll('#feed-kind button').forEach((b) => b.classList.toggle('active', b.dataset.k === feedKind));
     $('#meal-box').hidden = feedKind !== 'feed';
     $('#photo-feed').hidden = true;
-    $('#chat-box').hidden = feedKind !== 'chat';
-    if (feedKind !== 'chat') { markFeedSeen('meal'); markFeedSeen('body'); feedBadges(); }
-    if (feedKind === 'chat') { renderChat(chatJump || window.scrollY < 40); chatJump = false; return; }
-    chatJump = true;
+    $('#diet-box').hidden = feedKind !== 'diet';
+    if (feedKind === 'diet') { if (window.diet) window.diet.renderInline(); return; }
+    markFeedSeen('meal'); markFeedSeen('body'); feedBadges();
     // 사람별로 묶고, 가장 최근에 올린 사람이 맨 위 · 사진은 옆으로 쌓이게
     const byWho = new Map();
     for (const c of allMeals()) { if (!byWho.has(c.from)) byWho.set(c.from, []); byWho.get(c.from).push(c); }
@@ -2921,18 +2948,26 @@ const social = (() => {
     const last = pop[pop.length - 1];
     if (last) toast(`💬 ${nickOf(last.from)}: ${last.text.slice(0, 40)}`);
   }
-  const inChat = () => currentView() === 'feed' && feedKind === 'chat';
-  /** 💬 톡방으로 바로 가기 */
+  const inChat = () => !$('#chat-sheet').hidden;
+  /** 💬 톡: 상단바 버튼 → 아래에서 올라오는 창 (어디서든), ✕ 누르면 내려감 */
   function goChat() {
-    feedKind = 'chat'; chatJump = true;
-    if (currentView() === 'feed') renderFeed(); else showView('feed');
+    if (!store || !myId || !myNick()) { toast('닉네임을 등록하고 로그인하면 톡을 쓸 수 있어요'); return; }
+    const el = $('#chat-sheet');
+    el.hidden = false; el.classList.remove('closing');
+    document.body.classList.add('modal-open');
+    renderChat(true);
   }
-  /** 피드에 들어올 때 안 읽은 톡이 있으면 톡 칸부터 */
-  function feedEnter() {
-    if (!store || !myId) return;
-    const seen = chatSeen();
-    if (chatMsgs().some((c) => c.from !== myId && num(c.at) > seen)) { feedKind = 'chat'; chatJump = true; }
+  function closeChat() {
+    const el = $('#chat-sheet');
+    if (el.hidden) return;
+    el.classList.add('closing');
+    setTimeout(() => { el.hidden = true; el.classList.remove('closing'); document.body.classList.remove('modal-open'); }, 260);
   }
+  $('#chat-btn').addEventListener('click', () => (inChat() ? closeChat() : goChat()));
+  $('#chat-close').addEventListener('click', closeChat);
+  $('#chat-backdrop').addEventListener('click', closeChat);
+  function feedEnter() { /* 톡은 상단바로 옮김 */ }
+  function openDiet() { feedKind = 'diet'; if (currentView() === 'feed') renderFeed(); else showView('feed'); }
   /** 운동 탭 맨 위: 최신 톡 한 줄 (최근 3일) */
   function chatStrip(list, unread) {
     const el = $('#chat-strip'); if (!el) return;
@@ -3005,7 +3040,7 @@ const social = (() => {
     const n = feedCounts();
     const set = (id, v) => { const el = $(id); if (!el) return; el.textContent = v > 99 ? '99+' : String(v); el.hidden = !v; };
     set('#meal-badge', n.meal + n.body); set('#chat-badge', n.chat);
-    set('#feed-badge', n.meal + n.body + n.chat);
+    set('#feed-badge', n.meal + n.body);
   }
   function renderChat(jump) {
     if (!store || !myId || !ready || !myNick()) return;
@@ -3014,8 +3049,9 @@ const social = (() => {
     feedBadges();
     chatStrip(list, 0);
     list.forEach((c) => chatToasted.add(c.id));
-    $('#chat-count').textContent = `${Object.values(members).filter((m) => m && m.nick).length}명`;
-    const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
+    $('#chat-count').textContent = `💬 ${Object.values(members).filter((m) => m && m.nick).length}명`;
+    const lb = $('#chat-list');
+    const nearBottom = lb.scrollTop + lb.clientHeight >= lb.scrollHeight - 120;
     const changed = list.length !== chatCount;
     chatCount = list.length;
     const tm = (t) => { const d = new Date(t); const h = d.getHours(); return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`; };
@@ -3039,7 +3075,7 @@ const social = (() => {
       if (!confirm('이 메시지를 지울까요?')) return;
       try { await store.doc(`comments/${myId}/items/${b.dataset.del}`).delete(); } catch { toast('지우지 못했어요'); }
     }));
-    if (jump || (changed && nearBottom)) requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: jump ? 'auto' : 'smooth' }));
+    if (jump || (changed && nearBottom)) requestAnimationFrame(() => lb.scrollTo({ top: lb.scrollHeight, behavior: jump ? 'auto' : 'smooth' }));
   }
   async function sendChat(text, extra) {
     text = String(text || '').trim().slice(0, 300);
@@ -3133,7 +3169,7 @@ const social = (() => {
       .sort((a, b) => b.v - a.v);
   }
 
-  return { postDiet, renderChat, feedEnter, goChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
+  return { postDiet, openDiet, renderChat, feedEnter, goChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
     members: () => members, jailed: isJailed,
     // 🏠 각자 짐 메모: { 주인id: [{id, from, who, text, c, at, mine}] } (최신순)
     memos: () => {

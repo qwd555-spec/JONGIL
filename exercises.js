@@ -324,6 +324,7 @@ const BODYWEIGHT_TYPE = {};
 ['어시스트 딥스', '어시스트 풀업 머신'].forEach((n) => { BODYWEIGHT_TYPE[n] = 'assist'; });
 /** 맨몸 운동 볼륨 너프 배율 (없으면 1) — 맨몸 풀업은 70% */
 const BW_SCALE = { '풀업': 0.7 };
+EXERCISES.forEach((e) => { if (e.part === '복근' && BODYWEIGHT_TYPE[e.name] === 'bw') BW_SCALE[e.name] = 0.5; });   // 맨몸 복근 운동 50% 너프
 EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
 
 /* ---------- 유산소 / 스포츠 환산 기준 ----------

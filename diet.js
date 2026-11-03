@@ -137,7 +137,7 @@ window.diet = (() => {
   function restore(remote) {
     if (!remote || typeof remote !== 'object') return;
     if (num(remote.at) >= num(D.at)) { D = { ...blank(), ...remote }; try { localStorage.setItem(KEY, JSON.stringify(D)); } catch {} }
-    if (!$d('#diet-modal').hidden) render();
+    if (!$d('#diet-box').hidden) render();
   }
   const goal = () => {
     const bw = bodyweightOn(todayStr()) || 70;
@@ -151,11 +151,12 @@ window.diet = (() => {
   }
 
   /* ---------- 화면 ---------- */
-  function open() {
-    $d('#diet-modal').hidden = false; document.body.classList.add('modal-open');
-    day = todayStr(); render();
-  }
-  function close() { $d('#diet-modal').hidden = true; document.body.classList.remove('modal-open'); closeAdd(); }
+  /* 식단 기록은 피드 안 [🥗 식단 기록] 칸에 그대로 펼쳐 둠 */
+  const sheet = $d('#diet-modal .diet-sheet');
+  if (sheet && $d('#diet-box')) { $d('#diet-box').appendChild(sheet); sheet.classList.add('inline'); }
+  function open() { day = todayStr(); if (typeof social !== 'undefined' && social.openDiet) social.openDiet(); else render(); }
+  function renderInline() { render(); }
+  function close() { closeAdd(); }
   function render() {
     $d('#diet-intro').hidden = !!D.on;
     $d('#diet-main').hidden = !D.on;
@@ -212,12 +213,12 @@ window.diet = (() => {
   /* ---------- 음식 추가 ---------- */
   function openAdd(slot) {
     addSlot = slot; pick = null;
-    $d('#diet-add').hidden = false; $d('#diet-add-title').textContent = `${SLOT_ICON[slot]} ${slot}에 추가`;
+    $d('#diet-add').hidden = false; sheet.classList.add('adding'); window.scrollTo({ top: 0 }); $d('#diet-add-title').textContent = `${SLOT_ICON[slot]} ${slot}에 추가`;
     $d('#diet-q').value = ''; $d('#diet-qty').hidden = true; $d('#diet-custom').hidden = true; $d('#diet-ai').hidden = true; aiItems = [];
     ['#dc-n', '#dc-u', '#dc-k', '#dc-c', '#dc-p', '#dc-f'].forEach((k) => { $d(k).value = ''; });
     search(); setTimeout(() => $d('#diet-q').focus(), 200);
   }
-  function closeAdd() { $d('#diet-add').hidden = true; addSlot = null; pick = null; }
+  function closeAdd() { $d('#diet-add').hidden = true; sheet.classList.remove('adding'); addSlot = null; pick = null; }
   function allFoods() { return [...D.custom.map((f) => ({ ...f, mine: true })), ...FOODS]; }
   function search() {
     const q = $d('#diet-q').value.trim().replace(/\s/g, '');
@@ -320,7 +321,7 @@ window.diet = (() => {
   /* ---------- 이벤트 ---------- */
   $d('#diet-open').addEventListener('click', open);
   $d('#diet-close').addEventListener('click', close);
-  $d('#diet-modal .rest-backdrop').addEventListener('click', close);
+
   $d('#diet-start').addEventListener('click', () => {
     D.on = true; D.goal = { kcal: num($d('#diet-goal-k').value) || 0, p: num($d('#diet-goal-p').value) || 0 };
     persist(); render(); toast('🥗 식단 기록 시작! 제대로 가보자');
@@ -353,5 +354,5 @@ window.diet = (() => {
     persist(); choose(f);
   });
 
-  return { open, restore, state: () => D, totals };
+  return { open, renderInline, restore, state: () => D, totals };
 })();

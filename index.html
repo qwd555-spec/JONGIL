@@ -62,6 +62,7 @@
       </div>
       <div class="header-right">
         <span class="header-sub" id="header-sub"></span>
+        <button type="button" class="chat-btn" id="chat-btn" aria-label="톡"><svg class="i"><use href="#i-chat"/></svg><i class="tab-badge" id="chat-badge" hidden></i></button>
         <button type="button" class="settings-btn" id="settings-btn" aria-label="설정"><svg class="i"><use href="#i-settings"/></svg></button>
       </div>
     </header>
@@ -324,7 +325,7 @@
         <div id="feed-main" hidden>
           <div class="segmented" id="feed-kind">
             <button data-k="feed" class="active">🍱 피드<i class="seg-badge" id="meal-badge" hidden></i></button>
-            <button data-k="chat">💬 톡<i class="seg-badge" id="chat-badge" hidden></i></button>
+            <button data-k="diet">🥗 식단 기록</button>
           </div>
           <div id="meal-box">
             <div class="panel meal-up">
@@ -338,17 +339,7 @@
             </div>
             <div id="meal-grid"></div>
           </div>
-          <div id="chat-box" hidden>
-            <div class="chat-room">
-              <div class="chat-head"><b>💬 운동톡방</b><small id="chat-count"></small></div>
-              <div class="chat-list" id="chat-list"></div>
-            </div>
-            <form class="chat-bar" id="chat-form" autocomplete="off">
-              <button type="button" id="chat-share" class="chat-share" aria-label="오늘 운동 공유" title="오늘 운동 공유">💪</button>
-              <input type="text" id="chat-text" maxlength="300" placeholder="메시지 입력" enterkeyhint="send" />
-              <button type="submit" class="chat-send" aria-label="보내기"><svg class="i"><use href="#i-send"/></svg></button>
-            </form>
-          </div>
+          <div id="diet-box" hidden></div>
           <div id="photo-feed" hidden>
             <div class="part-chips feed-chips" id="feed-chips">
               <button class="chip active" data-src="friends">친구 공유</button>
@@ -685,6 +676,18 @@
       <div class="part-btns"><button type="button" id="part-cancel">취소</button><button type="button" id="part-ok">등록하기</button></div>
     </div>
   </div>
+  <div id="chat-sheet" class="chat-sheet" hidden role="dialog" aria-modal="true" aria-label="톡">
+    <div class="cs-backdrop" id="chat-backdrop"></div>
+    <div class="cs-panel">
+      <div class="cs-grab"><span id="chat-count"></span><button type="button" id="chat-close" class="cs-close" aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="chat-list" id="chat-list"></div>
+      <form class="chat-bar" id="chat-form" autocomplete="off">
+        <button type="button" id="chat-share" class="chat-share" aria-label="오늘 운동 공유" title="오늘 운동 공유">💪</button>
+        <input type="text" id="chat-text" maxlength="300" placeholder="메시지 입력" enterkeyhint="send" />
+        <button type="submit" class="chat-send" aria-label="보내기"><svg class="i"><use href="#i-send"/></svg></button>
+      </form>
+    </div>
+  </div>
   <div id="chat-pop" class="rest-modal" hidden role="dialog" aria-modal="true" aria-labelledby="chat-pop-title">
     <div class="rest-backdrop"></div>
     <div class="rest-sheet chat-pop">
@@ -744,7 +747,7 @@
       </div>
       <div id="diet-intro">
         <h3 class="diet-h">진짜 제대로 할 사람만 🔥</h3>
-        <p class="diet-p">먹은 걸 끼니마다 검색해서 칼로리·탄수화물·단백질·지방을 기록해요.<br />매일 꾸준히 적을 자신 있을 때 켜세요. <b>나만 보는 기록</b>이고 친구에게 공유되지 않아요.</p>
+        <p class="diet-p">먹은 걸 끼니마다 검색해서 칼로리·탄수화물·단백질·지방을 기록해요.<br />매일 꾸준히 적을 자신 있을 때 켜세요. 기본은 <b>나만 보는 기록</b>이고, 원하는 날만 📤 버튼으로 피드에 올릴 수 있어요.</p>
         <label class="diet-in"><span>하루 목표 칼로리</span><input type="number" id="diet-goal-k" inputmode="numeric" /><i>kcal</i></label>
         <label class="diet-in"><span>하루 목표 단백질</span><input type="number" id="diet-goal-p" inputmode="numeric" /><i>g</i></label>
         <p class="hint">몸무게 기준으로 미리 채워뒀어요 (칼로리 = 몸무게×33, 단백질 = 몸무게×1.6)</p>
