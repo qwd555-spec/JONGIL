@@ -323,9 +323,8 @@
         </div>
         <div id="feed-main" hidden>
           <div class="segmented" id="feed-kind">
-            <button data-k="meal" class="active">🍱 식단<i class="seg-badge" id="meal-badge" hidden></i></button>
+            <button data-k="feed" class="active">🍱 피드<i class="seg-badge" id="meal-badge" hidden></i></button>
             <button data-k="chat">💬 톡<i class="seg-badge" id="chat-badge" hidden></i></button>
-            <button data-k="body">눈바디<i class="seg-badge" id="body-badge" hidden></i></button>
           </div>
           <div id="meal-box">
             <div class="panel meal-up">
@@ -335,7 +334,7 @@
                 <button type="button" class="diet-btn" id="diet-open">🥗 <span>식단 기록하기</span></button>
               </div>
               <input type="file" id="meal-file" accept="image/*" hidden />
-              <p class="hint">식단 사진은 친구들에게 보여요 · 2주 지나면 자동 정리돼요</p>
+              <p class="hint">식단 사진은 친구들에게 보여요 · 식단 기록하기에서 정리한 식단도 올릴 수 있어요 · 2주 지나면 자동 정리</p>
             </div>
             <div id="meal-grid"></div>
           </div>
@@ -762,6 +761,7 @@
         <div class="diet-ratio" id="diet-ratio"></div>
         <small class="diet-ratio-txt" id="diet-ratio-txt"></small>
         <div class="diet-meals" id="diet-meals"></div>
+        <button type="button" class="diet-share" id="diet-share">📤 이 날 식단 피드에 올리기</button>
         <div class="diet-foot"><button type="button" id="diet-settings">목표 바꾸기</button><button type="button" id="diet-off">식단 기록 끄기</button></div>
       </div>
       <div class="diet-add" id="diet-add" hidden>

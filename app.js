@@ -2505,7 +2505,7 @@ const social = (() => {
     $('#rank-kings').hidden = mode !== 'kings';
     $('#rank-mode').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.mode === mode));
     if (mode === 'kings') { renderAwards(); return; }
-    renderCheers();
+    $('#cheer-panel').hidden = true;   // 맨 위 실시간 현황 대신 순위 바로 (운동 중이면 순위에 초록불)
 
     // 운동 선택 (최고 중량)
     const exNames = [...new Set(Object.values(members).flatMap((m) => Object.keys(m.best || {})))].sort((a, b) => a.localeCompare(b, 'ko'));
@@ -2530,7 +2530,7 @@ const social = (() => {
     const tD = todayStr();
     const didToday = (m) => num((m.days || {})[tD]) > 0 || num((m.cdays || {})[tD]) > 0;
     $('#rank-list').innerHTML = rows.map((r, i) => `
-      <button class="rank-row ${r.id === myId ? 'me' : ''} ${didToday(r.m) ? 'today' : 'stale'}" data-id="${escapeHtml(r.id)}">
+      <button class="rank-row ${r.id === myId ? 'me' : ''} ${didToday(r.m) ? 'today' : 'stale'}${isLive(r.id) ? ' live' : ''}" data-id="${escapeHtml(r.id)}">
         <span class="rank-no">${i + 1}</span>
         <span class="rank-main">
           <span class="rank-name">${isLive(r.id) ? '<i class="live-dot" title="지금 운동 중"></i>' : ''}${escapeHtml(r.m.nick)}${r.id === myId ? '<span class="me-tag">나</span>' : ''}<span class="title-chip">${escapeHtml(titleOf(r.id, todayStr()))}</span>
@@ -2744,10 +2744,13 @@ const social = (() => {
     if (!x) return;
     $('#post-who').textContent = x.own ? `내 눈바디 · ${fmtDate(x.date)}` : `${x.mine ? '나' : x.who} · ${x.at ? relTime(x.at) : ''}`;
     $('#post-del').hidden = !(x.meal && x.mine);
-    $('#post-img').src = x.img;
-    $('#post-sum').textContent = String(x.summary || '');
-    $('#post-text').textContent = String(x.text || '');
-    $('#post-items').innerHTML = Array.isArray(x.items) ? x.items.slice(0, 15).map((it) => `<div><b>${escapeHtml(String(it.n || ''))}</b> <span>${escapeHtml(String(it.d || ''))}</span></div>`).join('') : '';
+    $('#post-img').hidden = !x.img;
+    if (x.img) $('#post-img').src = x.img;
+    $('#post-sum').textContent = x.diet ? `🥗 ${fmtDate(x.date)} 식단 · ${Math.round(num(x.diet.k)).toLocaleString()} kcal${num(x.diet.g) ? ` / 목표 ${num(x.diet.g).toLocaleString()}` : ''}` : String(x.summary || '');
+    $('#post-text').textContent = x.diet ? `탄수화물 ${Math.round(num(x.diet.c))}g · 단백질 ${Math.round(num(x.diet.p))}g · 지방 ${Math.round(num(x.diet.f))}g` : String(x.text || '');
+    $('#post-items').innerHTML = x.diet && Array.isArray(x.diet.meals)
+      ? x.diet.meals.map((m) => `<div class="pd-meal"><b>${escapeHtml(String(m.s || ''))} <small>${Math.round(num(m.k)).toLocaleString()} kcal</small></b>${(Array.isArray(m.items) ? m.items : []).slice(0, 12).map((it) => `<div><span>${escapeHtml(String(it.n || ''))}${num(it.q) && num(it.q) !== 1 ? ` ×${num(it.q)}` : ''}</span> <em>${Math.round(num(it.k))} kcal</em></div>`).join('')}</div>`).join('')
+      : Array.isArray(x.items) ? x.items.slice(0, 15).map((it) => `<div><b>${escapeHtml(String(it.n || ''))}</b> <span>${escapeHtml(String(it.d || ''))}</span></div>`).join('') : '';
     $('#post-cheers').hidden = !!x.mine;
     $('#post-cmts').open = false;
     renderPostCmts();
@@ -2789,7 +2792,7 @@ const social = (() => {
   $('#post-del').addEventListener('click', async () => {
     const x = feedList[feedIdx];
     if (!x || !x.meal || !x.mine) return;
-    if (!(await askConfirm('이 식단 사진을 삭제할까요?', { okText: '삭제', danger: true }))) return;
+    if (!(await askConfirm('이 글을 삭제할까요?', { okText: '삭제', danger: true }))) return;
     try { await store.doc(`comments/${myId}/items/${x.meal}`).delete(); closePost(); toast('삭제했어요'); } catch { toast('삭제하지 못했어요'); }
   });
   $('#post-close').addEventListener('click', closePost);
@@ -2816,9 +2819,20 @@ const social = (() => {
 
   /* ---- 🍱 식단 피드 · 눈바디 피드 (피드 탭) ---- */
   const MEAL_KEEP_DAYS = 14;
-  let feedKind = 'meal', mealRows = [], chatJump = true;
+  let feedKind = 'feed', mealRows = [], chatJump = true;
+  const isImg = (v) => typeof v === 'string' && v.startsWith('data:image/');
+  /** 피드 글: 식단 사진 · 정리한 식단(diet) · 공유한 눈바디 — 최신순 */
   function allMeals() {
-    return Object.values(comments).flat().filter((c) => c.kind === 'meal' && members[c.from] && typeof c.img === 'string' && c.img.startsWith('data:image/')).sort((a, b) => b.at - a.at);
+    return Object.values(comments).flat().filter((c) => members[c.from] && ((c.kind === 'meal' && (isImg(c.img) || (c.diet && typeof c.diet === 'object'))) || (c.kind === 'share' && isImg(c.img)))).sort((a, b) => b.at - a.at);
+  }
+  const dietCard = (d) => `<div class="diet-card"><b>🥗 ${Math.round(num(d.k)).toLocaleString()}<small> kcal</small></b><span>탄 ${Math.round(num(d.c))} · 단 ${Math.round(num(d.p))} · 지 ${Math.round(num(d.f))}</span><em>${(Array.isArray(d.meals) ? d.meals : []).map((m) => m.s).join(' · ')}</em></div>`;
+  /** 정리한 식단을 피드에 올리기 (같은 날 올린 건 새걸로 바꿈) */
+  async function postDiet(diet) {
+    if (!store || !myId) { toast('로그인한 상태에서 올릴 수 있어요'); return false; }
+    const old = (comments[myId] || []).filter((c) => c.kind === 'meal' && c.diet && c.date === diet.date);
+    await store.collection(`comments/${myId}/items`).add({ to: '__meal', kind: 'meal', date: diet.date, text: '', diet, at: Date.now() });
+    old.forEach((c) => store.doc(`comments/${myId}/items/${c.id}`).delete().catch(() => {}));
+    return true;
   }
   function renderFeed() {
     const ok = !!store && ready && !!myNick();
@@ -2826,26 +2840,25 @@ const social = (() => {
     $('#feed-main').hidden = !ok;
     if (!ok) return;
     document.querySelectorAll('#feed-kind button').forEach((b) => b.classList.toggle('active', b.dataset.k === feedKind));
-    $('#meal-box').hidden = feedKind !== 'meal';
-    $('#photo-feed').hidden = feedKind !== 'body';
+    $('#meal-box').hidden = feedKind !== 'feed';
+    $('#photo-feed').hidden = true;
     $('#chat-box').hidden = feedKind !== 'chat';
-    if (feedKind !== 'chat') { markFeedSeen(feedKind); feedBadges(); }
+    if (feedKind !== 'chat') { markFeedSeen('meal'); markFeedSeen('body'); feedBadges(); }
     if (feedKind === 'chat') { renderChat(chatJump || window.scrollY < 40); chatJump = false; return; }
     chatJump = true;
-    if (feedKind === 'body') { renderPhotoFeed(); return; }
     // 사람별로 묶고, 가장 최근에 올린 사람이 맨 위 · 사진은 옆으로 쌓이게
     const byWho = new Map();
     for (const c of allMeals()) { if (!byWho.has(c.from)) byWho.set(c.from, []); byWho.get(c.from).push(c); }
     const people = [...byWho.entries()];   // allMeals가 최신순이라 첫 등장 순서 = 최근 업데이트 순
-    mealRows = people.map(([from, list]) => list.map((c) => ({ img: c.img, who: nickOf(from), from, date: c.date, summary: fmtDate(c.date), text: c.text, at: c.at, mine: from === myId, meal: c.id, pid: `${from}/${c.id}` })));
+    mealRows = people.map(([from, list]) => list.map((c) => ({ img: isImg(c.img) ? c.img : '', diet: c.diet || null, body: c.kind === 'share', who: nickOf(from), from, date: c.date, summary: c.kind === 'share' ? String(c.summary || '') : fmtDate(c.date), text: c.text, items: c.items, at: c.at, mine: from === myId, meal: c.id, pid: `${from}/${c.id}` })));
     $('#meal-grid').innerHTML = people.length ? people.map(([from, list], r) => `
       <div class="meal-row">
-        <div class="meal-who"><b>${escapeHtml(from === myId ? '나' : nickOf(from))}</b><small>${relTime(list[0].at)} · ${list.length}장</small></div>
+        <div class="meal-who"><b>${escapeHtml(from === myId ? '나' : nickOf(from))}</b><small>${relTime(list[0].at)} · ${list.length}개</small></div>
         <div class="meal-strip">${list.map((c, i) => `<button type="button" class="meal-cell" data-r="${r}" data-i="${i}">
-          <img src="${c.img}" alt="" loading="lazy" />${cmtBadge(`${from}/${c.id}`)}
-          <span>${escapeHtml(c.text || fmtDate(c.date))}</span>
+          ${isImg(c.img) ? `<img src="${c.img}" alt="" loading="lazy" />` : dietCard(c.diet)}${c.kind === 'share' ? '<i class="kind-tag">눈바디</i>' : ''}${cmtBadge(`${from}/${c.id}`)}
+          <span>${escapeHtml(c.text || (c.diet ? `${fmtDate(c.date)} 식단` : fmtDate(c.date)))}</span>
         </button>`).join('')}</div>
-      </div>`).join('') : '<p class="hint center">아직 올라온 식단이 없어요. 첫 식단을 올려보세요 🍱</p>';
+      </div>`).join('') : '<p class="hint center">아직 올라온 글이 없어요. 식단 사진이나 정리한 식단을 올려보세요 🍱</p>';
     $('#meal-grid').querySelectorAll('.meal-cell').forEach((el) => el.addEventListener('click', () => { feedList = mealRows[+el.dataset.r]; openPost(+el.dataset.i); }));
   }
   document.querySelectorAll('#feed-kind button').forEach((b) => b.addEventListener('click', () => { feedKind = b.dataset.k; renderFeed(); }));
@@ -2978,7 +2991,7 @@ const social = (() => {
     for (const c of all) {
       const at = num(c.at);
       if (c.kind === 'chat') { if (at > cs) chat++; }
-      else if (c.kind === 'meal' && hasImg(c)) { if (at > num(seen.meal)) meal++; }
+      else if (c.kind === 'meal' && (hasImg(c) || c.diet)) { if (at > num(seen.meal)) meal++; }
       else if (c.kind === 'share' && hasImg(c)) { if (at > num(seen.body)) body++; }
       else if (c.kind === 'fcmt' && c.to === myId) {
         if (mineMeal.has(c.ref) && at > num(seen.meal)) meal++;
@@ -2991,7 +3004,7 @@ const social = (() => {
     if (!store || !myId) return;
     const n = feedCounts();
     const set = (id, v) => { const el = $(id); if (!el) return; el.textContent = v > 99 ? '99+' : String(v); el.hidden = !v; };
-    set('#meal-badge', n.meal); set('#body-badge', n.body); set('#chat-badge', n.chat);
+    set('#meal-badge', n.meal + n.body); set('#chat-badge', n.chat);
     set('#feed-badge', n.meal + n.body + n.chat);
   }
   function renderChat(jump) {
@@ -3120,7 +3133,7 @@ const social = (() => {
       .sort((a, b) => b.v - a.v);
   }
 
-  return { renderChat, feedEnter, goChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
+  return { postDiet, renderChat, feedEnter, goChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
     members: () => members, jailed: isJailed,
     // 🏠 각자 짐 메모: { 주인id: [{id, from, who, text, c, at, mine}] } (최신순)
     memos: () => {

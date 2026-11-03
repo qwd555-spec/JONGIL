@@ -194,6 +194,21 @@ window.diet = (() => {
     }));
   }
 
+  /* ---------- 📤 정리한 식단을 피드에 ---------- */
+  $d('#diet-share').addEventListener('click', async () => {
+    const t = totals(day);
+    if (!(t.k > 0)) { toast('이 날 기록한 음식이 없어요'); return; }
+    const meals = SLOTS.map((s) => {
+      const list = dayData(day)[s] || [];
+      return { s, k: Math.round(list.reduce((a, it) => a + it.k * it.q, 0)), items: list.slice(0, 15).map((it) => ({ n: String(it.n).slice(0, 30), q: it.q, k: Math.round(it.k * it.q) })) };
+    }).filter((m) => m.items.length);
+    const diet = { date: day, k: Math.round(t.k), c: Math.round(t.c), p: Math.round(t.p), f: Math.round(t.f), g: goal().kcal, meals };
+    const btn = $d('#diet-share'); btn.disabled = true;
+    try { if (await social.postDiet(diet)) toast('📤 식단을 피드에 올렸어요'); }
+    catch { toast('올리지 못했어요'); }
+    btn.disabled = false;
+  });
+
   /* ---------- 음식 추가 ---------- */
   function openAdd(slot) {
     addSlot = slot; pick = null;
