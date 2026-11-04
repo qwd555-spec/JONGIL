@@ -3243,7 +3243,8 @@ const social = (() => {
       .map((c) => ({ id: c.id, who: c.from === myId ? '나' : nickOf(c.from), text: String(c.text || ''), n: num(c.n), at: num(c.at), mine: c.from === myId })).sort((a, b) => b.at - a.at),
     addPrayer: async (text, n) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to: '__pray', kind: 'pray', text: String(text).slice(0, 40), n, at: Date.now() }); },
     addMemo: async (to, text, c) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to, kind: 'memo', text: String(text).slice(0, 40), c, at: Date.now() }); },
-    delMemo: async (id) => { await store.doc(`comments/${myId}/items/${id}`).delete(); }, me: () => members[myId], nick: () => myNick(), openProfile, renderFeed, live: (id) => isLive(id),
+    delMemo: async (id) => { await store.doc(`comments/${myId}/items/${id}`).delete(); }, me: () => members[myId], nick: () => myNick(), openProfile,
+    friendList: () => Object.entries(members).filter(([id, m]) => id !== myId && m && m.nick).map(([id, m]) => ({ id, nick: m.nick, last: Object.keys(m.log || {}).sort().pop() || '', live: isLive(id) })).sort((a, b) => (b.live - a.live) || b.last.localeCompare(a.last)), renderFeed, live: (id) => isLive(id),
     focus: (id) => { try { return todayFocus(id); } catch { return null; } },
     send: async (to, text) => { if (!store || !myId) throw new Error('no'); await store.collection(`comments/${myId}/items`).add({ to, text, at: Date.now() }); } };
 })();
@@ -3397,7 +3398,14 @@ const routines = (() => {
   function open() { render(); $('#routine-modal').hidden = false; document.body.classList.add('modal-open'); }
   function close() { $('#routine-modal').hidden = true; document.body.classList.remove('modal-open'); }
   const itemsText = (r) => r.items.map((i) => escapeHtml(i.n)).join(' · ');
+  function renderFriends() {
+    const box = $('#routine-friends');
+    const fl = (typeof social !== 'undefined' && social.friendList) ? social.friendList() : [];
+    box.innerHTML = fl.length ? fl.map((f) => `<button type="button" class="rt-friend${f.live ? ' live' : ''}" data-id="${escapeHtml(f.id)}"><b>${escapeHtml(f.nick)}</b><small>${f.live ? '운동 중' : f.last ? fmtDate(f.last) : '기록 없음'}</small></button>`).join('') : '<p class="rt-wait">아직 친구가 없어요</p>';
+    box.querySelectorAll('.rt-friend').forEach((b) => b.addEventListener('click', () => { close(); social.openProfile(b.dataset.id); }));
+  }
   function render() {
+    renderFriends();
     const today = db[state.day] || [];
     $('#routine-save').hidden = !today.length;
     $('#routine-list').innerHTML = list.length ? list.map((r) => `<div class="rt-card" data-id="${r.id}">
