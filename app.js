@@ -1951,7 +1951,7 @@ const social = (() => {
     chatTick();
     if (store && myId) { const lb = document.getElementById('login-banner'); if (lb) lb.hidden = true; }
     if (currentView() === 'feed') renderFeed();
-    if (currentView() === 'rank') render();
+    if (currentView() === 'rank' && !openPerson) render();
     if (openPerson) renderPerson();
     if (!$('#post-modal').hidden) renderPostCmts();
     try { if (window.athlete && window.athlete.memosChanged) window.athlete.memosChanged(); } catch {}
@@ -2579,7 +2579,11 @@ const social = (() => {
         </span>
         <span class="rank-val">${fmtMetric(r.value)}</span>
       </button>`).join('');
-    $('#rank-list').querySelectorAll('.rank-row').forEach((b) => b.addEventListener('click', () => openProfile(b.dataset.id)));
+    // 순위가 실시간으로 바뀌는 중에 눌러도 손가락 닿은 사람으로 열리게 (pointerdown 때 id 고정)
+    $('#rank-list').querySelectorAll('.rank-row').forEach((b) => {
+      b.addEventListener('pointerdown', () => { rankTapId = b.dataset.id; rankTapAt = Date.now(); });
+      b.addEventListener('click', () => { const id = rankTapId && Date.now() - rankTapAt < 1500 ? rankTapId : b.dataset.id; rankTapId = null; openProfile(id); });
+    });
 
     const feed = allComments().slice(0, 30);
     // 펼쳐둔 상세는 새로고침돼도 그대로
@@ -2611,6 +2615,7 @@ const social = (() => {
   }
 
   let newsOpen = false;
+  let rankTapId = null, rankTapAt = 0;
   $('#news-more').addEventListener('click', () => { newsOpen = !newsOpen; render(); if (!newsOpen) $('#news-panel').scrollIntoView({ block: 'nearest' }); });
   function openProfile(id) {
     openPerson = id;
@@ -2623,6 +2628,7 @@ const social = (() => {
     openPerson = null;
     $('#person-modal').hidden = true;
     document.body.classList.remove('modal-open');
+    if (currentView() === 'rank') render();
   }
   function renderPerson() {
     const m = members[openPerson];
@@ -2704,7 +2710,11 @@ const social = (() => {
       <div class="lg-sum">
         <div><small>총 볼륨</small><b>${fmtKg(Math.round(sm ? num(sm.v) || total : total))}</b></div>
         <div><small>운동</small><b>${items.length}개</b></div>
-        <div><small>세트 · 횟수</small><b>${sm ? `${num(sm.sets)}세트 · ${num(sm.reps)}회` : '-'}</b></div>
+        ${(() => {
+          const allC = items.length && items.every((x) => x.c);
+          if (allC) { const km = sm ? num(sm.km) : 0, mn = sm ? num(sm.rmin) : 0; return `<div><small>거리 · 시간</small><b>${[km ? `${km}km` : '', mn ? `${mn}분` : ''].filter(Boolean).join(' · ') || '-'}</b></div>`; }
+          return `<div><small>세트 · 횟수</small><b>${sm ? `${num(sm.sets)}세트 · ${num(sm.reps)}회` : `${items.reduce((a, x) => a + (Array.isArray(x.s) ? x.s.length : 0), 0)}세트`}</b></div>`;
+        })()}
         <div><small>시간대</small><b>${hours || '-'}</b></div>
       </div>
       ${parts.length ? `<div class="lg-parts">${parts.map(([p, v]) => `<span>${escapeHtml(p)} <b>${fmtKg(Math.round(num(v)))}</b></span>`).join('')}</div>` : ''}
