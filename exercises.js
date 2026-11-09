@@ -325,6 +325,7 @@ const BODYWEIGHT_TYPE = {};
 /** 맨몸 운동 볼륨 너프 배율 (없으면 1) — 맨몸 풀업은 70% */
 const BW_SCALE = { '풀업': 0.7 };
 EXERCISES.forEach((e) => { if (e.part === '복근' && BODYWEIGHT_TYPE[e.name] === 'bw') BW_SCALE[e.name] = 0.5; });   // 맨몸 복근 운동 50% 너프
+Object.keys(BODYWEIGHT_TYPE).forEach((n) => { if (n.includes('푸시업') && n !== '핸드스탠드 푸시업') BW_SCALE[n] = 0.5; });   // 푸시업 계열 50% 너프 (물구나무는 제외)
 EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
 
 /* ---------- 유산소 / 스포츠 환산 기준 ----------
