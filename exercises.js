@@ -5,7 +5,7 @@
  * 형식: "부위|운동 이름|영문 이름|검색용 별칭(쉼표 구분)"
  * ========================================================= */
 
-const EXERCISE_PARTS = ['가슴', '등', '어깨', '하체', '이두', '삼두', '전완', '복근', '전신', '유산소', '스포츠'];
+const EXERCISE_PARTS = ['가슴', '등', '어깨', '하체', '이두', '삼두', '전완', '복근', '전신', '유산소', '스포츠', '음주'];
 
 const EXERCISE_DATA = `
 가슴|바벨 벤치프레스|Barbell Bench Press|벤치,벤치프레스,플랫벤치
@@ -232,6 +232,10 @@ const EXERCISE_DATA = `
 전신|박스 점프|Box Jump|
 전신|메디신볼 슬램|Medicine Ball Slam|볼슬램
 전신|자위행위|Self Care|딸,딸딸이,자위,ㅈㅇ
+음주|소주|Soju|쏘주,참이슬,처음처럼,술
+음주|맥주|Beer|비어,캔맥,생맥,술
+음주|막걸리|Makgeolli|탁주,동동주,술
+음주|와인|Wine|레드와인,화이트와인,술
 유산소|트레드밀|Treadmill|러닝머신,런닝머신,걷기
 유산소|인클라인 워킹|Incline Walking|경사걷기
 유산소|러닝|Running|달리기,조깅
@@ -414,4 +418,19 @@ function isFieldGolf(ex) { return !!ex && ex.name === '필드골프'; }
 
 /* 🫣 벌칙 운동: 횟수를 적은 세트마다 볼륨 −50kg */
 const PENALTY_KG = { '자위행위': -50 };
-function isPenalty(ex) { return !!ex && PENALTY_KG[ex.name] !== undefined; }
+/* 🍺 술: 1세트 = 1병, 도수(%)별로 볼륨 마이너스
+ * 순수 알코올(g) = 용량(ml) × 도수 × 0.789 · 볼륨 = 알코올 1g당 −10kg */
+const DRINKS = {
+  '소주': { ml: 360, abv: 16.5, icon: '🍶' },
+  '맥주': { ml: 500, abv: 5, icon: '🍺' },
+  '막걸리': { ml: 750, abv: 6, icon: '🍶' },
+  '와인': { ml: 750, abv: 13, icon: '🍷' },
+};
+const DRINK_KG_PER_G = 10;
+function isDrink(ex) { return !!ex && !!DRINKS[ex.name]; }
+function drinkGrams(set, ex) {
+  const d = DRINKS[ex.name]; if (!d) return 0;
+  const bottles = Number(set.r) || 0, abv = Number(set.abv) > 0 ? Number(set.abv) : d.abv;
+  return bottles > 0 ? d.ml * (abv / 100) * 0.789 * bottles : 0;
+}
+function isPenalty(ex) { return !!ex && (PENALTY_KG[ex.name] !== undefined || isDrink(ex)); }

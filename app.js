@@ -311,6 +311,7 @@ function stampCardio(set, ex, date) {
   return true;
 }
 function setVolume(set, ex, date) {
+  if (isDrink(ex)) return -Math.round(drinkGrams(set, ex) * DRINK_KG_PER_G);
   if (isPenalty(ex)) return num(set.r) > 0 ? PENALTY_KG[ex.name] : 0;
   if (isGolf(ex)) {
     let v = num(set.r) * GOLF_KG_PER_STROKE;
@@ -498,7 +499,7 @@ function addPrayerSquats(n) {
 function makeEntry(name, fallbackSets) {
   const last = findLastExercise(name, state.day);
   const isCardio = !!(typeof CARDIO !== 'undefined' && CARDIO[name]);
-  const base = last ? last.sets : fallbackSets && fallbackSets.length ? fallbackSets : [isCardio ? { km: '', min: '' } : (name === '스크린골프' || name === '필드골프') ? { h: 18, r: '' } : { w: '', r: '' }];
+  const base = last ? last.sets : fallbackSets && fallbackSets.length ? fallbackSets : [isCardio ? { km: '', min: '' } : DRINKS[name] ? { abv: DRINKS[name].abv, r: 1 } : (name === '스크린골프' || name === '필드골프') ? { h: 18, r: '' } : { w: '', r: '' }];
   const sets = (name === '스크린골프' || name === '필드골프') ? [{ h: num(base[0] && base[0].h) || 18, r: '' }] : base.map((s) => ({ ...s }));
   const entry = { id: uid(), name, sets };
   if (last && last.bw !== undefined) entry.bw = last.bw;
@@ -1001,6 +1002,12 @@ function renderDay() {
       const th = node.querySelectorAll('thead th');
       th[0].textContent = '판'; th[1].textContent = '홀'; th[2].textContent = '타수';
       node.classList.add('golf');
+    } else if (isDrink(ex)) {
+      const dk = DRINKS[ex.name];
+      chip.hidden = false; chip.disabled = true; chip.classList.add('on');
+      chip.textContent = `${dk.icon} 1세트=1병(${dk.ml}ml) · 병당 −${Math.round(dk.ml * dk.abv / 100 * 0.789 * DRINK_KG_PER_G)}kg`;
+      const th = node.querySelectorAll('thead th');
+      th[1].textContent = '도수 %'; th[2].textContent = '병';
     } else if (isPenalty(ex)) {
       chip.hidden = false; chip.disabled = true; chip.classList.add('on');
       chip.textContent = `🫣 세트당 ${PENALTY_KG[ex.name]}kg`;
@@ -1072,6 +1079,9 @@ function renderDay() {
         <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.wkcal ?? ''}" data-k="wkcal" placeholder="워치" class="kcal-in" /></td>`
           : `<td><input type="text" autocomplete="off" inputmode="decimal" min="0" step="0.1" value="${set.km ?? ''}" data-k="km" placeholder="${cinfo.perKm ? '0.0' : '-'}" /></td>
         <td><input type="text" autocomplete="off" inputmode="numeric" min="0" step="1" value="${set.min ?? ''}" data-k="min" placeholder="0" /></td>`)
+ : isDrink(ex)
+        ? `<td><input type="text" autocomplete="off" inputmode="decimal" value="${set.abv ?? DRINKS[ex.name].abv}" data-k="abv" placeholder="${DRINKS[ex.name].abv}" /></td>
+        <td><input type="text" autocomplete="off" inputmode="decimal" value="${set.r ?? ''}" data-k="r" placeholder="병" /></td>`
  : isPenalty(ex)
         ? `<td><input type="text" autocomplete="off" inputmode="numeric" value="${set.min ?? ''}" data-k="min" placeholder="-" /></td>
         <td><input type="text" autocomplete="off" inputmode="numeric" value="${set.r ?? ''}" data-k="r" placeholder="회" /></td>`
@@ -1129,7 +1139,7 @@ function renderDay() {
 
     const strength = !cinfo && !isGolf(ex) && !isPenalty(ex);
     const group = ex.ss ? list.filter((e) => e.ss === ex.ss) : [ex];
-    const copyLast = (e) => { const prev = e.sets[e.sets.length - 1]; e.sets.push(isGolf(e) ? { h: num(prev && prev.h) || 18, r: '' } : isPenalty(e) ? { min: '', r: '' } : prev ? { ...prev } : cardioInfo(e) ? { km: '', min: '' } : { w: '', r: '' }); };
+    const copyLast = (e) => { const prev = e.sets[e.sets.length - 1]; e.sets.push(isGolf(e) ? { h: num(prev && prev.h) || 18, r: '' } : isDrink(e) ? { abv: num(prev && prev.abv) || DRINKS[e.name].abv, r: 1 } : isPenalty(e) ? { min: '', r: '' } : prev ? { ...prev } : cardioInfo(e) ? { km: '', min: '' } : { w: '', r: '' }); };
     node.querySelector('.add-set').addEventListener('click', () => {
       group.forEach(copyLast);   // 슈퍼세트면 묶인 운동 모두 한 세트씩
       save();
@@ -2052,6 +2062,7 @@ const social = (() => {
   function describeSets(ex) {
     const sets = ex.sets.filter((st) => num(st.r) > 0 || num(st.km) > 0 || num(st.min) > 0 || num(st.wkcal) > 0);
     if (!sets.length) return '';
+    if (isDrink(ex)) return sets.map((st) => `${DRINKS[ex.name].icon} ${num(st.r)}병 · ${num(st.abv) || DRINKS[ex.name].abv}%`).join(' / ') + ` (−${fmtKg(Math.round(-ex.sets.reduce((a, st) => a + setVolume(st, ex), 0)))})`;
     if (isPenalty(ex)) return sets.map((st) => `🫣 ${num(st.r)}회${num(st.min) ? ` ${num(st.min)}분` : ''} (${PENALTY_KG[ex.name]}kg)`).join(' / ');
     if (isGolf(ex)) return sets.map((st) => `⛳ ${num(st.h) || 18}홀 ${num(st.r)}타${isFieldGolf(ex) ? ` · 걷기 ${+(FIELD_GOLF_KM * ((num(st.h) || 18) / 18)).toFixed(1)}km` : ''}`).join(' / ');
     if (cardioInfo(ex)) {
@@ -2085,8 +2096,9 @@ const social = (() => {
         const ci = cardioInfo(ex);
         const done = ex.sets.filter((st) => num(st.r) > 0 || num(st.km) > 0 || num(st.min) > 0 || num(st.wkcal) > 0);
         // 세트별 상세: 근력 [무게, 횟수] · 유산소 [km, 분] (최대 20세트)
-        const sets = done.slice(0, 20).map((st) => (ci ? [num(st.km), num(st.min)] : [num(st.w), num(st.r)]));
+        const sets = done.slice(0, 20).map((st) => (ci ? [num(st.km), num(st.min)] : isDrink(ex) ? [num(st.abv) || DRINKS[ex.name].abv, num(st.r)] : [num(st.w), num(st.r)]));
         const x = { n: ex.name, d: describeSets(ex), v: Math.round(exerciseVolume(ex, d)), c: ci ? 1 : 0, p: ci ? '유산소' : partOf(ex.name), s: sets };
+        if (isDrink(ex)) x.dr = 1;
         if (!ci && bwType(ex)) x.b = bwType(ex) === 'assist' ? 2 : 1;
         if (ex.ss) x.ss = String(ex.ss).slice(-4);
         return x;
@@ -2746,9 +2758,9 @@ const social = (() => {
       if (!Array.isArray(x.s) || !x.s.length) return `<div class="log-desc">${escapeHtml(x.d)}</div>`;
       return `<div class="lg-sets">${x.s.map((st, i) => {
         const [a, b] = st.map(num);
-        const txt = x.c ? [a ? `${a}km` : '', b ? `${b}분` : ''].filter(Boolean).join(' · ') || '-'
+        const txt = x.dr ? `${b}병 · ${a}%` : x.c ? [a ? `${a}km` : '', b ? `${b}분` : ''].filter(Boolean).join(' · ') || '-'
           : x.b === 1 ? `${a ? `맨몸 +${a}kg` : '맨몸'} × ${b}회` : x.b === 2 ? `보조 ${a}kg × ${b}회` : `${a}kg × ${b}회`;
-        return `<div class="lg-set"><i>${i + 1}</i><span>${txt}</span>${!x.c && !x.b ? `<em>${fmtKg(a * b)}</em>` : '<em></em>'}</div>`;
+        return `<div class="lg-set"><i>${i + 1}</i><span>${txt}</span>${!x.c && !x.b && !x.dr ? `<em>${fmtKg(a * b)}</em>` : '<em></em>'}</div>`;
       }).join('')}</div>`;
     };
     box.innerHTML = `
