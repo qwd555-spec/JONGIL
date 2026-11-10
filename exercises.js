@@ -326,10 +326,11 @@ const BODYWEIGHT_TYPE = {};
 캡틴스 체어 레그 레이즈,토즈 투 바,러시안 트위스트,AB 롤아웃,마운틴 클라이머,V 업,드래곤 플래그,데드버그,
 버피,박스 점프`.split(',').forEach((n) => { BODYWEIGHT_TYPE[n.trim()] = 'bw'; });
 ['어시스트 딥스', '어시스트 풀업 머신'].forEach((n) => { BODYWEIGHT_TYPE[n] = 'assist'; });
-/** 맨몸 운동 볼륨 너프 배율 (없으면 1) — 맨몸 풀업은 70% */
-const BW_SCALE = { '풀업': 0.7 };
-EXERCISES.forEach((e) => { if (e.part === '복근' && BODYWEIGHT_TYPE[e.name] === 'bw') BW_SCALE[e.name] = 0.5; });   // 맨몸 복근 운동 50% 너프
-Object.keys(BODYWEIGHT_TYPE).forEach((n) => { if (n.includes('푸시업') && n !== '핸드스탠드 푸시업') BW_SCALE[n] = 0.5; });   // 푸시업 계열 50% 너프 (물구나무는 제외)
+/** 맨몸 운동 볼륨 너프 배율 — 맨몸 운동은 전부 몸무게의 50%만 볼륨으로 (추가 중량은 그대로)
+ * BW_DEFAULT: 목록에 없는 맨몸 운동(직접 등록한 것 포함)도 50% */
+const BW_DEFAULT = 0.5;
+const BW_SCALE = {};
+Object.keys(BODYWEIGHT_TYPE).forEach((n) => { if (BODYWEIGHT_TYPE[n] === 'bw') BW_SCALE[n] = BW_DEFAULT; });   // 맨몸 운동 전부 50% 너프 (버피·풀업·푸시업·복근 포함)
 EXERCISES.forEach((e) => { e.bw = BODYWEIGHT_TYPE[e.name] || null; });
 
 /* ---------- 유산소 / 스포츠 환산 기준 ----------
