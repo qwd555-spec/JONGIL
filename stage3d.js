@@ -782,9 +782,114 @@ window.stage3d = (() => {
     });
     b.tex.needsUpdate = true;
   }
+
+  /* 👑 지난주 챔피언 짐 꾸미기 — 1위 황금 · 2위 은 · 3위 동 + 부문 왕 깃발 */
+  let boothFx = [];
+  function glowText(lines, w, h, color, bg) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    if (bg) { x.fillStyle = bg; x.fillRect(0, 0, w, h); }
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    lines.forEach((L, i) => {
+      x.font = L.font; x.shadowColor = color; x.shadowBlur = L.blur || 18; x.fillStyle = L.fill || '#fff';
+      x.fillText(L.t, w / 2, L.y); x.shadowBlur = 0; x.fillText(L.t, w / 2, L.y);
+    });
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+  }
+  function decorateChamp(g, m, M, BX) {
+    const ch = m.champ, r = ch.r || 0;
+    const tone = r === 1 ? 0xf5c542 : r === 2 ? 0xd7dde6 : r === 3 ? 0xcd7f32 : 0xf5c542;
+    const metal = new THREE.MeshStandardMaterial({ color: tone, roughness: 0.22, metalness: 1, emissive: tone, emissiveIntensity: 0.18 });
+    const add = (o) => { g.add(o); return o; };
+    // 바닥 테두리 (금·은·동)
+    if (r) {
+      [[3.5, 0.06, 0.08, 0, 1.42], [3.5, 0.06, 0.08, 0, -1.42], [0.08, 0.06, 2.9, 1.74, 0], [0.08, 0.06, 2.9, -1.74, 0]].forEach(([w, h, d, x, z]) => BX(w, h, d, metal, x, 0.1, z, g));
+      [-1.7, 1.7].forEach((x) => { const c = add(new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 2.62, 16), metal)); c.position.set(x, 1.31, -1.33); });
+    }
+    // 🏆 트로피 (받침대 위에서 빙글빙글)
+    if (r || ch.c.length) {
+      const tg = new THREE.Group(); tg.position.set(-1.35, 0, 1.0); add(tg);
+      BX(0.44, 0.62, 0.44, M(0x121214, 0.3, 0.6), 0, 0.31, 0, tg);
+      BX(0.5, 0.05, 0.5, metal, 0, 0.64, 0, tg);
+      const cup = new THREE.Group(); cup.position.y = 0.66; tg.add(cup);
+      const prof = [[0.12, 0], [0.12, 0.04], [0.035, 0.07], [0.03, 0.2], [0.09, 0.24], [0.17, 0.34], [0.2, 0.5], [0.19, 0.52]].map(([x, y]) => new THREE.Vector2(x, y));
+      const sc = r === 1 ? 1.35 : 1;
+      const body = new THREE.Mesh(new THREE.LatheGeometry(prof, 28), metal); body.scale.setScalar(sc); cup.add(body);
+      [-1, 1].forEach((sd) => { const hd = new THREE.Mesh(new THREE.TorusGeometry(0.07 * sc, 0.016 * sc, 8, 20, Math.PI * 1.2), metal); hd.position.set(sd * 0.2 * sc, 0.4 * sc, 0); hd.rotation.z = sd > 0 ? -Math.PI * 0.6 : Math.PI * 1.6 - Math.PI; cup.add(hd); });
+      boothFx.push((s) => { cup.rotation.y = s * 0.9; cup.position.y = 0.66 + Math.sin(s * 2) * 0.03; });
+    }
+    // 🏁 부문 왕 깃발 (벽 위쪽에 쭉)
+    if (ch.c.length) {
+      const n = ch.c.length, wdt = Math.min(0.5, 3.0 / n);
+      ch.c.forEach((txt, i) => {
+        const [icon, ...rest] = txt.split(' ');
+        const tex = glowText([{ t: icon, y: 58, font: '64px sans-serif', blur: 0 }, { t: rest.join(' '), y: 132, font: '900 34px -apple-system, "Apple SD Gothic Neo", sans-serif', blur: 6, fill: '#3a2400' }], 160, 200, '#fff3b0', null);
+        const cv = tex.image, cx = cv.getContext('2d');
+        cx.globalCompositeOperation = 'destination-over';
+        cx.fillStyle = ['#ffd54a', '#ff8fb1', '#8fd3ff', '#b49bff', '#7ee2a8', '#ffb36b'][i % 6];
+        cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(160, 0); cx.lineTo(160, 170); cx.lineTo(80, 200); cx.lineTo(0, 170); cx.closePath(); cx.fill();
+        tex.needsUpdate = true;
+        const fl = add(new THREE.Mesh(new THREE.PlaneGeometry(wdt * 0.86, wdt * 1.07), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, toneMapped: false })));
+        const x0 = -((n - 1) * wdt) / 2 + i * wdt;
+        fl.position.set(x0, 2.38 - wdt * 0.53, -1.2);
+        boothFx.push((s) => { fl.rotation.x = Math.sin(s * 2.4 + i) * 0.12; });
+      });
+      const rope = add(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 3.2, 6), M(0x6b4a1f, 0.8)));
+      rope.rotation.z = Math.PI / 2; rope.position.set(0, 2.38, -1.19);
+    }
+    // 🥇 위쪽 네온 간판
+    if (r) {
+      const label = r === 1 ? '👑 지난주 종합 1위' : r === 2 ? '🥈 지난주 종합 2위' : '🥉 지난주 종합 3위';
+      const col = r === 1 ? '#ffd54a' : r === 2 ? '#e6ecf5' : '#f0a868';
+      const tex = glowText([{ t: label, y: 62, font: '900 62px -apple-system, "Apple SD Gothic Neo", sans-serif', blur: 26, fill: col }, { t: `${m.nick} · CHAMPION`, y: 122, font: '800 30px -apple-system, sans-serif', blur: 10, fill: '#fff' }], 640, 150, col, 'rgba(10,6,20,.92)');
+      const neon = add(new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.61), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, transparent: true })));
+      neon.position.set(0, 3.55, -1.2);
+      const back = neon.clone(); back.rotation.y = Math.PI; back.position.z = -1.24; add(back);
+      BX(2.7, 0.04, 0.04, metal, 0, 3.24, -1.2, g); BX(2.7, 0.04, 0.04, metal, 0, 3.86, -1.2, g);
+      boothFx.push((s) => { neon.material.opacity = 0.82 + Math.sin(s * 5) * 0.08 + (Math.sin(s * 23) > 0.97 ? -0.3 : 0); });
+    }
+    if (r !== 1) return;
+    // ===== 1위 전용: 레드카펫 · 벨벳 벽 · 왕관 · 스포트라이트 · 반짝이 =====
+    BX(0.95, 0.025, 2.2, M(0xb3122e, 0.95), 0, 0.095, 1.25, g);
+    [-0.5, 0.5].forEach((x) => BX(0.04, 0.03, 2.2, metal, x, 0.1, 1.25, g));
+    BX(3.2, 2.15, 0.004, M(0x2b0d3f, 0.9), 0, 1.25, -1.258, g);   // 벨벳 벽 (메모판 뒤)
+    [[3.2, 0.04, 0, 2.33], [3.2, 0.04, 0, 0.17]].forEach(([w, h, x, y]) => BX(w, h, 0.03, metal, x, y, -1.245, g));
+    // 입구 황금 기둥 + 불 켜진 구슬
+    [-1.62, 1.62].forEach((x) => {
+      const c = add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.6, 16), metal)); c.position.set(x, 0.8, 1.32);
+      const orb = add(new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 14), new THREE.MeshBasicMaterial({ color: 0xfff1a8, toneMapped: false }))); orb.position.set(x, 1.7, 1.32);
+      boothFx.push((s) => { orb.scale.setScalar(1 + Math.sin(s * 3 + x) * 0.12); });
+    });
+    // 왕관 (간판 위에서 빙글)
+    const crown = new THREE.Group(); crown.position.set(0, 4.2, -1.15); add(crown);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.24, 0.16, 24, 1, true), metal); crown.add(ring);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2;
+      const sp = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 10), metal); sp.position.set(Math.cos(a) * 0.25, 0.17, Math.sin(a) * 0.25); crown.add(sp);
+      const gem = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshBasicMaterial({ color: [0xff2d55, 0x3fa9ff, 0x2ee59d, 0xb26bff, 0xff9f1a][k], toneMapped: false })); gem.position.set(Math.cos(a) * 0.27, 0.0, Math.sin(a) * 0.27); crown.add(gem);
+    }
+    boothFx.push((s) => { crown.rotation.y = s * 1.2; crown.position.y = 4.2 + Math.sin(s * 1.7) * 0.08; });
+    // 스포트라이트 빛기둥 2개 (좌우로 흔들)
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    [-1, 1].forEach((sd) => {
+      const piv = new THREE.Group(); piv.position.set(sd * 1.5, 3.3, 1.2); add(piv);
+      const beam = new THREE.Mesh(new THREE.ConeGeometry(0.75, 3.3, 24, 1, true), beamMat); beam.position.y = -1.65; piv.add(beam);
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.22, 14), M(0x111111, 0.4, 0.7)); piv.add(head);
+      boothFx.push((s) => { piv.rotation.z = sd * 0.35 + Math.sin(s * 0.9 + sd) * 0.25; piv.rotation.x = -0.25 + Math.cos(s * 0.7) * 0.12; });
+    });
+    const pl = add(new THREE.PointLight(0xffd36b, 1.4, 7, 2)); pl.position.set(0, 2.4, 0.4);
+    boothFx.push((s) => { pl.intensity = 1.2 + Math.sin(s * 2.2) * 0.35; });
+    // ✨ 금가루 반짝이 (위로 피어오름)
+    const N = 70, pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * 3.2; pos[i * 3 + 1] = Math.random() * 3.4; pos[i * 3 + 2] = (Math.random() - 0.5) * 2.6; }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffe27a, size: 0.07, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })));
+    boothFx.push(() => { const a = geo.attributes.position; for (let i = 0; i < N; i++) { let y = a.getY(i) + 0.008; if (y > 3.6) y = 0.1; a.setY(i, y); } a.needsUpdate = true; });
+  }
   function buildBooths(team) {
     Object.values(booths).forEach((b) => { gymScene.remove(b.g); b.tex.dispose(); });
     booths = {};
+    boothFx = [];
     const M = (c, r = 0.8, m = 0.1) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
     const BX = (w, h, d, mat, x, y, z, par) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; par.add(o); return o; };
     const n = team.length, gap = 0.9, span = Math.PI * 2 - gap * 2, RR = 14.6;
@@ -819,6 +924,7 @@ window.stage3d = (() => {
       BX(0.5, 0.06, 1.0, dark, 1.25, 0.6, -0.7, g); BX(0.5, 0.06, 1.0, dark, 1.25, 0.32, -0.7, g); BX(0.08, 0.62, 0.9, dark, 1.25, 0.31, -0.7, g);
       for (let k = 0; k < 3; k++) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8), steel); d.rotation.x = Math.PI / 2; d.position.set(1.25, 0.67, -1.0 + k * 0.3); d.rotation.set(0, 0, Math.PI / 2); g.add(d); [-0.12, 0.12].forEach((o) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 10), dark); p.rotation.z = Math.PI / 2; p.position.set(1.25 + o, 0.67, -1.0 + k * 0.3); g.add(p); }); }
       BX(1.2, 0.1, 0.4, wood, -0.4, 0.42, 0.55, g); [-0.9, 0.1].forEach((x) => BX(0.08, 0.4, 0.35, dark, x, 0.2, 0.55, g));
+      if (m.champ) decorateChamp(g, m, M, BX);
       gymScene.add(g);
       // 내 짐 운동 자리 (월드 좌표)
       const lp = new THREE.Vector3(0.35, 0, -0.35).applyMatrix4(new THREE.Matrix4().makeRotationY(g.rotation.y)).add(g.position);
@@ -1085,6 +1191,7 @@ window.stage3d = (() => {
       gCamPos.lerp(dp, kf); gCamLook.lerp(dl, kf);
       gymCam.position.copy(gCamPos); gymCam.lookAt(gCamLook);
       updateAgents(dt, s);
+      for (const f of boothFx) f(s);
       if (photo) {
         const w = box.clientWidth || 300, h = box.clientHeight || 360;
         aimPhoto();

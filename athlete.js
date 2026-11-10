@@ -679,13 +679,15 @@ window.athlete = (() => {
   function teamList() {
     let members = {}, myId = null, live = () => false;
     try { members = social.members(); myId = social.id(); live = social.live; } catch {}
+    let champs = {}; try { champs = social.champs() || {}; } catch {}
+    const champ = (id) => { const c = champs[id]; return c && (c.rank || c.crowns.length) ? { r: c.rank || 0, c: c.crowns.slice(0, 8) } : null; };
     const jailed = (id) => { try { return !!social.jailed(id); } catch { return false; } };
     return Object.keys(members).map((id) => {
       const m = members[id];
-      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus(), jail: jailed(id), order: G.order || null, power: G.pw || 0 }; }
+      if (id === myId) { const R = real(); const T = TRACKS[G.track]; return { id, me: true, nick: m.nick, up: R.up, low: R.low, track: G.track, color: T ? T.color : '#3a3a42', sub: T ? T.stages[G.stage].name : '', stage: T ? G.stage : 0, live: live(id), today: dayVolume(todayStr()) > 0, focus: myFocus(), jail: jailed(id), order: G.order || null, power: G.pw || 0, champ: champ(id) }; }
       const c = m.char || {}, t = TRACKS[c.t] ? c.t : '';
       let fc = null; try { fc = social.focus(id); } catch {}
-      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id), jail: jailed(id), order: typeof c.o === 'string' ? c.o : null, power: num(c.pw) };
+      return { id, today: !!fc, focus: fc ? fc.key : '', stage: t ? num(c.st) : 0, nick: m.nick, up: num((c.s || {}).u), low: num((c.s || {}).l), track: t, color: t ? TRACKS[t].color : '#3a3a42', sub: t ? TRACKS[t].stages[Math.min(num(c.st), TRACKS[t].stages.length - 1)].name : '', live: live(id), jail: jailed(id), order: typeof c.o === 'string' ? c.o : null, power: num(c.pw), champ: champ(id) };
     }).slice(0, 12);
   }
   document.querySelectorAll('#ath-view button').forEach((b) => b.addEventListener('click', () => { view3d = b.dataset.v; render(); }));

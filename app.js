@@ -2550,6 +2550,34 @@ const social = (() => {
       <span class="aw-val">${val}${meTxt}</span>
     </button>`;
   }
+  /* ---- 👑 지난주(일~토) 챔피언: 산스장 개인 짐 꾸미기용 ---- */
+  const CHAMP_SKIP = ['딸딸왕', '휴식왕', '하체 도망자'];
+  let champCache = { key: '', val: {} };
+  function weeklyChamps() {
+    const t = todayStr(), start = addDays(weekStart(t), -7);
+    const key = start + '|' + Object.keys(members).length + '|' + Object.values(members).reduce((a, m) => a + num(m.updatedAt), 0);
+    if (champCache.key === key) return champCache.val;
+    const dates = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    const range = { dates, past: dates, prev: dates.map((d) => addDays(d, -7)) };
+    const t0 = parse(start).getTime(), t1 = t0 + 7 * 86400000;
+    const cmts = allComments().filter((c) => c.kind !== 'share' && c.at >= t0 && c.at < t1);
+    const people = Object.entries(members).filter(([, m]) => m && m.nick).map(([id, m]) => ({ id, nick: m.nick, S: statsFor(id, range, cmts) }));
+    const out = {};
+    const add = (id) => (out[id] ||= { rank: 0, crowns: [] });
+    // 종합 순위 (순 볼륨, 술 마이너스 포함)
+    people.map((x) => ({ id: x.id, v: dates.reduce((a, d) => a + dayTotal(x.id, d), 0) })).filter((x) => x.v > 0)
+      .sort((a, b) => b.v - a.v).slice(0, 3).forEach((x, i) => { const o = add(x.id); o.rank = i + 1; o.vol = Math.round(x.v); });
+    for (const a of ALL_AWARDS) {
+      if (CHAMP_SKIP.includes(a.name)) continue;
+      const rows = awardRows(a, people);
+      if (!rows.length) continue;
+      const win = a.all ? rows : a.ties ? rows.filter((x) => x.v === rows[0].v) : [rows[0]];
+      win.forEach((x) => add(x.id).crowns.push(`${a.icon} ${a.name}`));
+    }
+    champCache = { key, val: out };
+    return out;
+  }
+
   let awPeople = [];
   function renderAwards() {
     const t = todayStr();
@@ -3296,7 +3324,7 @@ const social = (() => {
   }
 
   return { postDiet, openDiet, renderChat, feedEnter, goChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
-    members: () => members, jailed: isJailed,
+    members: () => members, jailed: isJailed, champs: () => weeklyChamps(),
     // 🏠 각자 짐 메모: { 주인id: [{id, from, who, text, c, at, mine}] } (최신순)
     memos: () => {
       const out = {};
