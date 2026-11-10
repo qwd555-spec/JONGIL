@@ -1622,3 +1622,19 @@ main { padding-bottom: calc(var(--safe-b) + 40px); }
 .rt-friend.live { border-color: #22c55e; }
 .rt-friend.live small { color: #22c55e; opacity: 1; font-weight: 700; }
 .routine-sheet .rest-head + .sub-head { border-top: 0; padding-top: 0; margin-top: 6px; }
+
+/* 🍲 출소 두부 팝업 */
+.tofu-pop{text-align:center}
+.tofu-pop .tofu-tag{display:inline-block;padding:4px 12px;border-radius:999px;background:rgba(255,122,26,.15);color:#ff7a1a;font-weight:800;font-size:12px}
+.tofu-pop h3{margin:10px 0 4px;font-size:20px}
+.tofu-pop p{margin:0;color:var(--sub,#8b8896);font-size:14px;line-height:1.5}
+.tofu-plate{display:block;margin:18px auto 10px;width:190px;height:120px;border:0;border-radius:50%;background:radial-gradient(ellipse at 50% 45%,#ffffff 0,#ececf2 60%,#cfcfd8 100%);box-shadow:0 10px 24px -10px rgba(0,0,0,.45);cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent}
+.tofu{position:absolute;left:50%;top:44%;width:96px;height:66px;transform:translate(-50%,-50%);background:linear-gradient(160deg,#fffdf6,#f3ecd9);border-radius:12px;box-shadow:inset -6px -8px 0 rgba(0,0,0,.05),0 6px 10px -4px rgba(0,0,0,.25);transition:clip-path .25s ease}
+.tofu .eye{position:absolute;top:24px;width:7px;height:9px;border-radius:50%;background:#2b2530}
+.tofu .eye.l{left:30px}.tofu .eye.r{right:30px}
+.tofu .mouth{position:absolute;left:50%;top:38px;width:14px;height:7px;margin-left:-7px;border-bottom:3px solid #2b2530;border-radius:0 0 10px 10px}
+.tofu.b1{clip-path:polygon(0 0,72% 0,78% 14%,70% 26%,80% 36%,100% 34%,100% 100%,0 100%)}
+.tofu.b2{clip-path:polygon(0 0,46% 0,54% 18%,46% 34%,58% 50%,52% 64%,100% 62%,100% 100%,0 100%)}
+.tofu.b3{clip-path:polygon(0 60%,20% 54%,28% 66%,40% 60%,48% 74%,42% 100%,0 100%)}
+.tofu-hint{margin-bottom:12px!important;font-weight:700;color:var(--ink,inherit)!important}
+.tofu-pop #tofu-eat{flex:1.8;background:#ff7a1a;color:#fff}

@@ -1946,6 +1946,7 @@ const social = (() => {
     checkIncoming();
     checkCongrats();
     checkMemoPop();
+    checkTofu();
     cleanOldMeals();
     cleanOldChat();
     chatTick();
@@ -2263,6 +2264,51 @@ const social = (() => {
     const ever = Object.keys(m.days || {}).length + Object.keys(m.cdays || {}).length + Object.keys(m.dsum || {}).length;
     return ever > 0 && !friendDay(m, y);
   }
+  /* ---- 🍲 출소 다음 날 두부 팝업 (한 번만) ----
+     그제 운동 안 해서 어제 수감 → 어제 운동해서 출소 → 오늘 앱 열면 두부 */
+  function releasedOn(d) {
+    const prev = addDays(d, -1);
+    if (!(dayVolume(d) > 0) || dayVolume(prev) > 0) return false;
+    return Object.keys(db).some((x) => x < prev && dayVolume(x) > 0);
+  }
+  let tofuBites = 0;
+  function checkTofu() {
+    if (!store || !myId || !ready || !myNick()) return;
+    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal', '#chat-pop', '#memo-pop'].some((q) => { const e = $(q); return e && !e.hidden; });
+    if (busy || !$('#tofu-pop').hidden) return;
+    const y = addDays(todayStr(), -1);
+    if (seenGet('tofu:' + y) || !releasedOn(y)) return;
+    tofuBites = 0;
+    $('#tofu').className = 'tofu';
+    $('#tofu-title').textContent = `${myNick()}님, 출소 축하해요!`;
+    $('#tofu-sub').textContent = `어제 ${fmtKg(Math.round(dayVolume(y)))} 들고 산스장 교도소에서 나왔어요. 출소엔 두부 한 모, 이제 다시는 들어가지 마요.`;
+    $('#tofu-hint').textContent = '두부를 눌러서 한 입씩 먹어요 🥢 (3입)';
+    $('#tofu-eat').textContent = '🥢 한 입 먹기';
+    $('#tofu-pop').hidden = false;
+    document.body.classList.add('modal-open');
+  }
+  function closeTofu(ate) {
+    seenSet('tofu:' + addDays(todayStr(), -1), Date.now());
+    $('#tofu-pop').hidden = true;
+    document.body.classList.remove('modal-open');
+    if (ate) toast('🍲 두부 한 모 완식! 새 사람 됐어요 · 오늘도 운동해서 다시 들어가지 말기');
+  }
+  function biteTofu() {
+    if (tofuBites >= 3) { closeTofu(true); return; }
+    tofuBites++;
+    const el = $('#tofu');
+    el.className = `tofu b${tofuBites}`;
+    el.animate([{ transform: 'scale(1)' }, { transform: 'scale(.9) rotate(-4deg)' }, { transform: 'scale(1)' }], { duration: 260 });
+    if (tofuBites >= 3) {
+      $('#tofu-hint').textContent = '냠냠 다 먹었어요! 깨끗하게 새 출발 ✨';
+      $('#tofu-eat').textContent = '🙏 잘 먹었습니다';
+    } else $('#tofu-hint').textContent = ['', '한 입 냠! 🥢 (2입 남음)', '두 입 냠냠! (마지막 1입)'][tofuBites];
+  }
+  $('#tofu-plate').addEventListener('click', biteTofu);
+  $('#tofu-eat').addEventListener('click', biteTofu);
+  $('#tofu-skip').addEventListener('click', () => closeTofu(false));
+  $('#tofu-pop .rest-backdrop').addEventListener('click', () => closeTofu(false));
+
   /* ---- 🎉 친구가 운동 기록 남기면 첫 화면에 축하 팝업 (축하/피드백해야 닫힘) ---- */
   const CONGRATS_KEY = 'gymlog.congrats';
   let congratsArmed = true, congratsQ = [], congratsCur = null;
@@ -2271,7 +2317,7 @@ const social = (() => {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { congratsArmed = true; setTimeout(checkCongrats, 1200); } });
   function checkCongrats() {
     if (!store || !myId || !ready || !myNick()) return;
-    if (!$('#welcome-modal').hidden || !$('#congrats-modal').hidden || !$('#chat-pop').hidden) return;
+    if (!$('#welcome-modal').hidden || !$('#congrats-modal').hidden || !$('#chat-pop').hidden || !$('#tofu-pop').hidden) return;
     if (!comments[myId]) return;   // 내가 보낸 댓글을 불러온 뒤에 판단 (이미 반응한 친구는 건너뜀)
     congratsArmed = false;
     const t = todayStr(), y = addDays(t, -1), done = congratsDone();
@@ -2299,7 +2345,7 @@ const social = (() => {
   let memoPopList = [];
   function checkMemoPop() {
     if (!store || !myId || !ready || !myNick()) return;
-    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal', '#chat-pop'].some((q) => { const e = $(q); return e && !e.hidden; });
+    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal', '#chat-pop', '#tofu-pop'].some((q) => { const e = $(q); return e && !e.hidden; });
     if (busy) return;
     const from = Math.max(memoSeen(), Date.now() - 3 * 86400000);
     memoPopList = Object.values(comments).flat()
@@ -3053,7 +3099,7 @@ const social = (() => {
   function chatPopup(fresh) {
     if (chatPopDone || !fresh.length || !ready || !myNick() || Date.now() - chatBoot > 20000) return;   // 앱을 켰을 때만
     if (!Object.keys(members).every((id) => comments[id])) return;   // 모든 친구 톡을 불러온 뒤에
-    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal', '#memo-pop', '#chat-pop'].some((q) => { const e = $(q); return e && !e.hidden; });
+    const busy = ['#welcome-modal', '#congrats-modal', '#part-modal', '#memo-pop', '#chat-pop', '#tofu-pop'].some((q) => { const e = $(q); return e && !e.hidden; });
     if (busy) return;
     const last = fresh[fresh.length - 1];
     const shown = seenGet('chatPop');
