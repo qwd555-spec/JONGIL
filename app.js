@@ -1999,7 +1999,7 @@ const social = (() => {
     const days = {}, best = {}, cdays = {};
     for (const d of Object.keys(db)) {
       const v = Math.round(dayStrengthVolume(d));
-      if (v > 0) days[d] = v;
+      if (v !== 0) days[d] = v;   // 술 등으로 마이너스인 날도 그대로 올림 (랭킹에 반영)
       const c = Math.round(dayCardioVolume(d));
       if (c > 0) cdays[d] = c;
       for (const ex of db[d]) {
@@ -2020,6 +2020,7 @@ const social = (() => {
     let h0 = 99, h1 = -1;
     for (const ex of db[d] || []) {
       const v = exerciseVolume(ex, d);
+      if (v < 0) { out.neg = Math.round((out.neg || 0) + v); continue; }   // 🍺 술·벌칙 마이너스
       if (!(v > 0)) continue;
       const info = cardioInfo(ex);
       const part = info ? '유산소' : armPart(partOf(ex.name));
@@ -2045,7 +2046,7 @@ const social = (() => {
       }
     }
     if (!(out.v > 0)) return null;
-    out.v = Math.round(out.v); out.km = +out.km.toFixed(2);
+    out.v = Math.round(out.v + (out.neg || 0)); /* 운동 − 술 = 순 볼륨 */ out.km = +out.km.toFixed(2);
     if (h1 >= 0) { out.h0 = h0; out.h1 = h1; }
     return out;
   }
@@ -2628,14 +2629,14 @@ const social = (() => {
     const tD = todayStr();
     const didToday = (m) => num((m.days || {})[tD]) > 0 || num((m.cdays || {})[tD]) > 0;
     $('#rank-list').innerHTML = rows.map((r, i) => `
-      <button class="rank-row ${r.id === myId ? 'me' : ''} ${didToday(r.m) ? 'today' : 'stale'}${isLive(r.id) ? ' live' : ''}" data-id="${escapeHtml(r.id)}">
+      <button class="rank-row ${r.id === myId ? 'me' : ''} ${didToday(r.m) ? 'today' : 'stale'}${isLive(r.id) ? ' live' : ''}${r.value < 0 ? ' neg' : ''}" data-id="${escapeHtml(r.id)}">
         <span class="rank-no">${i + 1}</span>
         <span class="rank-main">
           <span class="rank-name">${isLive(r.id) ? '<i class="live-dot" title="지금 운동 중"></i>' : ''}${escapeHtml(r.m.nick)}${r.id === myId ? '<span class="me-tag">나</span>' : ''}<span class="title-chip">${escapeHtml(titleOf(r.id, todayStr()))}</span>
             ${cmtCount[r.id] ? `<span class="rank-cmt"><svg class="i"><use href="#i-chat"/></svg>${cmtCount[r.id]}</span>` : ''}</span>
-          <span class="rank-bar"><div style="width:${(r.value / max) * 100}%"></div></span>
+          <span class="rank-bar"><div style="width:${Math.max(0, (r.value / max) * 100)}%"></div></span>
         </span>
-        <span class="rank-val">${fmtMetric(r.value)}</span>
+        <span class="rank-val${r.value < 0 ? ' neg' : ''}">${fmtMetric(r.value)}</span>
       </button>`).join('');
     // 순위가 실시간으로 바뀌는 중에 눌러도 손가락 닿은 사람으로 열리게 (pointerdown 때 id 고정)
     $('#rank-list').querySelectorAll('.rank-row').forEach((b) => {

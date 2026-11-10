@@ -1638,3 +1638,8 @@ main { padding-bottom: calc(var(--safe-b) + 40px); }
 .tofu.b3{clip-path:polygon(0 60%,20% 54%,28% 66%,40% 60%,48% 74%,42% 100%,0 100%)}
 .tofu-hint{margin-bottom:12px!important;font-weight:700;color:var(--ink,inherit)!important}
 .tofu-pop #tofu-eat{flex:1.8;background:#ff7a1a;color:#fff}
+
+/* 마이너스 볼륨 (술 등) */
+.rank-val.neg{color:#e11d48!important}
+.rank-row.neg, body.event-bg .rank-row.neg{filter:none}
+
