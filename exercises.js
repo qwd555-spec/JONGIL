@@ -419,14 +419,14 @@ function isFieldGolf(ex) { return !!ex && ex.name === '필드골프'; }
 /* 🫣 벌칙 운동: 횟수를 적은 세트마다 볼륨 −50kg */
 const PENALTY_KG = { '자위행위': -50 };
 /* 🍺 술: 1세트 = 1병, 도수(%)별로 볼륨 마이너스
- * 순수 알코올(g) = 용량(ml) × 도수 × 0.789 · 볼륨 = 알코올 1g당 −10kg */
+ * 순수 알코올(g) = 용량(ml) × 도수 × 0.789 · 볼륨 = 알코올 1g당 −30kg */
 const DRINKS = {
   '소주': { ml: 360, abv: 16.5, icon: '🍶' },
   '맥주': { ml: 500, abv: 5, icon: '🍺' },
   '막걸리': { ml: 750, abv: 6, icon: '🍶' },
   '와인': { ml: 750, abv: 13, icon: '🍷' },
 };
-const DRINK_KG_PER_G = 10;
+const DRINK_KG_PER_G = 30;   // 알코올 1g당 −30kg (기존 −10kg의 3배)
 function isDrink(ex) { return !!ex && !!DRINKS[ex.name]; }
 function drinkGrams(set, ex) {
   const d = DRINKS[ex.name]; if (!d) return 0;
