@@ -2266,23 +2266,31 @@ const social = (() => {
     toast(`${nickOf(last.from)}: ${String(last.text).slice(0, 40)}${fresh.length > 1 ? ` 외 ${fresh.length - 1}개` : ''}`);
   }
 
-  /* ---- 🔒 어제 운동 안 한 사람 → 오늘 산스장 교도소 (오늘 운동하면 석방) ---- */
-  function isJailed(id) {
-    const t = todayStr(), y = addDays(t, -1);
-    if (id === myId) {
-      if (dayVolume(t) > 0) return false;
-      return Object.keys(db).some((d) => d < y && dayVolume(d) > 0) && !(dayVolume(y) > 0);
-    }
-    const m = members[id]; if (!m) return false;
-    if (friendDay(m, t)) return false;
-    const ever = Object.keys(m.days || {}).length + Object.keys(m.cdays || {}).length + Object.keys(m.dsum || {}).length;
-    return ever > 0 && !friendDay(m, y);
+  /* ---- 🔒 어제 운동 안 한 사람 → 오늘 산스장 교도소 (오늘 운동하면 석방)
+     단, 이번 주(일~토)에 이미 3번 운동했으면 근회복 휴식으로 인정 → 면제 ---- */
+  const JAIL_FREE_DAYS = 3;
+  const workedOn = (id, d) => (id === myId ? dayVolume(d) > 0 : !!(members[id] && friendDay(members[id], d)));
+  function weekWorkouts(id, upTo) {   // upTo(포함)까지 이번 주 운동한 날 수
+    return weekDates(upTo).filter((d) => d <= upTo && workedOn(id, d)).length;
   }
+  function jailedOn(id, t) {
+    const y = addDays(t, -1);
+    if (workedOn(id, t) || workedOn(id, y)) return false;
+    if (weekWorkouts(id, y) >= JAIL_FREE_DAYS) return false;   // 어제가 속한 주에 3번 채움 → 근회복 휴식 면제 (일요일엔 지난주 기준)
+    if (id === myId) return Object.keys(db).some((d) => d < y && dayVolume(d) > 0);
+    const m = members[id]; if (!m) return false;
+    const ever = Object.keys(m.days || {}).length + Object.keys(m.cdays || {}).length + Object.keys(m.dsum || {}).length;
+    return ever > 0;
+  }
+  function isJailed(id) { return jailedOn(id, todayStr()); }
+  /** 이번 주 휴식 면제 상태 (주 3회 채움) */
+  function restFree(id) { const t = todayStr(); return !workedOn(id, t) && weekWorkouts(id, t) >= JAIL_FREE_DAYS; }
   /* ---- 🍲 출소 다음 날 두부 팝업 (한 번만) ----
      그제 운동 안 해서 어제 수감 → 어제 운동해서 출소 → 오늘 앱 열면 두부 */
-  function releasedOn(d) {
+  function releasedOn(d) {   // d날 수감 상태였다가 그날 운동해서 출소
     const prev = addDays(d, -1);
     if (!(dayVolume(d) > 0) || dayVolume(prev) > 0) return false;
+    if (weekWorkouts(myId, prev) >= JAIL_FREE_DAYS) return false;   // 면제 중이었으면 출소 아님
     return Object.keys(db).some((x) => x < prev && dayVolume(x) > 0);
   }
   let tofuBites = 0;
@@ -3325,7 +3333,7 @@ const social = (() => {
   }
 
   return { postDiet, openDiet, renderChat, feedEnter, goChat, init, publish, render, openShare, wasShared, activeToday, titleOf, setMode, mode: () => mode, id: () => myId, ready: () => ready,
-    members: () => members, jailed: isJailed, champs: () => weeklyChamps(),
+    members: () => members, jailed: isJailed, jailedOn, restFree, weekWorkouts: (id) => weekWorkouts(id, todayStr()), champs: () => weeklyChamps(),
     // 🏠 각자 짐 메모: { 주인id: [{id, from, who, text, c, at, mine}] } (최신순)
     memos: () => {
       const out = {};

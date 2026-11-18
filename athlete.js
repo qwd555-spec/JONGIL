@@ -442,7 +442,7 @@ window.athlete = (() => {
     const T = window.stage3d.tasks;
     if (a.jail) {
       $('#order-title').textContent = a.me ? '🔒 나는 지금 수감 중' : `🔒 ${a.nick} 수감 중`;
-      $('#order-now').textContent = a.me ? '죄목: 어제 운동 안 함 · 오늘 운동 기록하면 바로 석방' : '죄목: 어제 운동 안 함 · 오늘 운동하면 석방돼요';
+      $('#order-now').textContent = a.me ? '죄목: 어제 운동 안 함 · 오늘 운동 기록하면 바로 석방 (주 3회 채우면 쉬어도 면제)' : '죄목: 어제 운동 안 함 · 오늘 운동하면 석방돼요 (주 3회 채우면 면제)';
       $('#order-btns').innerHTML = a.me ? '' : ['🔒 빨리 운동하고 나와라', '🍞 콩밥 넣어줄게 ㅋㅋ', '🏋️ 감방에서 푸쉬업이라도 해'].map((m) => `<button type="button" data-m="${m}">📣 면회: ${m}</button>`).join('');
       $('#order-btns').querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
         $('#order-sheet').hidden = true;
