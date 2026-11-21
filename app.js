@@ -327,7 +327,8 @@ function setVolume(set, ex, date) {
   const bw = bodyweightOn(date);
   if (type === 'assist') return Math.max(0, bw - w) * r;
   const k = (typeof BW_SCALE !== 'undefined' && BW_SCALE[ex.name]) || (typeof BW_DEFAULT !== 'undefined' ? BW_DEFAULT : 1);
-  return (bw * k + w) * r;   // 몸무게 부분만 너프, 추가 중량(중량 풀업 등)은 그대로
+  if (w > 0) return (bw + w) * r;   // 무게칸에 중량을 적은 세트는 너프 없이 100% (몸무게 + 중량)
+  return bw * k * r;   // 맨몸만이면 몸무게의 30%
 }
 function exerciseVolume(ex, date) { return ex.sets.reduce((a, s) => a + setVolume(s, ex, date), 0); }
 /** 근력 볼륨 — 유산소·스포츠 제외 */
@@ -1018,7 +1019,7 @@ function renderDay() {
       const bw = bodyweightOn(state.day);
       chip.classList.toggle('on', !!type);
       const bk = type === 'bw' && typeof BW_SCALE !== 'undefined' ? (BW_SCALE[ex.name] || BW_DEFAULT) : 1;
-      const nerf = bk < 1 ? ` · 몸무게 ×${Math.round(bk * 100)}%` : '';
+      const nerf = bk < 1 ? ` · 맨몸 ×${Math.round(bk * 100)}% · 중량 적으면 100%` : '';
       chip.textContent = (!type ? '🏋️ 무게 운동' : bw ? `맨몸 +${bw}kg` : '맨몸 · 몸무게 미입력') + nerf;
       chip.title = isCatalog ? '' : '눌러서 무게 ↔ 맨몸 바꾸기';
       if (!isCatalog) {
